@@ -7,6 +7,20 @@ import Pricing from "~/components/homepage/pricing";
 import Team from "~/components/homepage/team";
 import { api } from "../../convex/_generated/api";
 import type { Route } from "./+types/home";
+import { useEffect } from "react";
+
+import { Conversation } from "~/components/conversation";
+
+// Declare the custom element type for TypeScript
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'elevenlabs-convai': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
+        'agent-id': string;
+      }, HTMLElement>;
+    }
+  }
+}
 
 export function meta({}: Route.MetaArgs) {
   const title = "React Starter Kit - Launch Your SAAS Quickly";
@@ -75,10 +89,28 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
+  useEffect(() => {
+    const widget = document.querySelector('elevenlabs-convai');
+
+    if (widget) {
+      // Listen for the widget's "call" event to trigger client-side tools
+      widget.addEventListener('elevenlabs-convai:call', (event: any) => {
+        event.detail.config.clientTools = {
+          redirectToExternalURL: ({ url }: { url: string }) => {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          },
+        };
+      });
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
   return (
     <>
       <Integrations loaderData={loaderData} />
-      <ContentSection />
+      {/* <Conversation /> */}
+      <h2>Hello</h2>
+      <Conversation />
+     <ContentSection />
       <Team />
       <Pricing loaderData={loaderData} />
       <Footer />
