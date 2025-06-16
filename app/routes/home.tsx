@@ -33,7 +33,6 @@ export function meta({}: Route.MetaArgs) {
     { property: "og:image:height", content: "630" },
     { property: "og:url", content: siteUrl },
     { property: "og:site_name", content: "React Starter Kit" },
-    { property: "og:image", content: imageUrl },
 
     // Twitter Card
     { name: "twitter:card", content: "summary_large_image" },
