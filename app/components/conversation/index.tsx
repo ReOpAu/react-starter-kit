@@ -116,6 +116,9 @@ export function Conversation() {
         await setupAudioAnalysis();
       }
 
+      // Debug log to confirm language being sent
+      console.log("Starting session with language:", selectedLanguage);
+
       await conversation.startSession({
         agentId: CONVERSATION_CONFIG.AGENT_ID,
         overrides: {
@@ -126,6 +129,7 @@ export function Conversation() {
         textOnly: !useVoice,
       });
       setIsVoiceMode(useVoice);
+      setMessages([]); // Reset messages on new session
     } catch (error) {
       console.error('Failed to start conversation:', error);
       // Clean up audio resources if voice setup failed
