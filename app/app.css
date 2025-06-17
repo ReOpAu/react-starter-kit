@@ -41,6 +41,20 @@
     --radius-md: 10px;
     --radius-lg: 12px;
     --radius-xl: 20px;
+    --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
+    --color-color-5: var(--color-5);
+    --color-color-4: var(--color-4);
+    --color-color-3: var(--color-3);
+    --color-color-2: var(--color-2);
+    --color-color-1: var(--color-1);
+  @keyframes rainbow {
+  0% {
+    background-position: 0%;
+        }
+  100% {
+    background-position: 200%;
+        }
+    }
 }
 
 :root {
@@ -96,6 +110,11 @@
     --shadow-lg: 0px 8px 16px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0px 12px 24px rgba(0, 0, 0, 0.1);
     --shadow-2xl: 0px 16px 32px rgba(0, 0, 0, 0.1);
+    --color-1: oklch(66.2% 0.225 25.9);
+    --color-2: oklch(60.4% 0.26 302);
+    --color-3: oklch(69.6% 0.165 251);
+    --color-4: oklch(80.2% 0.134 225);
+    --color-5: oklch(90.7% 0.231 133);
 }
 
 @layer base {
@@ -135,6 +154,11 @@
     --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
     --sidebar-border: hsl(240 3.7% 15.9%);
     --sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --color-1: oklch(66.2% 0.225 25.9);
+    --color-2: oklch(60.4% 0.26 302);
+    --color-3: oklch(69.6% 0.165 251);
+    --color-4: oklch(80.2% 0.134 225);
+    --color-5: oklch(90.7% 0.231 133);
 }
 
 @layer base {

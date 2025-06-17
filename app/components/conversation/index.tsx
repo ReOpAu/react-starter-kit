@@ -11,6 +11,8 @@ import { VoiceIndicator } from './VoiceIndicator';
 import { LanguageSelector } from './LanguageSelector';
 import type { Message, Language } from './types';
 import { CONVERSATION_CONFIG } from './types';
+import { ShinyButton } from "../ui/magicui/shiny-button";
+import { RainbowButton } from "../ui/magicui/rainbow-button";
 
 export function Conversation() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -206,12 +208,12 @@ export function Conversation() {
         <div className="flex justify-center gap-4 mt-4">
           {conversation.status !== 'connected' ? (
             <>
-              <Button onClick={() => startConversation(false)} className="flex-1">
+              <RainbowButton onClick={() => startConversation(false)} className="flex-1">
                 Start Chat
-              </Button>
-              <Button onClick={() => startConversation(true)} className="flex-1">
+              </RainbowButton>
+              <ShinyButton onClick={() => startConversation(true)} className="flex-1">
                 Start Voice Chat
-              </Button>
+              </ShinyButton>
             </>
           ) : (
             <Button onClick={stopConversation} variant="destructive" className="w-full">
