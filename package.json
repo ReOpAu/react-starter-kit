@@ -39,6 +39,7 @@
     "clsx": "^2.1.1",
     "cobe": "^0.6.4",
     "convex": "^1.24.3",
+    "country-flag-icons": "^1.5.19",
     "embla-carousel-react": "^8.6.0",
     "isbot": "^5.1.27",
     "lucide-react": "^0.511.0",

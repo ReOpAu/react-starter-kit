@@ -6,13 +6,13 @@ export type Message = {
   isTranscribed: boolean;
 };
 
-export const languages: { code: Language; name: string }[] = [
-  { code: 'en', name: 'English' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'el', name: 'Greek' },
-  { code: 'id', name: 'Indonesian' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'vi', name: 'Vietnamese' },
+export const languages: { code: Language; name: string; flag: string }[] = [
+  { code: 'en', name: 'English', flag: 'US' },
+  { code: 'zh', name: 'Chinese', flag: 'CN' },
+  { code: 'el', name: 'Greek', flag: 'GR' },
+  { code: 'id', name: 'Indonesian', flag: 'ID' },
+  { code: 'ja', name: 'Japanese', flag: 'JP' },
+  { code: 'vi', name: 'Vietnamese', flag: 'VN' },
 ];
 
 export const CONVERSATION_CONFIG = {
