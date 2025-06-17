@@ -1,4 +1,4 @@
-export type Language = 'en' | 'zh' | 'el' | 'id' | 'ja' | 'vi';
+export type Language = 'en' | 'zh' | 'el' | 'id' | 'ja' | 'vi' | 'ar' | 'it' | 'hi';
 
 export type Message = {
   text: string;
@@ -7,12 +7,15 @@ export type Message = {
 };
 
 export const languages: { code: Language; name: string; flag: string }[] = [
-  { code: 'en', name: 'English', flag: 'US' },
+  { code: 'en', name: 'English', flag: 'AU' },
   { code: 'zh', name: 'Chinese', flag: 'CN' },
   { code: 'el', name: 'Greek', flag: 'GR' },
   { code: 'id', name: 'Indonesian', flag: 'ID' },
   { code: 'ja', name: 'Japanese', flag: 'JP' },
   { code: 'vi', name: 'Vietnamese', flag: 'VN' },
+  { code: 'ar', name: 'Arabic', flag: 'SA' },
+  { code: 'it', name: 'Italian', flag: 'IT' },
+  { code: 'hi', name: 'Hindi', flag: 'IN' }
 ];
 
 export const CONVERSATION_CONFIG = {
