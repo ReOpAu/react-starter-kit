@@ -14,7 +14,9 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+      useEffect(() => {
     if (chatContainerRef.current) {
       const container = chatContainerRef.current;
       // Always scroll for new messages
@@ -38,7 +40,7 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
         }, 500);
       }
     }
-  }, [messages, isAgentTyping]);
+  }, [messages]);
 
   return (
     <div 
@@ -54,7 +56,7 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
           delay={Math.min(index * 0.05, 0.3)}
           duration={0.3}
         >
-          <div
+          <article
             className={cn(
               "flex w-max max-w-[80%] rounded-lg px-4 py-2",
               msg.sender === 'user'
@@ -63,7 +65,6 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
                   : "ml-auto bg-primary text-primary-foreground user-message"
                 : "mr-auto bg-[#E6F0FA] text-gray-900 ai-message"
             )}
-            role="article"
             aria-label={`${msg.sender} message`}
             data-testid={`message-${index}`}
           >
@@ -90,7 +91,7 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
                 </div>
               )}
             </div>
-          </div>
+          </article>
         </BlurFade>
       ))}
       {isAgentTyping && (
@@ -104,4 +105,5 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
       )}
     </div>
   );
+  
 } 
