@@ -136,9 +136,13 @@ export function Conversation() {
       if (useVoice) {
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
-        }
         if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach(track => track.stop());
+          for (const track of mediaStreamRef.current.getTracks()) {
+            track.stop();
+          }
+          mediaStreamRef.current = null;
+         }
+          mediaStreamRef.current = null;
         }
         if (audioContextRef.current) {
           audioContextRef.current.close();
@@ -154,7 +158,10 @@ export function Conversation() {
         cancelAnimationFrame(animationFrameRef.current);
       }
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        for (const track of mediaStreamRef.current.getTracks()) {
+          track.stop();
+        }
+        mediaStreamRef.current = null;
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         try {
