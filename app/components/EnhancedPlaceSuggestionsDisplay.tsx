@@ -181,7 +181,7 @@ export function EnhancedPlaceSuggestionsDisplay({
                         </div>
                         <div className="flex items-center gap-2 ml-3">
                           <Badge variant="outline" className={cn("text-xs", colors.badge)}>
-                            {Math.round(suggestion.confidence * 100)}%
+                            {suggestion.resultType}
                           </Badge>
                           <span className="text-slate-500">→</span>
                         </div>

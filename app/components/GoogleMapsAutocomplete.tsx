@@ -696,10 +696,7 @@ export function GoogleMapsAutocomplete() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Badge variant="outline" className="text-xs">
-                        {suggestion.source}
-                      </Badge>
-                      <Badge variant="outline" className={`text-xs ${getConfidenceColor(suggestion.confidence)}`}>
-                        {Math.round(suggestion.confidence * 100)}%
+                        {suggestion.resultType}
                       </Badge>
                     </div>
                   </div>
