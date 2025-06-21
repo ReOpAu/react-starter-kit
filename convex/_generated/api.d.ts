@@ -16,6 +16,7 @@ import type * as schemas_users from "../schemas/users.js";
 import type * as schemas_webhooks from "../schemas/webhooks.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as suburbLookup from "../suburbLookup.js";
+import type * as suburbLookup_updated from "../suburbLookup_updated.js";
 import type * as users from "../users.js";
 
 import type {
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "schemas/webhooks": typeof schemas_webhooks;
   subscriptions: typeof subscriptions;
   suburbLookup: typeof suburbLookup;
+  suburbLookup_updated: typeof suburbLookup_updated;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

@@ -14,6 +14,7 @@ export default [
   route("subscription-required", "routes/subscription-required.tsx"),
   route("conv-address", "routes/conv-address.tsx"),
   route("enhanced-address", "routes/enhanced-address.tsx"),
+  route("api/validate-address", "routes/api.validate-address.tsx"),
   layout("routes/dashboard/layout.tsx", [
     route("dashboard", "routes/dashboard/index.tsx"),
     route("dashboard/chat", "routes/dashboard/chat.tsx"),

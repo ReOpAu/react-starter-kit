@@ -21,66 +21,7 @@ export interface PlaceSuggestion {
   };
   resultType: "suburb" | "street" | "address" | "general";
   confidence: number;
-  suburb?: string; // 🎯 NEW: Extracted suburb/town from Places API
 }
-// 🎯 NEW: Helper function to extract suburb/town from Places API response
-function extractSuburbFromPlacesSuggestion(suggestion: PlaceSuggestion): string | undefined {
-  console.log(`[Suburb Extraction] Extracting suburb from: "${suggestion.description}"`);
-  
-  // Method 1: Extract from secondaryText (most reliable)
-  if (suggestion.structuredFormatting.secondaryText) {
-    const secondaryText = suggestion.structuredFormatting.secondaryText;
-    
-    // Extract the first part before the state (suburb is usually first)
-    // Example: "Melbourne VIC, Australia" -> "Melbourne"
-    const parts = secondaryText.split(',').map(part => part.trim());
-    if (parts.length > 0) {
-      const firstPart = parts[0];
-      
-      // Remove state abbreviations to get clean suburb name
-      const suburb = firstPart.replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)$/i, '').trim();
-      if (suburb && suburb !== firstPart) {
-        console.log(`[Suburb Extraction] Found suburb in secondaryText: "${suburb}"`);
-        return suburb;
-      }
-    }
-  }
-  
-  // Method 2: Extract from full description
-  if (suggestion.description) {
-    const parts = suggestion.description.split(',').map(part => part.trim());
-    
-    // For addresses, suburb is typically in the second part
-    // Example: "123 Collins Street, Melbourne VIC 3000, Australia"
-    if (parts.length >= 2) {
-      const possibleSuburb = parts[1];
-      
-      // Remove state and postcode to get clean suburb
-      const suburb = possibleSuburb
-        .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\s*\d{4}?/i, '')
-        .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)$/i, '')
-        .replace(/\s+\d{4}$/, '') // Remove postcode
-        .trim();
-        
-      if (suburb && suburb.length > 0) {
-        console.log(`[Suburb Extraction] Found suburb in description: "${suburb}"`);
-        return suburb;
-      }
-    }
-  }
-  
-  // Method 3: Check if the result itself is a suburb
-  if (suggestion.resultType === "suburb" && suggestion.structuredFormatting.mainText) {
-    const suburb = suggestion.structuredFormatting.mainText.trim();
-    console.log(`[Suburb Extraction] Result is suburb type: "${suburb}"`);
-    return suburb;
-  }
-  
-  console.log(`[Suburb Extraction] Could not extract suburb from suggestion`);
-  return undefined;
-}
-
-
 
 // Intent classification helper
 function classifyLocationIntent(query: string): LocationIntent {
@@ -95,11 +36,9 @@ function classifyLocationIntent(query: string): LocationIntent {
   ];
   
   // Check if query has street type indicator
-  const hasStreetType = streetKeywords.some(keyword => {
-    // Use word boundaries to avoid false matches like "st" in "west"
-    const wordBoundaryRegex = new RegExp(`\\b${keyword}\\b`, 'i');
-    return wordBoundaryRegex.test(lowerQuery);
-  });
+  const hasStreetType = streetKeywords.some(keyword => 
+    lowerQuery.includes(` ${keyword}`) || lowerQuery.endsWith(keyword) || lowerQuery.includes(`${keyword} `)
+  );
   
   // Check for house number at the beginning (true address)
   const hasHouseNumber = /^\d+[a-z]?\s+/.test(lowerQuery);
@@ -108,21 +47,9 @@ function classifyLocationIntent(query: string): LocationIntent {
   const hasUnitNumber = /^(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery);
   
   // 🎯 STRICTER ADDRESS CLASSIFICATION for Two-Step Validation
-  // Only classify as "address" if it has BOTH a street number AND street type AND looks complete
+  // Only classify as "address" if it has BOTH a street number AND street type
   // This ensures we only use Address Validation API for complete street addresses
   if ((hasHouseNumber || hasUnitNumber) && hasStreetType) {
-    // Additional check: address should look complete (have suburb/state info)
-    // Incomplete addresses like "38 Clive street Wes" should be treated as "street" during autocomplete
-    const hasSuburbInfo = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(lowerQuery) ||
-                         /\b\d{4}\b/.test(lowerQuery) || // Has postcode
-                         lowerQuery.split(',').length >= 2; // Has comma-separated parts (likely includes suburb)
-    
-    // If it has address components but looks incomplete, treat as street for autocomplete
-    if (!hasSuburbInfo && lowerQuery.length < 50) { // Reasonable length check
-      console.log(`[Intent Classification] "${query}" has address components but appears incomplete - treating as street for autocomplete`);
-      return "street";
-    }
-    
     return "address";
   }
   
@@ -169,8 +96,7 @@ export const getPlaceSuggestions = action({
       lat: v.number(),
       lng: v.number()
     })),
-    radius: v.optional(v.number()),
-    isAutocomplete: v.optional(v.boolean()) // NEW: Flag to indicate if this is for autocomplete (vs explicit validation)
+    radius: v.optional(v.number())
   },
   returns: v.union(
     v.object({
@@ -194,8 +120,7 @@ export const getPlaceSuggestions = action({
           })))
         }),
         resultType: v.union(v.literal("suburb"), v.literal("street"), v.literal("address"), v.literal("general")),
-        confidence: v.number(),
-        suburb: v.optional(v.string()) // 🎯 NEW: Add suburb field
+        confidence: v.number()
       })),
       detectedIntent: v.union(v.literal("suburb"), v.literal("street"), v.literal("address"), v.literal("general"))
     }),
@@ -221,16 +146,10 @@ export const getPlaceSuggestions = action({
       
       console.log(`[getPlaceSuggestions] Query: "${query}", Detected Intent: ${detectedIntent}`);
       
-      // 🎯 NEW TWO-STEP PROCESS - but only for explicit validation, not autocomplete
-      if (detectedIntent === "address" && !args.isAutocomplete) {
+      // 🎯 NEW TWO-STEP PROCESS
+      if (detectedIntent === "address") {
         console.log(`[getPlaceSuggestions] Using two-step validation for full address`);
         return await validateThenEnrichAddress(query, maxResults, apiKey, args.location);
-      }
-      
-      // During autocomplete, even "address" intent should use Places API for suggestions
-      if (detectedIntent === "address" && args.isAutocomplete) {
-        console.log(`[getPlaceSuggestions] Autocomplete mode: Using Places API for address suggestions (no validation)`);
-        return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius);
       }
       
       // For suburbs, streets, general - use Places API directly (no validation needed)
@@ -335,52 +254,20 @@ function shouldIncludeResult(prediction: GooglePlacePrediction, intent: Location
     return false;
   }
   
-  // Exclude unwanted establishment types - comprehensive list
+  // Exclude unwanted establishment types
   const unwantedTypes = [
-    // Business establishments
     'establishment', 'point_of_interest', 'store', 'food', 'restaurant',
-    'gas_station', 'hospital', 'school', 'shopping_mall', 'university', 
-    'bank', 'pharmacy', 'gym', 'beauty_salon', 'car_dealer',
-    'real_estate_agency', 'lawyer', 'dentist', 'doctor',
-    
-    // Tourist attractions and recreational areas
-    'tourist_attraction', 'park', 'amusement_park', 'zoo',
-    'museum', 'art_gallery', 'aquarium', 'casino',
-    
-    // Natural features and outdoor recreation
-    'natural_feature', 'hiking_area', 'camping_cabin', 'campground',
-    'national_park', 'state_park', 'botanical_garden', 'beach',
-    'mountain_peak', 'lake', 'river', 'waterfall', 'trail',
-    
-    // Entertainment and recreation venues
-    'movie_theater', 'bowling_alley', 'night_club', 'bar',
-    'stadium', 'sports_complex', 'golf_course', 'ski_resort',
-    'marina', 'water_park', 'theme_park',
-    
-    // Transportation
-    'transit_station', 'airport', 'bus_station', 'train_station',
-    'subway_station',
-    
-    // Walking tracks, trails, and outdoor paths
-    'walking_track', 'hiking_trail', 'nature_trail', 'walking_path',
-    'pedestrian_path', 'bike_path', 'cycling_path', 'trail_head',
-    
-    // Other recreational facilities
-    'playground', 'picnic_ground', 'observation_deck', 'lookout',
-    'scenic_lookout', 'visitor_center', 'information_center'
+    'gas_station', 'hospital', 'school', 'shopping_mall', 'park',
+    'tourist_attraction', 'transit_station', 'airport'
   ];
   
   const hasUnwantedType = types.some((type: string) => unwantedTypes.includes(type));
   
-  // Exclude unwanted keywords - comprehensive list
+  // Exclude unwanted keywords
   const unwantedKeywords = [
     'tunnel', 'bridge', 'mall', 'centre', 'center', 'station', 'hospital',
     'school', 'university', 'airport', 'port', 'wharf', 'pier', 'marina',
-    'golf', 'club', 'hotel', 'motel', 'plaza', 'depot', 'terminal',
-    'walk', 'trail', 'track', 'path', 'falls', 'waterfall', 'lookout',
-    'reserve', 'park', 'garden', 'beach', 'creek', 'river', 'lake',
-    'mountain', 'hill', 'valley', 'gorge', 'scenic', 'viewpoint',
-    'camping', 'campground', 'caravan', 'picnic', 'bbq', 'playground'
+    'golf', 'club', 'hotel', 'motel', 'plaza', 'depot', 'terminal'
   ];
   
   const hasUnwantedKeyword = unwantedKeywords.some(keyword => 
@@ -1451,12 +1338,10 @@ async function validateThenEnrichAddress(
   location?: { lat: number; lng: number }
 ): Promise<{ success: true; suggestions: PlaceSuggestion[]; detectedIntent: LocationIntent } | { success: false; error: string }> {
   
-  console.log(`[Two-Step Validation] 🎯 Starting validation and enrichment for: "${query}"`);
+  console.log(`[Two-Step Validation] Starting validation and enrichment for: "${query}"`);
   
   // Step 1: Validate the address exists using Address Validation API
-  console.log(`[Two-Step Validation] 🔍 Step 1: Calling validateAddressOnly...`);
   const validationResult = await validateAddressOnly(query, apiKey);
-  console.log(`[Two-Step Validation] 📋 Step 1 Result:`, validationResult);
   
   if (!validationResult.isValid) {
     console.log(`[Two-Step Validation] Address validation failed: ${validationResult.error}`);
@@ -1482,25 +1367,13 @@ async function validateThenEnrichAddress(
   if (placesResult.success) {
     console.log(`[Two-Step Validation] Successfully enriched with ${placesResult.suggestions.length} Places API results`);
     
-    // 🎯 NEW: Enhance suggestions with validation confidence boost AND suburb extraction
-    const enhancedSuggestions = placesResult.suggestions.map(suggestion => {
-      const extractedSuburb = extractSuburbFromPlacesSuggestion(suggestion);
-      
-      return {
-        ...suggestion,
-        confidence: Math.min(1, suggestion.confidence + 0.2), // Boost validated addresses
-        types: [...suggestion.types, 'address_validated'], // Mark as validated
-        resultType: "address" as const, // Ensure address type
-        suburb: extractedSuburb // 🎯 NEW: Add extracted suburb
-      };
-    });
-    
-    console.log(`[Two-Step Validation] Enhanced ${enhancedSuggestions.length} suggestions with suburb extraction`);
-    enhancedSuggestions.forEach((suggestion, index) => {
-      if (suggestion.suburb) {
-        console.log(`[Two-Step Validation] Suggestion ${index + 1}: "${suggestion.description}" -> Suburb: "${suggestion.suburb}"`);
-      }
-    });
+    // Enhance suggestions with validation confidence boost
+    const enhancedSuggestions = placesResult.suggestions.map(suggestion => ({
+      ...suggestion,
+      confidence: Math.min(1, suggestion.confidence + 0.2), // Boost validated addresses
+      types: [...suggestion.types, 'address_validated'], // Mark as validated
+      resultType: "address" as const // Ensure address type
+    }));
     
     return {
       success: true,
@@ -1575,91 +1448,29 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
       validationGranularity
     });
     
-    // 🎯 SMART VALIDATION: Balance between too strict and too lenient
-    // 1. Reject clearly invalid addresses  
-    const unacceptableGranularities = ['COUNTRY', 'ADMINISTRATIVE_AREA', 'OTHER'];
-    if (unacceptableGranularities.includes(validationGranularity)) {
+    // Reject addresses that don't meet strict criteria
+    if (!addressComplete) {
       return {
         isValid: false,
-        error: `Address validation granularity too low: ${validationGranularity} (address is too general)`
+        error: "Address is incomplete"
       };
     }
     
-    // 2. Smart premise-level validation for street addresses
-    // For addresses with house numbers, we need higher confidence
-    const hasHouseNumber = /^\d+/.test(address.trim());
-    
-    if (hasHouseNumber) {
-      // If it has a house number, we need at least ROUTE level + good components
-      if (validationGranularity === 'LOCALITY') {
-        return {
-          isValid: false,
-          error: "House number provided but address only validated to suburb level"
-        };
-      }
-      
-             // 🎯 AGGRESSIVE: For house numbers, require exact PREMISE level validation
-       // PREMISE_PROXIMITY means Google is guessing the house number location - reject it!
-       if (validationGranularity !== 'PREMISE' && validationGranularity !== 'SUB_PREMISE') {
-         console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - House number provided but validation granularity is ${validationGranularity} (not exact premise level)`);
-         return {
-           isValid: false,
-           error: `House number validation insufficient - only validated to ${validationGranularity} level (house number location is estimated, not confirmed)`
-         };
-       }
-      
-      // Check for suspicious components in numbered addresses
-      if (hasUnconfirmedComponents) {
-        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains unconfirmed components`);
-        return {
-          isValid: false,
-          error: "Street address has unconfirmed components - house number may not exist"
-        };
-      }
-       
-      // 🎯 NEW: Reject addresses with inferred house numbers
-      // If Google is inferring parts of a numbered address, the house number likely doesn't exist
-      if (result.verdict?.hasInferredComponents) {
-        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains inferred components (house number likely doesn't exist)`);
-        return {
-          isValid: false,
-          error: "Address contains inferred components - house number may not exist on this street"
-        };
-      }
-    }
-    
-    // 3. 🎯 NEW: Reject addresses where Google significantly changed the input
-    // This catches cases where incomplete addresses get auto-completed to wrong locations
-    const formattedAddress = result.address.formattedAddress;
-    const inputWords = address.toLowerCase().split(/[\s,]+/).filter((w: string) => w.length > 0);
-    const outputWords = formattedAddress.toLowerCase().split(/[\s,]+/).filter((w: string) => w.length > 0);
-    
-    // Check if the formatted address contains fundamentally different location info
-    const hasSignificantLocationChange = () => {
-      // If input has no suburb/state but output does, that's a red flag
-      const inputHasSuburb = inputWords.some((w: string) => !w.match(/^\d+$/) && !['st', 'street', 'rd', 'road', 'ave', 'avenue', 'ln', 'lane', 'dr', 'drive'].includes(w));
-      const outputHasSuburb = outputWords.some((w: string) => !w.match(/^\d+$/) && !['st', 'street', 'rd', 'road', 'ave', 'avenue', 'ln', 'lane', 'dr', 'drive', 'australia'].includes(w));
-      
-      if (!inputHasSuburb && outputHasSuburb) {
-        // Google added suburb/location info that wasn't in the input - this is dangerous auto-completion
-        console.log(`[Address Validation Only] Input words: [${inputWords.join(', ')}]`);
-        console.log(`[Address Validation Only] Output words: [${outputWords.join(', ')}]`);
-        return true;
-      }
-      
-      return false;
-    };
-    
-    if (hasSignificantLocationChange()) {
-      console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Google auto-completed to different location: "${formattedAddress}"`);
+    if (hasUnconfirmedComponents) {
       return {
         isValid: false,
-        error: "Address appears incomplete - Google auto-completed to a different location. Please provide full address including suburb/city."
+        error: "Address contains unconfirmed components"
       };
     }
     
-    // 4. Accept addresses that meet reasonable criteria
-    console.log(`[Address Validation Only] Address is valid with granularity: ${validationGranularity}, hasHouseNumber: ${hasHouseNumber}`);
+    // Require premise-level granularity for street addresses
+    const acceptableGranularities = ['PREMISE', 'SUB_PREMISE'];
+    if (!acceptableGranularities.includes(validationGranularity)) {
+      return {
+        isValid: false,
+        error: `Address validation granularity too low: ${validationGranularity}`
+      };
+    }
     
     return {
       isValid: true,
@@ -1755,10 +1566,6 @@ async function getAddressValidationSuggestions(
         confidence: confidence
       };
       
-      // 🎯 NEW: Extract suburb from validation result
-      const extractedSuburb = extractSuburbFromPlacesSuggestion(suggestion);
-      suggestion.suburb = extractedSuburb;
-      
       suggestions.push(suggestion);
       
       console.log(`[Address Validation] Converted to suggestion:`, suggestion);
@@ -1850,7 +1657,7 @@ async function getPlacesApiSuggestions(
           
           // Apply filtering based on intent and strictness
           if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
-            const tempSuggestion: PlaceSuggestion = {
+            suggestions.push({
               placeId: prediction.place_id,
               description: prediction.description,
               types: prediction.types,
@@ -1864,14 +1671,6 @@ async function getPlacesApiSuggestions(
               },
               resultType,
               confidence
-            };
-            
-            // 🎯 NEW: Extract suburb for all suggestions
-            const extractedSuburb = extractSuburbFromPlacesSuggestion(tempSuggestion);
-            
-            suggestions.push({
-              ...tempSuggestion,
-              suburb: extractedSuburb // 🎯 NEW: Add extracted suburb
             });
           }
         }

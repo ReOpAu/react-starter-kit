@@ -1,4 +1,5 @@
 import { EnhancedPlaceSuggestions } from "~/components/EnhancedPlaceSuggestions";
+import { GoogleMapsAutocomplete } from "~/components/GoogleMapsAutocomplete";
 
 export default function EnhancedAddress() {
   return (
@@ -12,6 +13,10 @@ export default function EnhancedAddress() {
         </div>
         
         <EnhancedPlaceSuggestions />
+        
+        <div className="mt-8">
+          <GoogleMapsAutocomplete />
+        </div>
       </div>
     </div>
   );

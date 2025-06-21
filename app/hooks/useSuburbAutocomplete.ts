@@ -16,6 +16,7 @@ export interface PlaceSuggestion {
   };
   resultType: "suburb" | "street" | "address" | "general";
   confidence: number;
+  suburb?: string;
 }
 
 // Legacy interfaces needed by conversation interface
@@ -194,6 +195,7 @@ export function useSuburbAutocomplete() {
       maxResults?: number;
       location?: { lat: number; lng: number };
       radius?: number;
+      isAutocomplete?: boolean;
     }
   ) => {
     setIsLoading(true);
@@ -207,7 +209,8 @@ export function useSuburbAutocomplete() {
         intent,
         maxResults: options?.maxResults,
         location: options?.location,
-        radius: options?.radius
+        radius: options?.radius,
+        isAutocomplete: options?.isAutocomplete
       });
 
       if (result.success) {
@@ -260,9 +263,11 @@ export function useSuburbAutocomplete() {
     ];
     
     // Check if query has street type indicator
-    const hasStreetType = streetKeywords.some(keyword => 
-      lowerQuery.includes(` ${keyword}`) || lowerQuery.endsWith(keyword) || lowerQuery.includes(`${keyword} `)
-    );
+    const hasStreetType = streetKeywords.some(keyword => {
+      // Use word boundaries to avoid false matches like "st" in "west"
+      const wordBoundaryRegex = new RegExp(`\\b${keyword}\\b`, 'i');
+      return wordBoundaryRegex.test(lowerQuery);
+    });
     
     // Check for house number at the beginning (true address)
     const hasHouseNumber = /^\d+[a-z]?\s+/.test(lowerQuery);

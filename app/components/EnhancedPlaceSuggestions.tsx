@@ -146,8 +146,8 @@ export function EnhancedPlaceSuggestions() {
             
             {/* Intent Information */}
             <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded-md">
-              💡 <strong>Smart API Routing:</strong> Addresses (with numbers) use Google's Address Validation API for precise validation. 
-              Suburbs, streets, and general searches use Places API for fast suggestions.
+              💡 <strong>Smart Two-Step Validation:</strong> Full addresses (with numbers) are first validated for existence, 
+              then enriched with suburb names via Places API. Suburbs and streets use Places API directly.
             </div>
             
             {/* Intent Override */}
@@ -185,8 +185,8 @@ export function EnhancedPlaceSuggestions() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            ✅ Address Validation
-            <Badge variant="outline" className="text-xs">Full Address Verification</Badge>
+            ✅ Address Validation & Enrichment
+            <Badge variant="outline" className="text-xs">Two-Step Process</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -352,6 +352,15 @@ export function EnhancedPlaceSuggestions() {
                       <p className="text-xs text-gray-600 mb-2">
                         {suggestion.description}
                       </p>
+                      
+                      {/* 🎯 NEW: Suburb Information */}
+                      {suggestion.suburb && (
+                        <div className="mb-2">
+                          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700 text-sm">
+                            📍 Suburb: {suggestion.suburb}
+                          </Badge>
+                        </div>
+                      )}
                       
                       {/* Technical Details */}
                       <div className="flex flex-wrap gap-2 text-xs">
