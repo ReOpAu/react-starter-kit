@@ -8,8 +8,14 @@
  * @module
  */
 
+import type * as autocomplete from "../autocomplete.js";
 import type * as http from "../http.js";
+import type * as schemas_index from "../schemas/index.js";
+import type * as schemas_subscriptions from "../schemas/subscriptions.js";
+import type * as schemas_users from "../schemas/users.js";
+import type * as schemas_webhooks from "../schemas/webhooks.js";
 import type * as subscriptions from "../subscriptions.js";
+import type * as suburbLookup from "../suburbLookup.js";
 import type * as users from "../users.js";
 
 import type {
@@ -27,8 +33,14 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  autocomplete: typeof autocomplete;
   http: typeof http;
+  "schemas/index": typeof schemas_index;
+  "schemas/subscriptions": typeof schemas_subscriptions;
+  "schemas/users": typeof schemas_users;
+  "schemas/webhooks": typeof schemas_webhooks;
   subscriptions: typeof subscriptions;
+  suburbLookup: typeof suburbLookup;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

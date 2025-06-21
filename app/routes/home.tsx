@@ -22,7 +22,15 @@ declare global {
   }
 }
 
-export function meta({}: Route.MetaArgs) {
+interface ElevenLabsCallEvent extends Event {
+  detail: {
+    config: {
+      clientTools: Record<string, unknown>;
+    };
+  };
+}
+
+export function meta(_: Route.MetaArgs) {
   const title = "React Starter Kit - Launch Your SAAS Quickly";
   const description =
     "This powerful starter kit is designed to help you launch your SAAS application quickly and efficiently.";
@@ -94,10 +102,47 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
     if (widget) {
       // Listen for the widget's "call" event to trigger client-side tools
-      widget.addEventListener('elevenlabs-convai:call', (event: any) => {
-        event.detail.config.clientTools = {
+      widget.addEventListener('elevenlabs-convai:call', (event: Event) => {
+        const callEvent = event as ElevenLabsCallEvent;
+        callEvent.detail.config.clientTools = {
           redirectToExternalURL: ({ url }: { url: string }) => {
             window.open(url, '_blank', 'noopener,noreferrer');
+          },
+          AddressAutocomplete: async ({ address }: { address: string }) => {
+            try {
+              // Import the Convex action dynamically
+              const { api } = await import('../../convex/_generated/api');
+              const { ConvexReactClient } = await import('convex/react');
+              
+              // Create a Convex client
+              const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+              
+              // Call the suburb lookup action
+              const result = await convex.action(api.suburbLookup.lookupSuburb, { 
+                suburbInput: address 
+              });
+              
+              if (result.success) {
+                return {
+                  success: true,
+                  canonicalAddress: result.canonicalSuburb,
+                  message: `Found: ${result.canonicalSuburb}`
+                };
+              }
+              
+              return {
+                success: false,
+                error: result.error,
+                message: `Could not find address: ${result.error}`
+              };
+            } catch (error) {
+              console.error('AddressAutocomplete client tool error:', error);
+              return {
+                success: false,
+                error: 'Lookup failed',
+                message: 'Address lookup service is currently unavailable'
+              };
+            }
           },
         };
       });

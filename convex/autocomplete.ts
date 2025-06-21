@@ -1,0 +1,311 @@
+"use node";
+
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+import { randomUUID } from "node:crypto";
+
+interface GooglePlacesPrediction {
+  description: string;
+  place_id: string;
+  types: string[];
+  matched_substrings?: Array<{ offset: number; length: number }>;
+}
+
+interface GooglePlacesResponse {
+  status: string;
+  predictions?: GooglePlacesPrediction[];
+}
+
+interface GoogleTextSearchResult {
+  formatted_address: string;
+  place_id: string;
+  types: string[];
+  geometry?: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+  };
+}
+
+interface GoogleTextSearchResponse {
+  status: string;
+  results?: GoogleTextSearchResult[];
+}
+
+interface AddressMatch {
+  address: string;
+  confidence: number;
+  matchType: string;
+  placeId: string;
+  addressType: string;
+  googleRank: number;
+  sessionToken?: string;
+}
+
+// Helper function to detect if input looks like a full address with house number
+function looksLikeFullAddress(input: string): boolean {
+  // Check if it starts with a number (house number)
+  return /^\d+\s/.test(input.trim());
+}
+
+// Helper function to generate session token (UUID v4)
+function generateSessionToken(): string {
+  return randomUUID();
+}
+
+// Helper function to validate full residential address using Google Address Validation API
+async function validateFullAddress(input: string, apiKey: string): Promise<AddressMatch[]> {
+  console.log(`[Address Validation] Validating full address: "${input}"`);
+  
+  try {
+    const validationUrl = `https://addressvalidation.googleapis.com/v1:validateAddress?key=${apiKey}`;
+    
+    const requestBody = {
+      address: {
+        addressLines: [input],
+        regionCode: "AU" // Australia
+      },
+      enableUspsCass: false // Not needed for Australia
+    };
+
+    const response = await fetch(validationUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+    console.log('[Address Validation] Google API Response:', JSON.stringify(data, null, 2));
+
+    if (!data.result) {
+      console.log('[Address Validation] No result returned from API');
+      return [];
+    }
+    
+    if (!data.result.address) {
+      console.log('[Address Validation] No address in result, likely invalid input');
+      return [];
+    }
+
+    const result = data.result;
+    const validatedAddress = result.address;
+    
+    // Extract the formatted address
+    const formattedAddress = validatedAddress.formattedAddress;
+    
+    // Get validation verdict for strict validation
+    const verdict = result.verdict || {};
+    const addressComplete = verdict.addressComplete || false;
+    const hasUnconfirmedComponents = verdict.hasUnconfirmedComponents || false;
+    const hasInferredComponents = verdict.hasInferredComponents || false;
+    const inputGranularity = verdict.inputGranularity || '';
+    const validationGranularity = verdict.validationGranularity || '';
+    const geocodeGranularity = verdict.geocodeGranularity || '';
+    
+    console.log('[Address Validation] Verdict details:', {
+      addressComplete,
+      hasUnconfirmedComponents,
+      hasInferredComponents,
+      inputGranularity,
+      validationGranularity,
+      geocodeGranularity
+    });
+    
+    // Strict validation: reject addresses that are likely invalid
+    // 1. Must have complete address information
+    if (!addressComplete) {
+      console.log('[Address Validation] Rejecting: Address is not complete');
+      return [];
+    }
+    
+    // 2. Should not have unconfirmed components (Google couldn't verify parts)
+    if (hasUnconfirmedComponents) {
+      console.log('[Address Validation] Rejecting: Has unconfirmed components');
+      return [];
+    }
+    
+    // 3. Check for excessive inference (Google had to guess too much)
+    if (hasInferredComponents) {
+      console.log('[Address Validation] Warning: Has inferred components, checking granularity...');
+      
+      // If Google had to infer components AND the validation granularity is lower than premise level,
+      // it's likely the address doesn't exist
+      const lowGranularityLevels = ['LOCALITY', 'ADMINISTRATIVE_AREA', 'COUNTRY'];
+      if (lowGranularityLevels.includes(validationGranularity) || 
+          lowGranularityLevels.includes(geocodeGranularity)) {
+        console.log('[Address Validation] Rejecting: Low granularity with inferred components suggests invalid address');
+        return [];
+      }
+    }
+    
+    // 4. Ensure we have premise-level granularity for house numbers
+    const acceptableGranularities = ['PREMISE', 'SUB_PREMISE'];
+    if (!acceptableGranularities.includes(validationGranularity)) {
+      console.log('[Address Validation] Rejecting: Validation granularity too low:', validationGranularity);
+      return [];
+    }
+    
+    // Calculate confidence based on validation quality
+    let confidence = 0.95; // Start very high for strict validation
+    if (hasInferredComponents) confidence -= 0.1;
+    if (validationGranularity !== 'PREMISE') confidence -= 0.05;
+
+    // Get place ID if available (from geocode)
+    let placeId = '';
+    if (result.geocode?.placeId) {
+      placeId = result.geocode.placeId;
+    }
+
+    const match: AddressMatch = {
+      address: formattedAddress,
+      confidence: confidence,
+      matchType: 'address_validation',
+      placeId: placeId,
+      addressType: 'validated_address',
+      googleRank: 0
+    };
+
+    console.log(`[Address Validation] Validated address:`, match);
+    return [match];
+
+  } catch (error) {
+    console.error('[Address Validation] Error:', error);
+    return [];
+  }
+}
+
+// Helper function to search using Google Places Text Search API
+async function searchFullAddress(input: string, apiKey: string, sessionToken?: string): Promise<AddressMatch[]> {
+  console.log(`[Address Text Search] Searching for full address: "${input}"`);
+  
+  try {
+    // For Text Search, we don't use session tokens as they're primarily for Autocomplete + Place Details workflows
+    const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
+      input + ' Australia'
+    )}&type=street_address&key=${apiKey}`;
+
+    const response = await fetch(textSearchUrl);
+    const data = await response.json() as GoogleTextSearchResponse;
+
+    console.log('[Address Text Search] Google API Response:', JSON.stringify(data, null, 2));
+
+    if (data.status !== "OK" || !data.results || data.results.length === 0) {
+      console.log(`[Address Text Search] No results: ${data.status}`);
+      return [];
+    }
+
+    // Process text search results
+    const matches = data.results
+      .filter((result: GoogleTextSearchResult) => {
+        // Must be a street address type
+        const isStreetAddress = result.types.includes('street_address') || 
+                               result.types.includes('premise') ||
+                               result.types.includes('subpremise');
+        
+        // Must be in Australia
+        const isInAustralia = result.formatted_address.toLowerCase().includes('australia') ||
+                             /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(result.formatted_address);
+        
+        // Exclude businesses
+        const isBusiness = result.types.some(type => [
+          'store', 'food', 'restaurant', 'gas_station', 'shopping_mall',
+          'hospital', 'school', 'university', 'bank', 'pharmacy'
+        ].includes(type));
+
+        return isStreetAddress && isInAustralia && !isBusiness;
+      })
+      .slice(0, 3) // Limit to top 3 results
+      .map((result: GoogleTextSearchResult, index: number): AddressMatch => {
+        return {
+          address: result.formatted_address,
+          confidence: 0.9 - (index * 0.1), // High confidence, decreasing by rank
+          matchType: 'text_search',
+          placeId: result.place_id,
+          addressType: 'full_address',
+          googleRank: index,
+          sessionToken // Include session token for consistency
+        };
+      });
+
+    console.log(`[Address Text Search] Found ${matches.length} addresses:`, matches);
+    return matches;
+
+  } catch (error) {
+    console.error('[Address Text Search] Error:', error);
+    return [];
+  }
+}
+
+export const autocompleteAddresses = action({
+  args: {
+    partialInput: v.string(),
+    maxResults: v.optional(v.number()),
+    sessionToken: v.string(),
+    location: v.optional(v.object({
+      lat: v.number(),
+      lng: v.number()
+    })),
+    radius: v.optional(v.number())
+  },
+  handler: async (ctx, { partialInput, maxResults = 8, sessionToken, location, radius }) => {
+    try {
+      // Get Google Places API key from environment
+      const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        throw new Error("Google Places API key not configured");
+      }
+
+      // Build the request URL
+      const baseUrl = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
+      const params = new URLSearchParams({
+        input: partialInput,
+        key: apiKey,
+        sessiontoken: sessionToken,
+        types: "address",
+        components: "country:au", // Restrict to Australia
+      });
+
+      // Add location bias if provided
+      if (location && radius) {
+        params.append("location", `${location.lat},${location.lng}`);
+        params.append("radius", radius.toString());
+      }
+
+      const url = `${baseUrl}?${params.toString()}`;
+
+      // Make the API request
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Google Places API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+        console.error("Google Places API error:", data);
+        throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
+      }
+
+      // Transform the results to match our interface
+      const suggestions = (data.predictions || []).slice(0, maxResults).map((prediction: any) => ({
+        address: prediction.description,
+        confidence: 1.0, // Google doesn't provide confidence scores for autocomplete
+        matchType: "autocomplete",
+        placeId: prediction.place_id,
+        addressType: prediction.types?.[0] || "unknown",
+        sessionToken
+      }));
+
+      return suggestions;
+    } catch (error) {
+      console.error("Address autocomplete error:", error);
+      throw new Error(`Failed to get address suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+});
+
+// Legacy function name - now returns addresses instead of just suburbs
+export const autocompleteSuburbs = autocompleteAddresses; 
