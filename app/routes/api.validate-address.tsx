@@ -27,16 +27,38 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
-    // Enhanced request body with additional validation options
-    const requestBody = {
-      address: {
+    // Validate and structure the address payload
+    const addressPayload: {
+        regionCode: string;
+        addressLines: string[];
+        locality?: string;
+        administrativeArea?: string;
+        postalCode?: string;
+    } = {
         regionCode: "AU",
-        addressLines: [address],
-        // Support for more structured addresses if needed
-        ...(typeof address === 'object' && address !== null ? address : {})
-      },
+        addressLines: [],
+    };
+
+    if (typeof address === 'string') {
+        addressPayload.addressLines = [address];
+    } else if (typeof address === 'object' && address !== null && !Array.isArray(address)) {
+        if (Array.isArray(address.addressLines)) {
+            addressPayload.addressLines = address.addressLines.filter((line: unknown) => typeof line === 'string');
+        }
+        if (typeof address.locality === 'string') {
+            addressPayload.locality = address.locality;
+        }
+        if (typeof address.administrativeArea === 'string') {
+            addressPayload.administrativeArea = address.administrativeArea;
+        }
+        if (typeof address.postalCode === 'string') {
+            addressPayload.postalCode = address.postalCode;
+        }
+    }
+
+    const requestBody = {
+      address: addressPayload,
       enableUspsCass: false,
-      // Enhanced fields for better validation
       ...(previousResponseId && { previousResponseId }),
       ...(sessionToken && { sessionToken }),
       languageOptions: {

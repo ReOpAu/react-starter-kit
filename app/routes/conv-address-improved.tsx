@@ -275,7 +275,7 @@ export default function ConvAddress() {
 
   const {
     searchPlaces,
-    loading: isEnhancedLoading,
+    isLoading: isEnhancedLoading,
     error: enhancedError,
     lastResult: enhancedPlaceResult,
     reset: resetEnhanced,

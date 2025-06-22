@@ -36,7 +36,7 @@ interface UseEnhancedPlaceSuggestionsOptions {
 
 export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestionsOptions = {}) {
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<EnhancedPlaceSearchResult | null>(null);
   
   const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
@@ -56,7 +56,7 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
       return emptyResult;
     }
 
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
 
     try {
@@ -96,19 +96,19 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
       setLastResult(errorResult);
       return errorResult;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [getPlaceSuggestionsAction, options.location, options.maxResults, options.radius]);
 
   const reset = useCallback(() => {
     setError(null);
     setLastResult(null);
-    setLoading(false);
+    setIsLoading(false);
   }, []);
 
   return {
     searchPlaces,
-    loading,
+    isLoading,
     error,
     lastResult,
     reset,
