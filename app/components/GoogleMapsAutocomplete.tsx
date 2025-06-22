@@ -34,6 +34,12 @@ interface AddressValidationResult {
     location: { latitude: number; longitude: number };
     placeId: string;
   };
+  // Optional smart validation metadata
+  _smartValidation?: {
+    fullAddress: string;
+    baseAddress: string;
+    hasUnitNumber: boolean;
+  };
 }
 
 interface ValidationState {
@@ -73,6 +79,9 @@ export function GoogleMapsAutocomplete() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [debouncedValue, setDebouncedValue] = useState('');
   const [isAddressSelected, setIsAddressSelected] = useState(false);
+
+  // Configuration flags
+  const [enableSmartValidation, setEnableSmartValidation] = useState(true);
 
   // Use existing Convex system
   const { classifyIntent, getPlaceSuggestions } = useSuburbAutocomplete();
@@ -174,6 +183,8 @@ export function GoogleMapsAutocomplete() {
       'route',                      // street names
       'street_address',             // full addresses
       'premise',                    // specific addresses
+      'subpremise',                 // unit/apartment numbers (IMPORTANT for 1/120 addresses)
+      'street_number',              // street numbers
       'postal_code',                // postcode areas
       'administrative_area_level_2', // local government areas
       'political'                   // political boundaries (often suburbs)
@@ -212,6 +223,11 @@ export function GoogleMapsAutocomplete() {
     
     const hasGoodType = types.some(type => goodTypes.includes(type));
     const hasBadType = types.some(type => badTypes.includes(type));
+    
+    // Debug logging for unit addresses to help troubleshoot
+    if (description && /^\d+\/\d+\s/.test(description)) {
+      console.log(`[Unit Address Debug] "${description}" - Types: [${types.join(', ')}] - HasGood: ${hasGoodType} - HasBad: ${hasBadType} - Valid: ${hasGoodType && !hasBadType}`);
+    }
     
     // Only log when filtering out problematic results for debugging
     if (description && description.toLowerCase().includes('falls')) {
@@ -399,6 +415,71 @@ export function GoogleMapsAutocomplete() {
     }
   };
 
+  // Smart validation function that handles base address validation for better success rates
+  const validateSelectedAddressWithBase = async (fullAddress: string, baseAddress: string, hasUnitNumber: boolean) => {
+    setValidation(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const apiUrl = '/api/validate-address';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ address: baseAddress })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Validation error response:', errorText);
+        
+        let errorMessage;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorText;
+        } catch {
+          errorMessage = errorText;
+        }
+        
+        throw new Error(`Validation failed: ${response.status} - ${errorMessage}`);
+      }
+
+      const result = await response.json();
+      
+      // Modify the result to show the full address but indicate base validation
+      const modifiedResult = {
+        ...result,
+        address: {
+          ...result.address,
+          formattedAddress: fullAddress // Show full address to user
+        },
+        _smartValidation: {
+          fullAddress,
+          baseAddress,
+          hasUnitNumber
+        }
+      };
+      
+      setValidation({
+        isLoading: false,
+        result: modifiedResult,
+        error: null,
+        selectedPrediction: null
+      });
+
+    } catch (error) {
+      console.error('Validation error:', error);
+      setValidation({
+        isLoading: false,
+        result: null,
+        error: error instanceof Error ? error.message : 'Validation failed',
+        selectedPrediction: null
+      });
+    }
+  };
+
   const validationStatus = useMemo(() => {
     if (!validation.result) return null;
     
@@ -498,9 +579,26 @@ export function GoogleMapsAutocomplete() {
 
     // Route based on classified intent
     if (selectedIntent === 'address') {
-      // Full addresses need validation
-      console.log(`[Post-Selection] Validating address: ${suggestion.description}`);
-      await validateSelectedAddress(suggestion.description);
+      // Check if smart validation is enabled
+      if (enableSmartValidation) {
+        // Extract base address for better validation success
+        const { baseAddress, hasUnitNumber } = extractBaseAddress(suggestion.description);
+        
+        if (hasUnitNumber) {
+          console.log(`[Smart Validation] Full address: "${suggestion.description}"`);
+          console.log(`[Smart Validation] Validating base address: "${baseAddress}"`);
+          // Validate the base address, but keep the full address for display
+          await validateSelectedAddressWithBase(suggestion.description, baseAddress, hasUnitNumber);
+        } else {
+          console.log(`[Post-Selection] Validating address: ${suggestion.description}`);
+          // Simple address, use regular validation
+          await validateSelectedAddress(suggestion.description);
+        }
+      } else {
+        console.log(`[Standard Validation] Validating full address: ${suggestion.description}`);
+        // Standard validation disabled - always validate full address
+        await validateSelectedAddress(suggestion.description);
+      }
     } else {
       // Suburbs and streets just get displayed
       console.log(`[Post-Selection] Displaying ${selectedIntent}: ${suggestion.description}`);
@@ -519,15 +617,78 @@ export function GoogleMapsAutocomplete() {
     }
   };
 
+  // Helper function to extract base address for validation
+  // Converts complex addresses to their base street address for better validation success
+  const extractBaseAddress = (fullAddress: string): { baseAddress: string; hasUnitNumber: boolean } => {
+    const trimmed = fullAddress.trim();
+    
+    // Pattern to match various formats:
+    // Range addresses (check first): "259-281 Whitehorse Rd" → "259 Whitehorse Rd"
+    const rangePattern = /^(\d+[a-z]?)-(\d+[a-z]?)\s+(.+)/i;
+    
+    // Unit/range combination: "103/15-23 Cookson St" → "15 Cookson St" (take first number of range)
+    const unitRangePattern = /^(unit\s+|apt\s+|apartment\s+|shop\s+|suite\s+)?(\d+[a-z]?)\/(\d+[a-z]?)-(\d+[a-z]?)\s+(.+)/i;
+    
+    // Unit/apartment with slash: "13/6 Balwyn Road" → "6 Balwyn Road"
+    // Prefixed units: "Unit 5/123 Collins St" → "123 Collins St"  
+    const unitPattern = /^(unit\s+|apt\s+|apartment\s+|shop\s+|suite\s+)?(\d+[a-z]?)\/(\d+[a-z]?)\s+(.+)/i;
+    
+    // Check for range addresses FIRST (e.g., "259-281 Parlington Street")
+    const rangeMatch = trimmed.match(rangePattern);
+    if (rangeMatch) {
+      const [, firstNumber, , restOfAddress] = rangeMatch;
+      console.log(`[Base Address Debug] Range detected: "${trimmed}" → Base: "${firstNumber} ${restOfAddress}"`);
+      return {
+        baseAddress: `${firstNumber} ${restOfAddress}`,
+        hasUnitNumber: true
+      };
+    }
+    
+    // Check for unit/range combination (e.g., "103/15-23 Cookson Street")
+    const unitRangeMatch = trimmed.match(unitRangePattern);
+    if (unitRangeMatch) {
+      const [, , , rangeStart, , restOfAddress] = unitRangeMatch;
+      console.log(`[Base Address Debug] Unit/Range detected: "${trimmed}" → Base: "${rangeStart} ${restOfAddress}"`);
+      return {
+        baseAddress: `${rangeStart} ${restOfAddress}`,
+        hasUnitNumber: true
+      };
+    }
+    
+    // Check for simple unit/apartment addresses with slash separator
+    const unitMatch = trimmed.match(unitPattern);
+    if (unitMatch) {
+      const [, , , baseNumber, restOfAddress] = unitMatch;
+      console.log(`[Base Address Debug] Unit detected: "${trimmed}" → Base: "${baseNumber} ${restOfAddress}"`);
+      return {
+        baseAddress: `${baseNumber} ${restOfAddress}`,
+        hasUnitNumber: true
+      };
+    }
+    
+    // No unit/range detected, return as-is
+    console.log(`[Base Address Debug] Simple address: "${trimmed}" → No extraction needed`);
+    return {
+      baseAddress: trimmed,
+      hasUnitNumber: false
+    };
+  };
+
   // Helper function to classify intent based on what user actually selected
   const classifySelectedResult = (suggestion: UnifiedSuggestion): LocationIntent => {
     const types = suggestion.types || [];
     const description = suggestion.description;
 
     // Check for full addresses (have street numbers)
+    // Enhanced regex to handle Australian address formats including:
+    // - Simple numbers: "123 Smith St"
+    // - Unit numbers: "2/902 Burke Rd", "Unit 5/123 Collins St"
+    // - Apartment numbers: "Apt 3/45 Main St"
+    // - Shop numbers: "Shop 7/890 High St"
+    // - Complex unit/range: "103/15-23 Cookson St", "5/120-122 Collins St"
     if (types.includes('street_address') || 
         types.includes('premise') || 
-        /^\d+[a-z]?\s+/.test(description.trim())) {
+        /^(unit\s+|apt\s+|apartment\s+|shop\s+|suite\s+)?\d+[a-z]?([/-]\d+[a-z]?(-\d+[a-z]?)?)?\s+/i.test(description.trim())) {
       return 'address';
     }
 
@@ -572,7 +733,7 @@ export function GoogleMapsAutocomplete() {
           <h4 className="font-medium text-sm text-yellow-900 mb-2">
             System Status:
           </h4>
-          <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-4 text-xs mb-2">
             <div className="flex items-center gap-1">
               <span>API Key:</span>
               <Badge variant={import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? "default" : "destructive"} className="text-xs">
@@ -593,6 +754,22 @@ export function GoogleMapsAutocomplete() {
             >
               Test API
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium">Smart Validation:</label>
+            <Button
+              onClick={() => setEnableSmartValidation(!enableSmartValidation)}
+              variant={enableSmartValidation ? "default" : "outline"}
+              size="sm"
+              className="text-xs"
+            >
+              {enableSmartValidation ? '🧠 Enabled' : '🔧 Disabled'}
+            </Button>
+            <span className="text-xs text-gray-600">
+              {enableSmartValidation 
+                ? 'Unit addresses validate base address' 
+                : 'Unit addresses validate full address'}
+            </span>
           </div>
         </div>
 
@@ -630,7 +807,7 @@ export function GoogleMapsAutocomplete() {
                 }
               }}
               onKeyDown={handleKeyDown}
-              onFocus={() => setShowSuggestions(suggestions.length > 0 && !isAddressSelected)}
+              onFocus={() => setShowSuggestions(suggestions.length > 0 && !isAddressSelected && inputValue.trim().length > 0)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               placeholder="Try: 'Richmond', 'Collins Street', or '123 Collins St, Melbourne'..."
               className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -679,7 +856,7 @@ export function GoogleMapsAutocomplete() {
           </div>
 
           {/* Intelligent Suggestions Dropdown */}
-          {showSuggestions && suggestions.length > 0 && (
+          {showSuggestions && suggestions.length > 0 && inputValue.trim().length > 0 && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
               {suggestions.map((suggestion, index) => (
                 <div
@@ -710,7 +887,33 @@ export function GoogleMapsAutocomplete() {
         {validation.isLoading && (
           <div className="flex items-center gap-2 text-blue-600">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-sm">Validating address...</span>
+            <span className="text-sm">
+              {validation.result?._smartValidation?.hasUnitNumber 
+                ? "Smart validating base address..." 
+                : "Validating address..."}
+            </span>
+          </div>
+        )}
+
+        {/* Smart Validation Info */}
+        {enableSmartValidation && validation.result?._smartValidation?.hasUnitNumber && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-start gap-2">
+              <span className="text-blue-500 mt-0.5">🧠</span>
+              <div>
+                <h4 className="font-medium text-sm text-blue-800 mb-1">Smart Validation Applied</h4>
+                <p className="text-sm text-blue-700 mb-2">
+                  For better validation success, we validated the base address and confirmed the street exists.
+                </p>
+                <div className="text-xs text-blue-600 space-y-1">
+                  <div>• <strong>Your full address:</strong> {validation.result._smartValidation.fullAddress}</div>
+                  <div>• <strong>Base address validated:</strong> {validation.result._smartValidation.baseAddress}</div>
+                  <div className="mt-2 pt-1 border-t border-blue-300">
+                    <strong>Why:</strong> New unit/apartment addresses may not be in postal databases yet, but validating the base street address ensures the location exists.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -797,7 +1000,8 @@ export function GoogleMapsAutocomplete() {
           <ul className="text-xs text-blue-800 space-y-1">
             <li>• <strong>Real-time Intent Detection:</strong> Automatically classifies input as suburb, street, or address</li>
             <li>• <strong>Multi-source Autocomplete:</strong> Combines Convex Places API + Google Places for comprehensive suggestions</li>
-            <li>• <strong>Smart Validation Routing:</strong> Full addresses validated with Address Validation API</li>
+            <li>• <strong>Smart Address Validation:</strong> For unit/apartment addresses, validates base street address for better success rates</li>
+            <li>• <strong>New Development Support:</strong> Handles addresses like "13/6 Balwyn Rd" and "56-58 Main St" that may not be in postal databases yet</li>
             <li>• <strong>Confidence Scoring:</strong> Shows reliability of each suggestion with source attribution</li>
             <li>• <strong>Keyboard Navigation:</strong> Arrow keys to navigate, Enter to select, Escape to close</li>
           </ul>
@@ -805,4 +1009,4 @@ export function GoogleMapsAutocomplete() {
       </CardContent>
     </Card>
   );
-} 
+}

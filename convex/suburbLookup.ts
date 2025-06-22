@@ -1509,7 +1509,7 @@ async function validateThenEnrichAddress(
     };
   }
   
-  console.log(`[Two-Step Validation] Places API enrichment failed: ${placesResult.error}`);
+  console.log(`[Two-Step Validation] Places API enrichment failed: ${(placesResult as any).error || "Unknown error"}`);
   
   // If Places API fails, fall back to just the validation result (without suburb names)
   console.log(`[Two-Step Validation] Falling back to Address Validation API result only`);
@@ -1791,27 +1791,27 @@ async function getPlacesApiSuggestions(
   try {
     console.log(`[Places API] Getting suggestions for intent: ${actualIntent}`);
     
-    // Configure API parameters based on intent
+    // Configure API parameters based on intent - SINGLE call approach
     const getApiConfig = (intent: LocationIntent) => {
       switch (intent) {
         case "suburb":
           return {
-            types: ["(regions)", "geocode"],
+            types: "(regions)",
             strictness: "high"
           };
         case "street":
           return {
-            types: ["geocode", "route"],
+            types: "geocode",
             strictness: "medium"
           };
         case "address":
           return {
-            types: ["address", "geocode"],
+            types: "address",
             strictness: "low"
           };
         default:
           return {
-            types: ["geocode", "address"],
+            types: "geocode",
             strictness: "medium"
           };
       }
@@ -1829,58 +1829,53 @@ async function getPlacesApiSuggestions(
       }
     }
 
-    // Try multiple API calls with different type configurations
-    for (const typeConfig of config.types) {
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=${typeConfig}&components=country:au${locationParam}&key=${apiKey}`;
-      
-      console.log(`[Places API] Calling API with types: ${typeConfig}`);
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.status === "OK" && data.predictions) {
-        for (const prediction of data.predictions) {
-          // Skip if we already have this place
-          if (suggestions.find(s => s.placeId === prediction.place_id)) {
-            continue;
-          }
+    // Single consolidated API call to prevent duplicates
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=${config.types}&components=country:au${locationParam}&key=${apiKey}`;
+    
+    console.log(`[Places API] Single call with types: ${config.types} for intent: ${actualIntent}`);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status === "OK" && data.predictions) {
+      for (const prediction of data.predictions) {
+        const resultType = classifyResultType(prediction.types, prediction.description);
+        const confidence = calculateConfidence(prediction, actualIntent, resultType);
+        
+        // Apply filtering based on intent and strictness
+        if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
+          const tempSuggestion: PlaceSuggestion = {
+            placeId: prediction.place_id,
+            description: prediction.description,
+            types: prediction.types,
+            matchedSubstrings: prediction.matched_substrings || [],
+            structuredFormatting: {
+              mainText: prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
+              secondaryText: prediction.structured_formatting?.secondary_text || prediction.description.split(',').slice(1).join(',').trim(),
+              main_text: prediction.structured_formatting?.main_text,
+              secondary_text: prediction.structured_formatting?.secondary_text,
+              main_text_matched_substrings: prediction.structured_formatting?.main_text_matched_substrings
+            },
+            resultType,
+            confidence
+          };
           
-          const resultType = classifyResultType(prediction.types, prediction.description);
-          const confidence = calculateConfidence(prediction, actualIntent, resultType);
+          // Extract suburb for all suggestions
+          const extractedSuburb = extractSuburbFromPlacesSuggestion(tempSuggestion);
           
-          // Apply filtering based on intent and strictness
-          if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
-            const tempSuggestion: PlaceSuggestion = {
-              placeId: prediction.place_id,
-              description: prediction.description,
-              types: prediction.types,
-              matchedSubstrings: prediction.matched_substrings || [],
-              structuredFormatting: {
-                mainText: prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
-                secondaryText: prediction.structured_formatting?.secondary_text || prediction.description.split(',').slice(1).join(',').trim(),
-                main_text: prediction.structured_formatting?.main_text,
-                secondary_text: prediction.structured_formatting?.secondary_text,
-                main_text_matched_substrings: prediction.structured_formatting?.main_text_matched_substrings
-              },
-              resultType,
-              confidence
-            };
-            
-            // 🎯 NEW: Extract suburb for all suggestions
-            const extractedSuburb = extractSuburbFromPlacesSuggestion(tempSuggestion);
-            
-            suggestions.push({
-              ...tempSuggestion,
-              suburb: extractedSuburb // 🎯 NEW: Add extracted suburb
-            });
+          suggestions.push({
+            ...tempSuggestion,
+            suburb: extractedSuburb
+          });
+          
+          // Stop when we have enough results
+          if (suggestions.length >= maxResults) {
+            break;
           }
         }
       }
-      
-      // If we have enough high-quality results, we can stop
-      if (suggestions.length >= maxResults && config.strictness === "high") {
-        break;
-      }
+    } else {
+      console.log(`[Places API] No results or error: ${data.status}`);
     }
     
     // Sort by intent match priority and confidence
@@ -1911,4 +1906,4 @@ async function getPlacesApiSuggestions(
       error: `Places API failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
-} 
+}
