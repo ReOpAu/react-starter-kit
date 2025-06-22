@@ -34,6 +34,24 @@ interface AddressValidationResult {
     location: { latitude: number; longitude: number };
     placeId: string;
   };
+  // Enhanced validation summary for easier processing
+  _validationSummary?: {
+    isValid: boolean;
+    isAcceptableByGoogle: boolean;
+    isComplete: boolean;
+    hasUnconfirmedComponents: boolean;
+    hasInferredComponents: boolean;
+    possibleNextAction?: string;
+    inputGranularity: string;
+    validationGranularity: string;
+    geocodeGranularity: string;
+    unconfirmedComponentTypes: string[];
+    parsedComponents: Record<string, { text: string; confirmationLevel: string }>;
+    coordinates: { latitude: number; longitude: number } | null;
+    placeId: string | null;
+    isResidential: boolean;
+    isBusiness: boolean;
+  };
   // Optional smart validation metadata
   _smartValidation?: {
     fullAddress: string;
@@ -397,12 +415,26 @@ export function GoogleMapsAutocomplete() {
 
       const result = await response.json();
       
-      setValidation({
-        isLoading: false,
-        result,
-        error: null,
-        selectedPrediction: null
-      });
+      // NEW: Hierarchical decision making
+      const shouldUseSmartValidation = enableSmartValidation && 
+        !result._validationSummary?.isAcceptableByGoogle && // Google doesn't recommend acceptance
+        result._validationSummary?.hasUnconfirmedComponents && // Has unconfirmed components
+        extractBaseAddress(address).hasUnitNumber; // Is a unit/complex address
+
+      if (shouldUseSmartValidation) {
+        console.log(`[Hierarchical Validation] Google doesn't recommend acceptance. Trying Smart Validation...`);
+        const { baseAddress, hasUnitNumber } = extractBaseAddress(address);
+        await validateSelectedAddressWithBase(address, baseAddress, hasUnitNumber);
+      } else {
+        // Use the standard result
+        console.log(`[Hierarchical Validation] Using standard result - Google recommended: ${result._validationSummary?.isAcceptableByGoogle || false}`);
+        setValidation({
+          isLoading: false,
+          result,
+          error: null,
+          selectedPrediction: null
+        });
+      }
 
     } catch (error) {
       console.error('Validation error:', error);
@@ -483,6 +515,36 @@ export function GoogleMapsAutocomplete() {
   const validationStatus = useMemo(() => {
     if (!validation.result) return null;
     
+    // Use enhanced validation summary if available
+    if (validation.result._validationSummary) {
+      const summary = validation.result._validationSummary;
+      
+      // NEW: Google recommends accepting it (highest priority)
+      if (summary.isAcceptableByGoogle) {
+        return "Valid (Google Recommended)";
+      }
+      
+      // Smart Validation was used and succeeded
+      if (validation.result._smartValidation?.hasUnitNumber) {
+        return "Valid (Smart Validation)";
+      }
+      
+      if (summary.hasUnconfirmedComponents) {
+        return "Invalid";
+      }
+      
+      if (!summary.isComplete) {
+        return "Incomplete";
+      }
+      
+      if (summary.isValid) {
+        return "Valid";
+      }
+      
+      return "Partial";
+    }
+    
+    // Fallback to original logic
     const { verdict } = validation.result;
     
     // Addresses with unconfirmed components are considered invalid
@@ -767,8 +829,8 @@ export function GoogleMapsAutocomplete() {
             </Button>
             <span className="text-xs text-gray-600">
               {enableSmartValidation 
-                ? 'Unit addresses validate base address' 
-                : 'Unit addresses validate full address'}
+                ? 'Smart fallback when Google can\'t validate unit addresses' 
+                : 'Use only Google\'s validation (may fail on complex unit addresses)'}
             </span>
           </div>
         </div>
@@ -895,21 +957,70 @@ export function GoogleMapsAutocomplete() {
           </div>
         )}
 
-        {/* Smart Validation Info */}
-        {enableSmartValidation && validation.result?._smartValidation?.hasUnitNumber && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+        {/* NEW: Google's Recommendation (shows when Google recommends acceptance) */}
+        {validation.result?._validationSummary?.isAcceptableByGoogle && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-md">
             <div className="flex items-start gap-2">
-              <span className="text-blue-500 mt-0.5">🧠</span>
+              <span className="text-green-600 mt-0.5">🎯</span>
               <div>
-                <h4 className="font-medium text-sm text-blue-800 mb-1">Smart Validation Applied</h4>
-                <p className="text-sm text-blue-700 mb-2">
-                  For better validation success, we validated the base address and confirmed the street exists.
+                <h4 className="font-medium text-sm text-green-800 mb-1">
+                  Google Recommends Accepting This Address
+                </h4>
+                <p className="text-sm text-green-700 mb-2">
+                  Google's machine learning algorithm suggests this address should be accepted, 
+                  even though some components are unconfirmed.
                 </p>
-                <div className="text-xs text-blue-600 space-y-1">
-                  <div>• <strong>Your full address:</strong> {validation.result._smartValidation.fullAddress}</div>
-                  <div>• <strong>Base address validated:</strong> {validation.result._smartValidation.baseAddress}</div>
-                  <div className="mt-2 pt-1 border-t border-blue-300">
-                    <strong>Why:</strong> New unit/apartment addresses may not be in postal databases yet, but validating the base street address ensures the location exists.
+                <div className="text-xs text-green-600">
+                  <strong>Action:</strong> {validation.result._validationSummary.possibleNextAction}
+                  {validation.result._validationSummary.unconfirmedComponentTypes.length > 0 && (
+                    <span className="ml-2">
+                      • Unconfirmed: {validation.result._validationSummary.unconfirmedComponentTypes.join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* UPDATED: Smart Validation (only shows when used as fallback) */}
+        {enableSmartValidation && 
+         validation.result?._smartValidation?.hasUnitNumber && 
+         !validation.result?._validationSummary?.isAcceptableByGoogle && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 border-l-4 border-blue-400 rounded-md">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 text-lg">🧠</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="font-semibold text-sm text-blue-900">Smart Validation Applied</h4>
+                  <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                    Fallback Success ✅
+                  </Badge>
+                </div>
+                <p className="text-sm text-blue-800 mb-3">
+                  Google couldn't validate this unit address format, so we used Smart Validation to verify the base street address exists.
+                </p>
+                <div className="bg-white/60 p-3 rounded border border-blue-200 text-xs space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium text-blue-900 min-w-0">Your address:</span>
+                    <span className="text-blue-800 font-mono break-all">{validation.result._smartValidation.fullAddress}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium text-green-900 min-w-0">Base validated:</span>
+                    <span className="text-green-800 font-mono break-all">{validation.result._smartValidation.baseAddress}</span>
+                  </div>
+                </div>
+                <div className="mt-3 p-2 bg-blue-100/50 rounded text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600 mt-0.5">💡</span>
+                    <div className="text-blue-800">
+                      <strong>Why this worked:</strong> When Google can't validate complex unit formats, 
+                      Smart Validation confirms the base street exists while preserving your full address.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -938,7 +1049,123 @@ export function GoogleMapsAutocomplete() {
                   {currentIntent} Selected
                 </Badge>
               )}
+              {validation.result?._validationSummary?.coordinates && (
+                <Badge variant="outline" className="text-xs">
+                  📍 Geocoded
+                </Badge>
+              )}
             </div>
+
+            {/* Enhanced Validation Details */}
+            {validation.result?._validationSummary && (
+              <div className="bg-gray-50 p-3 rounded-md">
+                <h4 className="font-medium text-sm mb-2">Validation Details:</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="font-medium">Input Level:</span> {validation.result._validationSummary.inputGranularity}
+                  </div>
+                  <div>
+                    <span className="font-medium">Validation Level:</span> {validation.result._validationSummary.validationGranularity}
+                  </div>
+                  <div>
+                    <span className="font-medium">Geocode Level:</span> {validation.result._validationSummary.geocodeGranularity}
+                  </div>
+                  <div>
+                    <span className="font-medium">Inferred Components:</span> {validation.result._validationSummary.hasInferredComponents ? '✅ Yes' : '❌ No'}
+                  </div>
+                </div>
+
+                {/* NEW: Address Type Metadata */}
+                {(validation.result._validationSummary.isResidential || validation.result._validationSummary.isBusiness) && (
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <h5 className="font-medium text-xs mb-2">Address Type:</h5>
+                    <div className="flex gap-2">
+                      {validation.result._validationSummary.isResidential && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-800 border-blue-200">
+                          🏠 Residential
+                        </Badge>
+                      )}
+                      {validation.result._validationSummary.isBusiness && (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-800 border-green-200">
+                          🏢 Business
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* NEW: Google's Recommendation */}
+                {validation.result._validationSummary.possibleNextAction && (
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <h5 className="font-medium text-xs mb-1">Google's Recommendation:</h5>
+                    <Badge 
+                      variant={validation.result._validationSummary.possibleNextAction === 'ACCEPT' ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {validation.result._validationSummary.possibleNextAction}
+                    </Badge>
+                    {validation.result._validationSummary.isAcceptableByGoogle && (
+                      <div className="text-xs text-green-600 mt-1">
+                        ✅ Google recommends accepting this address
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* NEW: Unconfirmed Components */}
+                {validation.result._validationSummary.unconfirmedComponentTypes.length > 0 && (
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <h5 className="font-medium text-xs mb-1">Unconfirmed Components:</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {validation.result._validationSummary.unconfirmedComponentTypes.map(type => (
+                        <Badge key={type} variant="secondary" className="text-xs">
+                          {type.replace(/_/g, ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Address Components */}
+                {Object.keys(validation.result._validationSummary.parsedComponents).length > 0 && (
+                  <div className="mt-3">
+                    <h5 className="font-medium text-xs mb-2">Address Components:</h5>
+                    <div className="space-y-1">
+                      {Object.entries(validation.result._validationSummary.parsedComponents).map(([type, component]) => (
+                        <div key={type} className="flex justify-between items-center text-xs">
+                          <span className="font-medium capitalize">{type.replace(/_/g, ' ')}:</span>
+                          <div className="flex items-center gap-1">
+                            <span>{component.text}</span>
+                            <Badge 
+                              variant={component.confirmationLevel === 'CONFIRMED' ? 'default' : 'secondary'} 
+                              className="text-xs"
+                            >
+                              {component.confirmationLevel}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Coordinates */}
+                {validation.result._validationSummary.coordinates && (
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <h5 className="font-medium text-xs mb-1">Location:</h5>
+                    <div className="text-xs text-gray-600">
+                      Lat: {validation.result._validationSummary.coordinates.latitude.toFixed(6)}, 
+                      Lng: {validation.result._validationSummary.coordinates.longitude.toFixed(6)}
+                    </div>
+                    {validation.result._validationSummary.placeId && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Place ID: {validation.result._validationSummary.placeId}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Invalid Address Warning */}
             {validation.result && validationStatus === "Invalid" && (
@@ -995,14 +1222,16 @@ export function GoogleMapsAutocomplete() {
         {/* Info Box */}
         <div className="bg-blue-50 p-3 rounded-md">
           <h4 className="font-medium text-sm text-blue-900 mb-1">
-            How the Unified System Works:
+            How the Hierarchical Validation System Works:
           </h4>
           <ul className="text-xs text-blue-800 space-y-1">
+            <li>• <strong>🥇 Google's ML Recommendations:</strong> When Google says "ACCEPT", we trust their machine learning algorithm</li>
+            <li>• <strong>🥈 Smart Validation Fallback:</strong> For unit/apartment addresses Google can't validate, we check the base street address</li>
+            <li>• <strong>🥉 Standard Validation:</strong> Regular validation for simple addresses and final fallback</li>
             <li>• <strong>Real-time Intent Detection:</strong> Automatically classifies input as suburb, street, or address</li>
             <li>• <strong>Multi-source Autocomplete:</strong> Combines Convex Places API + Google Places for comprehensive suggestions</li>
-            <li>• <strong>Smart Address Validation:</strong> For unit/apartment addresses, validates base street address for better success rates</li>
-            <li>• <strong>New Development Support:</strong> Handles addresses like "13/6 Balwyn Rd" and "56-58 Main St" that may not be in postal databases yet</li>
-            <li>• <strong>Confidence Scoring:</strong> Shows reliability of each suggestion with source attribution</li>
+            <li>• <strong>Address Type Detection:</strong> Shows if address is residential (🏠) or business (🏢)</li>
+            <li>• <strong>Component Analysis:</strong> Shows confirmation levels for each address part</li>
             <li>• <strong>Keyboard Navigation:</strong> Arrow keys to navigate, Enter to select, Escape to close</li>
           </ul>
         </div>

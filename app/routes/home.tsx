@@ -8,7 +8,6 @@ import Team from "~/components/homepage/team";
 import { api } from "../../convex/_generated/api";
 import type { Route } from "./+types/home";
 import { useEffect } from "react";
-
 import { Conversation } from "~/components/conversation";
 
 // Declare the custom element type for TypeScript
@@ -118,7 +117,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
               
               // Call the suburb lookup action
-              const result = await convex.action(api.suburbLookup.lookupSuburb, { 
+              const result = await convex.action(api.location.lookupSuburb, { 
                 suburbInput: address 
               });
               
@@ -152,10 +151,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <Integrations loaderData={loaderData} />
-      {/* <Conversation /> */}
-      <h2>Hello</h2>
       <Conversation />
-     <ContentSection />
+      <ContentSection />
       <Team />
       <Pricing loaderData={loaderData} />
       <Footer />

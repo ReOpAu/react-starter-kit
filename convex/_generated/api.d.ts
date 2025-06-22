@@ -10,6 +10,7 @@
 
 import type * as autocomplete from "../autocomplete.js";
 import type * as http from "../http.js";
+import type * as location from "../location.js";
 import type * as schemas_index from "../schemas/index.js";
 import type * as schemas_subscriptions from "../schemas/subscriptions.js";
 import type * as schemas_users from "../schemas/users.js";
@@ -36,6 +37,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   autocomplete: typeof autocomplete;
   http: typeof http;
+  location: typeof location;
   "schemas/index": typeof schemas_index;
   "schemas/subscriptions": typeof schemas_subscriptions;
   "schemas/users": typeof schemas_users;

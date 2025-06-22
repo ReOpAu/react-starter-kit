@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { PlaceSuggestion } from "../../convex/location";
 
 export type LocationIntent = "suburb" | "street" | "address" | "general";
 
@@ -34,11 +35,11 @@ interface UseEnhancedPlaceSuggestionsOptions {
 }
 
 export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestionsOptions = {}) {
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [lastResult, setLastResult] = useState<EnhancedPlaceSearchResult | null>(null);
   
-  const getPlaceSuggestionsAction = useAction(api.suburbLookup.getPlaceSuggestions);
+  const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
   
   const searchPlaces = useCallback(async (
     query: string,
@@ -55,7 +56,7 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
       return emptyResult;
     }
 
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
 
     try {
@@ -95,21 +96,22 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
       setLastResult(errorResult);
       return errorResult;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [getPlaceSuggestionsAction, options.location, options.maxResults, options.radius]);
 
   const reset = useCallback(() => {
     setError(null);
     setLastResult(null);
-    setIsLoading(false);
+    setLoading(false);
   }, []);
 
   return {
     searchPlaces,
-    isLoading,
+    loading,
     error,
     lastResult,
-    reset
+    reset,
+    setEnhancedResult: setLastResult
   };
 } 

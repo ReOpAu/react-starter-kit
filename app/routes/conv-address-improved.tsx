@@ -15,7 +15,7 @@ import { EnhancedPlaceSuggestionsDisplay } from "~/components/EnhancedPlaceSugge
 import { VoiceIndicator } from "~/components/conversation/VoiceIndicator";
 import { ShinyButton } from "~/components/ui/magicui/shiny-button";
 import { RainbowButton } from "~/components/ui/magicui/rainbow-button";
-import { DebugTools } from "~/components/conversation/DebugTools";
+import { AnimatePresence, motion } from "framer-motion";
 
 // Consolidated State Types
 interface VoiceTranscription {
@@ -63,9 +63,7 @@ interface AppState {
   agentToolCalls: AgentToolCall[];
   
   // Results State
-  multipleResults: SuburbResult[];
   selectedResult: SuburbResult | null;
-  showMultipleResults: boolean;
   currentPlaceData: PlaceData | null;
   
   // UI State
@@ -85,9 +83,7 @@ type AppAction =
   | { type: 'SET_MANUAL_INPUT'; payload: string }
   | { type: 'ADD_SEARCH_HISTORY'; payload: SearchHistoryItem }
   | { type: 'ADD_TOOL_CALL'; payload: AgentToolCall }
-  | { type: 'SET_MULTIPLE_RESULTS'; payload: SuburbResult[] }
   | { type: 'SET_SELECTED_RESULT'; payload: SuburbResult | null }
-  | { type: 'SET_SHOW_MULTIPLE_RESULTS'; payload: boolean }
   | { type: 'SET_CURRENT_PLACE_DATA'; payload: PlaceData | null }
   | { type: 'SET_CLIENT_MOUNTED'; payload: boolean }
   | { type: 'SET_TEST_INPUT'; payload: string }
@@ -103,9 +99,7 @@ const initialState: AppState = {
   manualInput: '',
   searchHistory: [],
   agentToolCalls: [],
-  multipleResults: [],
   selectedResult: null,
-  showMultipleResults: false,
   currentPlaceData: null,
   isClientMounted: false,
   testInput: '',
@@ -148,26 +142,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
         agentToolCalls: [action.payload, ...state.agentToolCalls.slice(0, 9)]
       };
     
-    case 'SET_MULTIPLE_RESULTS':
-      return {
-        ...state,
-        multipleResults: action.payload,
-        showMultipleResults: action.payload.length > 0,
-        currentMode: action.payload.length > 0 ? 'selecting' : 'idle',
-        lastAction: 'show_multiple_results'
-      };
-    
     case 'SET_SELECTED_RESULT':
       return {
         ...state,
         selectedResult: action.payload,
-        showMultipleResults: false,
         currentMode: action.payload ? 'confirmed' : 'idle',
         lastAction: action.payload ? 'select_result' : 'clear_selection'
       };
-    
-    case 'SET_SHOW_MULTIPLE_RESULTS':
-      return { ...state, showMultipleResults: action.payload };
     
     case 'SET_CURRENT_PLACE_DATA':
       return { ...state, currentPlaceData: action.payload };
@@ -188,9 +169,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'RESET_RESULTS':
       return {
         ...state,
-        multipleResults: [],
         selectedResult: null,
-        showMultipleResults: false,
         currentPlaceData: null,
         currentMode: 'idle',
         lastAction: 'reset_results'
@@ -210,36 +189,42 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
 // UI State Synchronization Hook
 function useUIStateSync(state: AppState, suggestions: any[], canonicalSuburb: string | null) {
-  const syncToElevenLabs = useCallback((updates?: Partial<AppState>) => {
-    const currentState = updates ? { ...state, ...updates } : state;
-    
+  const syncToElevenLabs = useCallback(() => {
     try {
       const windowWithElevenLabs = window as typeof window & {
         setVariable?: (name: string, value: unknown) => void;
       };
       
       if (typeof windowWithElevenLabs.setVariable === 'function') {
-        // Sync complete UI state
-        windowWithElevenLabs.setVariable("uiState", {
-          isRecording: currentState.isRecording,
+        const uiStateForAgent = {
+          isRecording: state.isRecording,
           isSpellingMode: suggestions.length > 0,
-          hasResults: canonicalSuburb !== null || currentState.selectedResult !== null,
-          hasMultipleResults: currentState.showMultipleResults,
-          hasSelectedResult: currentState.selectedResult !== null,
-          currentMode: currentState.currentMode,
-          resultCount: currentState.multipleResults.length,
+          hasResults: canonicalSuburb !== null || state.selectedResult !== null,
+          hasMultipleResults: false,
+          hasSelectedResult: state.selectedResult !== null,
+          currentMode: state.currentMode,
+          resultCount: 0,
           spellingActive: suggestions.length > 0,
-          lastUserAction: currentState.lastAction,
-          timestamp: Date.now()
-        });
+          lastUserAction: state.lastAction,
+          timestamp: Date.now(),
+          selectedResult: state.selectedResult
+            ? {
+                address: state.selectedResult.canonicalSuburb,
+                placeId: state.selectedResult.placeId,
+              }
+            : null,
+          multipleOptions: [],
+        };
+        // Sync complete UI state
+        windowWithElevenLabs.setVariable("uiState", uiStateForAgent);
         
         // Sync result data
         windowWithElevenLabs.setVariable("currentFoundResult", canonicalSuburb);
-        windowWithElevenLabs.setVariable("currentSelectedResult", currentState.selectedResult?.canonicalSuburb || null);
-        windowWithElevenLabs.setVariable("currentMultipleResults", currentState.multipleResults.map(r => r.canonicalSuburb));
+        windowWithElevenLabs.setVariable("currentSelectedResult", state.selectedResult?.canonicalSuburb || null);
+        windowWithElevenLabs.setVariable("currentMultipleResults", []);
         windowWithElevenLabs.setVariable("currentSpellingCandidates", suggestions.map((s: any) => s.address));
         
-        console.log('[UISync] Synced state to ElevenLabs');
+        console.log('[UISync] Synced state to ElevenLabs:', uiStateForAgent);
       }
     } catch (error) {
       console.log('[UISync] ElevenLabs variables not available:', error);
@@ -290,10 +275,11 @@ export default function ConvAddress() {
 
   const {
     searchPlaces,
-    isLoading: isEnhancedLoading,
+    loading: isEnhancedLoading,
     error: enhancedError,
     lastResult: enhancedPlaceResult,
-    reset: resetEnhanced
+    reset: resetEnhanced,
+    setEnhancedResult
   } = useEnhancedPlaceSuggestions({
     location: { lat: -37.8136, lng: 144.9631 },
     radius: 100000,
@@ -312,17 +298,72 @@ export default function ConvAddress() {
     syncToElevenLabs();
   }, [syncToElevenLabs]);
 
-  const updateMultipleResults = useCallback((results: SuburbResult[]) => {
-    dispatch({ type: 'SET_MULTIPLE_RESULTS', payload: results });
-    syncToElevenLabs();
-  }, [syncToElevenLabs]);
-
   const updateSelectedResult = useCallback((result: SuburbResult | null) => {
     dispatch({ type: 'SET_SELECTED_RESULT', payload: result });
     syncToElevenLabs();
   }, [syncToElevenLabs]);
 
-  // Conversation setup (simplified clientTools for demo)
+  const cleanupAudio = useCallback(() => {
+    dispatch({ type: 'SET_VOICE_ACTIVE', payload: false });
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = undefined;
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    const audioContext = audioContextRef.current;
+    if (audioContext && audioContext.state !== 'closed') {
+      audioContext.close();
+      audioContextRef.current = null;
+    }
+  }, [dispatch]);
+
+  const performSearch = useCallback(async (query: string) => {
+    dispatch({ type: 'RESET_RESULTS' });
+    reset();
+    resetEnhanced();
+    
+    const searchStart = Date.now();
+    dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: 'Searching...', timestamp: searchStart } });
+
+    try {
+      const isFullResidentialAddress = /^\d+[a-zA-Z]?\s+.+/.test(query.trim());
+
+      if (isFullResidentialAddress) {
+        const autocompleteResults = await enhancedAutocompleteAction({ partialInput: query, maxResults: 8, sessionToken: crypto.randomUUID() });
+        if (autocompleteResults && autocompleteResults.length > 0) {
+          const compatibleResults: EnhancedPlaceSuggestion[] = autocompleteResults.map((r: any) => ({
+            description: r.address,
+            placeId: r.placeId,
+            types: [r.addressType],
+            matchedSubstrings: [],
+            structuredFormatting: { mainText: r.address, secondaryText: '' },
+            resultType: 'address',
+            confidence: 1
+          }));
+          setEnhancedResult({ success: true, suggestions: compatibleResults, detectedIntent: 'address' });
+          return { success: true, results: compatibleResults };
+        }
+      }
+
+      const enhancedResults = await searchPlaces(query);
+      if (enhancedResults.success && enhancedResults.suggestions.length > 0) {
+        return { success: true, results: enhancedResults.suggestions };
+      }
+      
+      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: 'No results found', timestamp: searchStart } });
+      return { success: false, error: 'No results found' };
+    } catch (error) {
+      console.error('Search failed:', error);
+      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: 'Search failed', timestamp: searchStart } });
+      return { success: false, error: 'Search failed' };
+    }
+  }, [dispatch, reset, resetEnhanced, enhancedAutocompleteAction, searchPlaces, setEnhancedResult]);
+
+  // Conversation setup with full client tool implementation
   const conversation = useConversation({
     apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
     onConnect: () => {
@@ -332,33 +373,153 @@ export default function ConvAddress() {
     },
     onDisconnect: () => {
       console.log('Disconnected from ElevenLabs');
+      dispatch({ type: 'SET_RECORDING', payload: false });
       dispatch({ type: 'SET_MODE', payload: { mode: 'idle', action: 'disconnected' } });
+      cleanupAudio();
       syncToElevenLabs();
     },
     clientTools: {
+      // Tool 1: AddressSearch - Migrated from original file
       AddressSearch: async (params: unknown) => {
-        dispatch({ type: 'SET_MODE', payload: { mode: 'searching', action: 'address_search_start' } });
-        // Simplified tool implementation
-        return "Address search functionality";
+        try {
+          console.log('[ClientTool] AddressSearch called with params:', params);
+          let address: string;
+          if (typeof params === 'string') {
+            address = params;
+          } else if (params && typeof params === 'object') {
+            const paramObj = params as Record<string, unknown>;
+            const dataObj = paramObj.data as Record<string, unknown> | undefined;
+            address = String(paramObj.address || paramObj.suburb || paramObj.location || paramObj.query || paramObj.text || paramObj.input || paramObj.value || dataObj?.address || dataObj?.suburb || '');
+          } else {
+            address = '';
+          }
+          
+          if (!address || typeof address !== 'string' || address.trim() === '') {
+            return 'I need an address or suburb name to look up.';
+          }
+          
+          const toolCallStart = Date.now();
+          dispatch({ type: 'ADD_TOOL_CALL', payload: { tool: 'AddressSearch', input: address, result: 'pending', timestamp: toolCallStart } });
+          
+          const searchResult = await performSearch(address);
+
+          if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
+            if (searchResult.results.length === 1) {
+              const result = searchResult.results[0] as EnhancedPlaceSuggestion;
+              const selectedResult: SuburbResult = {
+                canonicalSuburb: result.description,
+                placeId: result.placeId,
+                geocode: { lat: 0, lng: 0 },
+                types: result.types
+              };
+              dispatch({ type: 'SET_SELECTED_RESULT', payload: selectedResult });
+              setResult(selectedResult);
+              return `✅ Validated address: ${result.description}.`;
+            } else {
+              return `Found ${searchResult.results.length} potential matches. Please choose one from the list.`;
+            }
+          }
+
+          const responseMessage = `Could not find address: ${address}`;
+          dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: address, result: null, timestamp: toolCallStart, isAgentCall: true } });
+          return responseMessage;
+        } catch (error) {
+          console.log('AddressSearch client tool error:', error);
+          return 'Address lookup service is currently unavailable';
+        }
       },
+      // Tool 2: ConfirmPlace - Migrated from original file
+      ConfirmPlace: async (params: unknown) => {
+        try {
+          let results: Array<{ type: string; place_id: string; label: string; }> = [];
+          if (params && typeof params === 'object') {
+            const paramObj = params as Record<string, unknown>;
+            if (Array.isArray(paramObj.results)) {
+              results = paramObj.results as typeof results;
+            }
+          }
+
+          if (results.length === 0) {
+            return 'No place suggestions available to confirm.';
+          }
+
+          if (results.length === 1) {
+            const place = results[0];
+            const confirmedResult = { canonicalSuburb: place.label, placeId: place.place_id, geocode: { lat: 0, lng: 0 }, types: [place.type] };
+            dispatch({ type: 'SET_SELECTED_RESULT', payload: confirmedResult });
+            dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Confirmed: ${place.label}`, result: place.label, timestamp: Date.now(), isAgentCall: true } });
+            return `✅ Confirmed: ${place.label}`;
+          }
+
+          const compatibleResults: EnhancedPlaceSuggestion[] = results.map(place => ({
+            description: place.label,
+            placeId: place.place_id,
+            types: [place.type],
+            matchedSubstrings: [],
+            structuredFormatting: { mainText: place.label, secondaryText: '' },
+            resultType: 'general',
+            confidence: 1
+          }));
+          setEnhancedResult({ success: true, suggestions: compatibleResults, detectedIntent: 'general' });
+          const placeLabels = results.map(r => r.label).join(', ');
+          return `📍 I found ${results.length} places for you: ${placeLabels}. Please select one.`;
+        } catch (error) {
+          console.log('ConfirmPlace client tool error:', error);
+          return 'Failed to confirm place selection';
+        }
+      },
+      // Tool 3: GetUIState - Migrated from original file
       GetUIState: async () => {
-        return `UI State: ${JSON.stringify({
-          currentMode: state.currentMode,
+        const currentState = {
+          isRecording: state.isRecording,
           hasResults: canonicalSuburb !== null || state.selectedResult !== null,
-          resultCount: state.multipleResults.length
-        }, null, 2)}`;
+          hasMultipleResults: false,
+          hasSelectedResult: state.selectedResult !== null,
+          currentMode: state.currentMode,
+          selectedResult: state.selectedResult ? { address: state.selectedResult.canonicalSuburb, placeId: state.selectedResult.placeId } : null,
+          multipleOptions: [],
+        };
+        return `UI State: ${JSON.stringify(currentState, null, 2)}`;
       },
+      // Tool 4: ClearResults - Migrated from original file
       ClearResults: async () => {
         dispatch({ type: 'RESET_RESULTS' });
         reset();
         clearSuggestions();
         resetSession();
-        syncToElevenLabs();
-        return 'All results cleared';
+        resetEnhanced();
+        return 'All results cleared.';
       }
+    },
+    onMessage: (message) => {
+      if (message.source === 'user' && message.message.trim()) {
+        handleTranscription(message.message.trim());
+      }
+    },
+    onTranscription: (text: string) => {
+      if (text.trim()) {
+        handleTranscription(text.trim());
+      }
+    },
+    onError: (error) => {
+      console.log('ElevenLabs Error:', error);
     },
     textOnly: false,
   });
+
+  // Transcription handler
+  const handleTranscription = useCallback((text: string) => {
+    const transcription: VoiceTranscription = { 
+      text: text.trim(), 
+      timestamp: Date.now(),
+      isSpelling: suggestions.length > 0
+    };
+    dispatch({ type: 'ADD_TRANSCRIPTION', payload: transcription });
+    
+    if (suggestions.length > 0) {
+      debouncedGetSuggestions(text.trim());
+    }
+  }, [suggestions, debouncedGetSuggestions]);
 
   // Set up audio analysis
   const setupAudioAnalysis = useCallback(async () => {
@@ -411,52 +572,67 @@ export default function ConvAddress() {
         agentId: import.meta.env.VITE_ELEVENLABS_AGENT_ID || "default_agent_id",
         textOnly: false,
       });
-      updateRecording(true);
+      dispatch({ type: 'SET_RECORDING', payload: true });
       reset();
     } catch (error) {
       console.error('Failed to start recording:', error);
       dispatch({ type: 'SET_MODE', payload: { mode: 'idle', action: 'recording_start_failed' } });
     }
-  }, [conversation, setupAudioAnalysis, reset, updateRecording]);
+  }, [conversation, setupAudioAnalysis, reset]);
 
   const stopRecording = useCallback(async () => {
     try {
       await conversation.endSession();
-      updateRecording(false);
-      dispatch({ type: 'SET_VOICE_ACTIVE', payload: false });
-      
-      // Clean up audio resources
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (mediaStreamRef.current) {
-        for (const track of mediaStreamRef.current.getTracks()) {
-          track.stop();
-        }
-        mediaStreamRef.current = null;
-      }
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
+      dispatch({ type: 'SET_RECORDING', payload: false });
+      cleanupAudio();
     } catch (error) {
       console.error('Failed to stop recording:', error);
       dispatch({ type: 'SET_MODE', payload: { mode: 'idle', action: 'recording_stop_failed' } });
     }
-  }, [conversation, updateRecording]);
+  }, [conversation, cleanupAudio]);
 
   // Manual input handling
   const handleManualSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (state.manualInput.trim()) {
+      await performSearch(state.manualInput.trim());
+      dispatch({ type: 'SET_MANUAL_INPUT', payload: '' });
+    }
+  }, [state.manualInput, performSearch, dispatch]);
+
+  // Handle selection of a result from multiple options
+  const handleResultSelection = async (result: SuburbResult) => {
+    dispatch({ type: 'SET_SELECTED_RESULT', payload: result });
+    setResult(result);
+    dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Selected: ${result.canonicalSuburb}`, result: result.canonicalSuburb, timestamp: Date.now() } });
+    if (conversation.status === 'connected') {
+      const selectionSummary = `User has selected: "${result.canonicalSuburb}". Selection is now confirmed.`;
+      console.log(`[AgentComms] Sending selection to agent: ${selectionSummary}`);
       try {
-        await searchPlaces(state.manualInput.trim());
-        dispatch({ type: 'SET_MANUAL_INPUT', payload: '' });
+        await conversation.sendUserMessage(selectionSummary);
       } catch (error) {
-        console.error('Failed to search places:', error);
+        console.log('Failed to send selection summary to agent:', error);
       }
     }
-  }, [state.manualInput, searchPlaces]);
+  };
+
+  // Handle selection of enhanced place suggestions
+  const handleEnhancedPlaceSelection = async (suggestion: EnhancedPlaceSuggestion) => {
+    const compatibleResult = { canonicalSuburb: suggestion.description, placeId: suggestion.placeId, geocode: { lat: 0, lng: 0 }, types: suggestion.types };
+    dispatch({ type: 'SET_SELECTED_RESULT', payload: compatibleResult });
+    setResult(compatibleResult);
+    resetEnhanced();
+    dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Enhanced: ${suggestion.structuredFormatting.mainText}`, result: suggestion.description, timestamp: Date.now() } });
+    if (conversation.status === 'connected') {
+      const selectionSummary = `User has selected: "${suggestion.description}". Selection is now confirmed.`;
+      console.log(`[AgentComms] Sending selection to agent: ${selectionSummary}`);
+      try {
+        await conversation.sendUserMessage(selectionSummary);
+      } catch (error) {
+        console.log('Failed to send selection summary to agent:', error);
+      }
+    }
+  };
 
   // Set client mounted state after hydration
   useEffect(() => {
@@ -468,7 +644,14 @@ export default function ConvAddress() {
     if (state.isClientMounted) {
       syncToElevenLabs();
     }
-  }, [state.isClientMounted, suggestions.length, canonicalSuburb, syncToElevenLabs]);
+  }, [state.isClientMounted, suggestions.length, canonicalSuburb, syncToElevenLabs, state.selectedResult]);
+
+  // Animate out suggestions when a result is selected
+  useEffect(() => {
+    if (state.selectedResult && enhancedPlaceResult) {
+      resetEnhanced();
+    }
+  }, [state.selectedResult, enhancedPlaceResult, resetEnhanced]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -492,9 +675,9 @@ export default function ConvAddress() {
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Voice Address Lookup (Improved)</h1>
+          <h1 className="text-3xl font-bold">Voice Address Lookup</h1>
           <p className="text-muted-foreground">
-            Enhanced state management with useReducer pattern
+            Speak or type an address to get validated results from Google Places
           </p>
         </div>
 
@@ -502,16 +685,11 @@ export default function ConvAddress() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Suburb Lookup</span>
+              <span>Address Lookup</span>
               <div className="flex items-center gap-2">
                 {state.isRecording && (
                   <Badge variant="secondary" className="animate-pulse">
                     Recording
-                  </Badge>
-                )}
-                {suggestions.length > 0 && (
-                  <Badge variant="default">
-                    Spelling Mode Active
                   </Badge>
                 )}
               </div>
@@ -548,29 +726,22 @@ export default function ConvAddress() {
             {/* Manual Input */}
             <form onSubmit={handleManualSubmit} className="flex gap-2">
               <Input
-                placeholder="Or type a suburb name..."
+                placeholder="Or type an address..."
                 value={state.manualInput}
                 onChange={(e) => dispatch({ type: 'SET_MANUAL_INPUT', payload: e.target.value })}
                 disabled={isLoading}
               />
               <Button type="submit" disabled={isLoading || !state.manualInput.trim()}>
-                {isLoading ? 'Searching...' : 'Search'}
+                {isLoading || isEnhancedLoading ? 'Searching...' : 'Search'}
               </Button>
             </form>
 
-            {/* Results Display */}
-            {canonicalSuburb && (
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">✅</span>
-                    <div className="flex-1">
-                      <p className="font-semibold text-green-800">Found:</p>
-                      <p className="text-green-700 font-medium">{canonicalSuburb}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Loading State */}
+            {(isLoading || isEnhancedLoading) && (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                <span className="ml-2">Searching for places...</span>
+              </div>
             )}
 
             {/* Error State */}
@@ -587,23 +758,144 @@ export default function ConvAddress() {
           </CardContent>
         </Card>
 
-        {/* State Debug */}
-        <Card className="bg-gray-50 border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-sm">🔄 Consolidated State</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs font-mono space-y-2">
-              <p><strong>Mode:</strong> {state.currentMode}</p>
-              <p><strong>Recording:</strong> {state.isRecording ? 'YES' : 'NO'}</p>
-              <p><strong>Multiple Results:</strong> {state.showMultipleResults ? 'YES' : 'NO'}</p>
-              <p><strong>Selected Result:</strong> {state.selectedResult ? 'YES' : 'NO'}</p>
-              <p><strong>Last Action:</strong> {state.lastAction}</p>
-              <p><strong>Search History:</strong> {state.searchHistory.length} items</p>
-              <p><strong>Tool Calls:</strong> {state.agentToolCalls.length} calls</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Enhanced Place Suggestions */}
+        <AnimatePresence>
+          {enhancedPlaceResult?.success && enhancedPlaceResult.suggestions.length > 0 && (
+            <motion.div
+              key="place-suggestions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <EnhancedPlaceSuggestionsDisplay
+                suggestions={enhancedPlaceResult.suggestions}
+                detectedIntent={enhancedPlaceResult.detectedIntent}
+                onSelect={handleEnhancedPlaceSelection}
+                onCancel={() => resetEnhanced()}
+                isLoading={isEnhancedLoading}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Selected Result Display */}
+        {state.selectedResult && (
+          <Card className="bg-purple-50 border-purple-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>🎯</span>
+                <span>Selected Result</span>
+                <Badge variant="outline" className="ml-2 text-xs bg-green-100 text-green-700">ACTIVE</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <p className="font-semibold text-purple-800">Location:</p>
+                  <p className="text-purple-700 font-medium">{state.selectedResult.canonicalSuburb}</p>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <p className="font-medium text-purple-800">Place ID:</p>
+                  <p className="text-purple-600 font-mono text-xs break-all">{state.selectedResult.placeId}</p>
+                </div>
+                {state.selectedResult.types.length > 0 && (
+                  <div className="bg-white p-3 rounded border">
+                    <p className="font-medium text-purple-800 mb-2">Google Place Types:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {state.selectedResult.types.map((type: string) => (
+                        <Badge key={type} variant="outline" className="text-xs bg-purple-100 text-purple-700">
+                          {type}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Voice Transcriptions */}
+        {state.voiceTranscriptions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Voice Transcriptions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {state.voiceTranscriptions.map((transcription: VoiceTranscription) => (
+                  <div 
+                    key={transcription.timestamp} 
+                    className={cn( "flex items-center justify-between p-2 rounded", "bg-muted" )}
+                  >
+                    <span>"{transcription.text}"</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(transcription.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Agent Tool Calls */}
+        {state.agentToolCalls.length > 0 && (
+          <Card className="bg-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                🤖 Agent Tool Calls
+                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700">{state.agentToolCalls.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-40 overflow-y-auto">
+                {state.agentToolCalls.map((call: AgentToolCall, index: number) => (
+                  <div key={`${call.timestamp}-${index}`} className="flex justify-between items-start p-3 bg-blue-100 rounded-lg border border-blue-300">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm flex items-center gap-2">
+                        <span className="text-blue-600">🔧 {call.tool}</span>
+                        <span className="text-xs text-blue-600 bg-blue-200 px-2 py-1 rounded font-mono">"{call.input}"</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Search History */}
+        {state.searchHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Search History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {state.searchHistory.map((search: SearchHistoryItem) => (
+                  <div key={search.timestamp} className={cn(
+                    "flex items-center justify-between p-3 rounded",
+                    search.isAgentCall ? "bg-blue-50 border border-blue-200" : "bg-muted"
+                  )}>
+                    <div className="flex-1">
+                      <p className="font-medium flex items-center gap-2">
+                        {search.isAgentCall && <span className="text-blue-600">🤖</span>}
+                        "{search.input}"
+                      </p>
+                      {search.result ? (
+                        <p className="text-sm text-green-600">→ {search.result}</p>
+                      ) : (
+                        <p className="text-sm text-red-600">→ No match found</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

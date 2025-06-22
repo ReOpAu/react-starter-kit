@@ -9,7 +9,8 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const { address } = await request.json();
+    const body = await request.json();
+    const { address, sessionToken, previousResponseId } = body;
     
     if (!address) {
       return new Response(JSON.stringify({ error: "Address is required" }), { 
@@ -26,13 +27,21 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
-    // Call Google Address Validation API
+    // Enhanced request body with additional validation options
     const requestBody = {
       address: {
         regionCode: "AU",
-        addressLines: [address]
+        addressLines: [address],
+        // Support for more structured addresses if needed
+        ...(typeof address === 'object' && address !== null ? address : {})
       },
-      enableUspsCass: false
+      enableUspsCass: false,
+      // Enhanced fields for better validation
+      ...(previousResponseId && { previousResponseId }),
+      ...(sessionToken && { sessionToken }),
+      languageOptions: {
+        returnEnglishLatinAddress: true // Ensure consistent format
+      }
     };
 
     const response = await fetch(
@@ -59,8 +68,47 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
-    // Return the validation result
-    return new Response(JSON.stringify(data.result), {
+    // Enhanced response with additional metadata
+    const enhancedResult = {
+      ...data.result,
+      // Add validation summary for easier frontend handling
+      _validationSummary: {
+        isValid: data.result.verdict?.addressComplete && (
+          !data.result.verdict?.hasUnconfirmedComponents || 
+          data.result.verdict?.possibleNextAction === "ACCEPT"
+        ),
+        isAcceptableByGoogle: data.result.verdict?.possibleNextAction === "ACCEPT",
+        isComplete: data.result.verdict?.addressComplete || false,
+        hasUnconfirmedComponents: data.result.verdict?.hasUnconfirmedComponents || false,
+        hasInferredComponents: data.result.verdict?.hasInferredComponents || false,
+        possibleNextAction: data.result.verdict?.possibleNextAction,
+        inputGranularity: data.result.verdict?.inputGranularity,
+        validationGranularity: data.result.verdict?.validationGranularity,
+        geocodeGranularity: data.result.verdict?.geocodeGranularity,
+        unconfirmedComponentTypes: data.result.address?.unconfirmedComponentTypes || [],
+        parsedComponents: data.result.address?.addressComponents?.reduce((acc: any, component: any) => {
+          const type = component.componentType;
+          const text = component.componentName?.text;
+          const confirmationLevel = component.confirmationLevel;
+          
+          if (type && text) {
+            acc[type] = { text, confirmationLevel };
+          }
+          return acc;
+        }, {}),
+        coordinates: data.result.geocode?.location ? {
+          latitude: data.result.geocode.location.latitude,
+          longitude: data.result.geocode.location.longitude
+        } : null,
+        placeId: data.result.geocode?.placeId || null,
+        isResidential: data.result.metadata?.residential || false,
+        isBusiness: data.result.metadata?.business || false
+      },
+      responseId: data.responseId
+    };
+
+    // Return the enhanced validation result
+    return new Response(JSON.stringify(enhancedResult), {
       headers: { "Content-Type": "application/json" }
     });
 
@@ -74,4 +122,4 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     );
   }
-} 
+}

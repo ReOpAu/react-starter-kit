@@ -13,6 +13,7 @@ export default [
   route("success", "routes/success.tsx"),
   route("subscription-required", "routes/subscription-required.tsx"),
   route("conv-address", "routes/conv-address.tsx"),
+  route("conv-address-improved", "routes/conv-address-improved.tsx"),
   route("enhanced-address", "routes/enhanced-address.tsx"),
   route("api/validate-address", "routes/api.validate-address.tsx"),
   layout("routes/dashboard/layout.tsx", [

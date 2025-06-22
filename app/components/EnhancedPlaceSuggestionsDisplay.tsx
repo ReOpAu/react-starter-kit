@@ -240,4 +240,6 @@ export function EnhancedPlaceSuggestionsDisplay({
       </CardContent>
     </Card>
   );
-} 
+}
+
+export default EnhancedPlaceSuggestionsDisplay;
