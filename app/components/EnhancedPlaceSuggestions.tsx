@@ -86,9 +86,7 @@ export function EnhancedPlaceSuggestions() {
       query,
       currentIntent || undefined,
       {
-        maxResults: 8,
-        location: { lat: -37.8136, lng: 144.9631 }, // Melbourne bias
-        radius: 100000
+        maxResults: 8
       }
     );
   };

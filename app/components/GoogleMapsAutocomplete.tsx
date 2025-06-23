@@ -159,8 +159,6 @@ export function GoogleMapsAutocomplete() {
       // Call Convex with general intent to get broad results
       const convexResult = await getPlaceSuggestions(query, 'general', {
         maxResults: 8,
-        location: { lat: -37.8136, lng: 144.9631 },
-        radius: 100000,
         isAutocomplete: true
       });
 

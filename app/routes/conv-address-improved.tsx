@@ -8,7 +8,6 @@ import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
-import { useSuburbAutocomplete, type SuburbResult } from "~/hooks/useSuburbAutocomplete";
 import { useSpellingAutocomplete } from "~/hooks/useSpellingAutocomplete";
 import { useEnhancedPlaceSuggestions, type EnhancedPlaceSuggestion } from "~/hooks/useEnhancedPlaceSuggestions";
 import { EnhancedPlaceSuggestionsDisplay } from "~/components/EnhancedPlaceSuggestionsDisplay";
@@ -29,6 +28,7 @@ interface SearchHistoryItem {
   result: string | null;
   timestamp: number;
   isAgentCall?: boolean;
+  detectedIntent?: string;
 }
 
 interface AgentToolCall {
@@ -63,7 +63,7 @@ interface AppState {
   agentToolCalls: AgentToolCall[];
   
   // Results State
-  selectedResult: SuburbResult | null;
+  selectedResult: EnhancedPlaceSuggestion | null;
   currentPlaceData: PlaceData | null;
   
   // UI State
@@ -83,7 +83,7 @@ type AppAction =
   | { type: 'SET_MANUAL_INPUT'; payload: string }
   | { type: 'ADD_SEARCH_HISTORY'; payload: SearchHistoryItem }
   | { type: 'ADD_TOOL_CALL'; payload: AgentToolCall }
-  | { type: 'SET_SELECTED_RESULT'; payload: SuburbResult | null }
+  | { type: 'SET_SELECTED_RESULT'; payload: EnhancedPlaceSuggestion | null }
   | { type: 'SET_CURRENT_PLACE_DATA'; payload: PlaceData | null }
   | { type: 'SET_CLIENT_MOUNTED'; payload: boolean }
   | { type: 'SET_TEST_INPUT'; payload: string }
@@ -188,7 +188,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 }
 
 // UI State Synchronization Hook
-function useUIStateSync(state: AppState, suggestions: any[], canonicalSuburb: string | null) {
+function useUIStateSync(state: AppState, spellingSuggestions: any[], placeSuggestions: EnhancedPlaceSuggestion[] | undefined) {
   const syncToElevenLabs = useCallback(() => {
     try {
       const windowWithElevenLabs = window as typeof window & {
@@ -198,38 +198,38 @@ function useUIStateSync(state: AppState, suggestions: any[], canonicalSuburb: st
       if (typeof windowWithElevenLabs.setVariable === 'function') {
         const uiStateForAgent = {
           isRecording: state.isRecording,
-          isSpellingMode: suggestions.length > 0,
-          hasResults: canonicalSuburb !== null || state.selectedResult !== null,
-          hasMultipleResults: false,
+          isSpellingMode: spellingSuggestions.length > 0,
+          hasResults: state.selectedResult !== null,
+          hasMultipleResults: (placeSuggestions?.length ?? 0) > 1,
           hasSelectedResult: state.selectedResult !== null,
           currentMode: state.currentMode,
-          resultCount: 0,
-          spellingActive: suggestions.length > 0,
+          resultCount: placeSuggestions?.length ?? 0,
+          spellingActive: spellingSuggestions.length > 0,
           lastUserAction: state.lastAction,
           timestamp: Date.now(),
           selectedResult: state.selectedResult
             ? {
-                address: state.selectedResult.canonicalSuburb,
+                address: state.selectedResult.description,
                 placeId: state.selectedResult.placeId,
               }
             : null,
-          multipleOptions: [],
+          multipleOptions: placeSuggestions?.map(s => ({ address: s.description, placeId: s.placeId })) ?? [],
         };
         // Sync complete UI state
         windowWithElevenLabs.setVariable("uiState", uiStateForAgent);
         
         // Sync result data
-        windowWithElevenLabs.setVariable("currentFoundResult", canonicalSuburb);
-        windowWithElevenLabs.setVariable("currentSelectedResult", state.selectedResult?.canonicalSuburb || null);
-        windowWithElevenLabs.setVariable("currentMultipleResults", []);
-        windowWithElevenLabs.setVariable("currentSpellingCandidates", suggestions.map((s: any) => s.address));
+        windowWithElevenLabs.setVariable("currentFoundResult", null);
+        windowWithElevenLabs.setVariable("currentSelectedResult", state.selectedResult?.description || null);
+        windowWithElevenLabs.setVariable("currentMultipleResults", placeSuggestions?.map(s => s.description) ?? []);
+        windowWithElevenLabs.setVariable("currentSpellingCandidates", spellingSuggestions.map((s: any) => s.address));
         
         console.log('[UISync] Synced state to ElevenLabs:', uiStateForAgent);
       }
     } catch (error) {
       console.log('[UISync] ElevenLabs variables not available:', error);
     }
-  }, [state, suggestions, canonicalSuburb]);
+  }, [state, spellingSuggestions, placeSuggestions]);
 
   return { syncToElevenLabs };
 }
@@ -245,52 +245,31 @@ export default function ConvAddress() {
   const animationFrameRef = useRef<number | undefined>(undefined);
   const lastUpdateRef = useRef<number>(0);
 
-  // Custom hooks (keep these for business logic)
+  // Custom hooks for various autocomplete and place search functionalities
   const { 
-    lookupSuburb, 
-    lookupSuburbEnhanced, 
-    lookupSuburbMultiple, 
-    canonicalSuburb, 
-    enhancedResult, 
-    isLoading, 
-    error, 
-    reset,
-    setResult 
-  } = useSuburbAutocomplete();
-  
-  const { 
-    suggestions,
-    isLoading: isAutocompleteLoading, 
-    error: autocompleteError,
-    getSuggestions,
+    suggestions: spellingSuggestions,
+    isLoading: isSpellingLoading, 
+    error: spellingError,
     debouncedGetSuggestions,
-    resetSession,
-    clearSuggestions
+    resetSession: resetSpellingSession,
+    clearSuggestions: clearSpellingSuggestions
   } = useSpellingAutocomplete({
-    location: { lat: -37.8136, lng: 144.9631 },
-    radius: 100000,
     minLength: 2,
     debounceMs: 300
   });
 
   const {
     searchPlaces,
-    isLoading: isEnhancedLoading,
-    error: enhancedError,
+    isLoading,
+    error,
     lastResult: enhancedPlaceResult,
     reset: resetEnhanced,
-    setEnhancedResult
   } = useEnhancedPlaceSuggestions({
-    location: { lat: -37.8136, lng: 144.9631 },
-    radius: 100000,
     maxResults: 8
   });
 
-  // Enhanced autocomplete action
-  const enhancedAutocompleteAction = useAction(api.autocomplete.autocompleteAddresses);
-
   // UI State Synchronization
-  const { syncToElevenLabs } = useUIStateSync(state, suggestions, canonicalSuburb);
+  const { syncToElevenLabs } = useUIStateSync(state, spellingSuggestions, enhancedPlaceResult?.suggestions);
 
   // Optimized state update functions
   const updateRecording = useCallback((recording: boolean) => {
@@ -298,7 +277,7 @@ export default function ConvAddress() {
     syncToElevenLabs();
   }, [syncToElevenLabs]);
 
-  const updateSelectedResult = useCallback((result: SuburbResult | null) => {
+  const updateSelectedResult = useCallback((result: EnhancedPlaceSuggestion | null) => {
     dispatch({ type: 'SET_SELECTED_RESULT', payload: result });
     syncToElevenLabs();
   }, [syncToElevenLabs]);
@@ -323,45 +302,40 @@ export default function ConvAddress() {
 
   const performSearch = useCallback(async (query: string) => {
     dispatch({ type: 'RESET_RESULTS' });
-    reset();
     resetEnhanced();
     
     const searchStart = Date.now();
     dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: 'Searching...', timestamp: searchStart } });
 
     try {
-      const isFullResidentialAddress = /^\d+[a-zA-Z]?\s+.+/.test(query.trim());
+      // Always use the enhanced searchPlaces function. 
+      // The backend will handle intent detection.
+      const searchResult = await searchPlaces(query);
 
-      if (isFullResidentialAddress) {
-        const autocompleteResults = await enhancedAutocompleteAction({ partialInput: query, maxResults: 8, sessionToken: crypto.randomUUID() });
-        if (autocompleteResults && autocompleteResults.length > 0) {
-          const compatibleResults: EnhancedPlaceSuggestion[] = autocompleteResults.map((r: any) => ({
-            description: r.address,
-            placeId: r.placeId,
-            types: [r.addressType],
-            matchedSubstrings: [],
-            structuredFormatting: { mainText: r.address, secondaryText: '' },
-            resultType: 'address',
-            confidence: 1
-          }));
-          setEnhancedResult({ success: true, suggestions: compatibleResults, detectedIntent: 'address' });
-          return { success: true, results: compatibleResults };
-        }
-      }
-
-      const enhancedResults = await searchPlaces(query);
-      if (enhancedResults.success && enhancedResults.suggestions.length > 0) {
-        return { success: true, results: enhancedResults.suggestions };
+      if (searchResult.success && searchResult.suggestions.length > 0) {
+        dispatch({
+          type: 'ADD_SEARCH_HISTORY',
+          payload: {
+            input: query,
+            result: `Found ${searchResult.suggestions.length} results.`,
+            timestamp: searchStart,
+            detectedIntent: searchResult.detectedIntent,
+          }
+        });
+        return { success: true, results: searchResult.suggestions };
       }
       
-      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: 'No results found', timestamp: searchStart } });
-      return { success: false, error: 'No results found' };
-    } catch (error) {
-      console.error('Search failed:', error);
-      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: 'Search failed', timestamp: searchStart } });
-      return { success: false, error: 'Search failed' };
+      const errorMessage = searchResult.error || 'No results found';
+      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: errorMessage, timestamp: searchStart } });
+      return { success: false, error: errorMessage };
+
+    } catch (err) {
+      console.error('Search failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: query, result: errorMessage, timestamp: searchStart } });
+      return { success: false, error: errorMessage };
     }
-  }, [dispatch, reset, resetEnhanced, enhancedAutocompleteAction, searchPlaces, setEnhancedResult]);
+  }, [dispatch, resetEnhanced, searchPlaces]);
 
   // Conversation setup with full client tool implementation
   const conversation = useConversation({
@@ -379,7 +353,7 @@ export default function ConvAddress() {
       syncToElevenLabs();
     },
     clientTools: {
-      // Tool 1: AddressSearch - Migrated from original file
+      // Tool 1: AddressSearch - Simplified to use the robust performSearch
       AddressSearch: async (params: unknown) => {
         try {
           console.log('[ClientTool] AddressSearch called with params:', params);
@@ -405,15 +379,8 @@ export default function ConvAddress() {
 
           if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
             if (searchResult.results.length === 1) {
-              const result = searchResult.results[0] as EnhancedPlaceSuggestion;
-              const selectedResult: SuburbResult = {
-                canonicalSuburb: result.description,
-                placeId: result.placeId,
-                geocode: { lat: 0, lng: 0 },
-                types: result.types
-              };
-              dispatch({ type: 'SET_SELECTED_RESULT', payload: selectedResult });
-              setResult(selectedResult);
+              const result = searchResult.results[0];
+              dispatch({ type: 'SET_SELECTED_RESULT', payload: result });
               return `✅ Validated address: ${result.description}.`;
             } else {
               return `Found ${searchResult.results.length} potential matches. Please choose one from the list.`;
@@ -445,7 +412,15 @@ export default function ConvAddress() {
 
           if (results.length === 1) {
             const place = results[0];
-            const confirmedResult = { canonicalSuburb: place.label, placeId: place.place_id, geocode: { lat: 0, lng: 0 }, types: [place.type] };
+            const confirmedResult: EnhancedPlaceSuggestion = { 
+              description: place.label, 
+              placeId: place.place_id, 
+              types: [place.type],
+              resultType: 'general',
+              confidence: 1,
+              matchedSubstrings: [],
+              structuredFormatting: { mainText: place.label, secondaryText: '' }
+            };
             dispatch({ type: 'SET_SELECTED_RESULT', payload: confirmedResult });
             dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Confirmed: ${place.label}`, result: place.label, timestamp: Date.now(), isAgentCall: true } });
             return `✅ Confirmed: ${place.label}`;
@@ -460,7 +435,9 @@ export default function ConvAddress() {
             resultType: 'general',
             confidence: 1
           }));
-          setEnhancedResult({ success: true, suggestions: compatibleResults, detectedIntent: 'general' });
+          // This part of the tool seems to create a new set of suggestions.
+          // For now, we'll just return the prompt to the user.
+          // setEnhancedResult({ success: true, suggestions: compatibleResults, detectedIntent: 'general' });
           const placeLabels = results.map(r => r.label).join(', ');
           return `📍 I found ${results.length} places for you: ${placeLabels}. Please select one.`;
         } catch (error) {
@@ -472,11 +449,11 @@ export default function ConvAddress() {
       GetUIState: async () => {
         const currentState = {
           isRecording: state.isRecording,
-          hasResults: canonicalSuburb !== null || state.selectedResult !== null,
+          hasResults: state.selectedResult !== null,
           hasMultipleResults: false,
           hasSelectedResult: state.selectedResult !== null,
           currentMode: state.currentMode,
-          selectedResult: state.selectedResult ? { address: state.selectedResult.canonicalSuburb, placeId: state.selectedResult.placeId } : null,
+          selectedResult: state.selectedResult ? { address: state.selectedResult.description, placeId: state.selectedResult.placeId } : null,
           multipleOptions: [],
         };
         return `UI State: ${JSON.stringify(currentState, null, 2)}`;
@@ -484,9 +461,8 @@ export default function ConvAddress() {
       // Tool 4: ClearResults - Migrated from original file
       ClearResults: async () => {
         dispatch({ type: 'RESET_RESULTS' });
-        reset();
-        clearSuggestions();
-        resetSession();
+        clearSpellingSuggestions();
+        resetSpellingSession();
         resetEnhanced();
         return 'All results cleared.';
       }
@@ -512,14 +488,14 @@ export default function ConvAddress() {
     const transcription: VoiceTranscription = { 
       text: text.trim(), 
       timestamp: Date.now(),
-      isSpelling: suggestions.length > 0
+      isSpelling: spellingSuggestions.length > 0
     };
     dispatch({ type: 'ADD_TRANSCRIPTION', payload: transcription });
     
-    if (suggestions.length > 0) {
+    if (spellingSuggestions.length > 0) {
       debouncedGetSuggestions(text.trim());
     }
-  }, [suggestions, debouncedGetSuggestions]);
+  }, [spellingSuggestions, debouncedGetSuggestions]);
 
   // Set up audio analysis
   const setupAudioAnalysis = useCallback(async () => {
@@ -573,12 +549,12 @@ export default function ConvAddress() {
         textOnly: false,
       });
       dispatch({ type: 'SET_RECORDING', payload: true });
-      reset();
+      resetEnhanced();
     } catch (error) {
       console.error('Failed to start recording:', error);
       dispatch({ type: 'SET_MODE', payload: { mode: 'idle', action: 'recording_start_failed' } });
     }
-  }, [conversation, setupAudioAnalysis, reset]);
+  }, [conversation, setupAudioAnalysis, resetEnhanced]);
 
   const stopRecording = useCallback(async () => {
     try {
@@ -601,12 +577,11 @@ export default function ConvAddress() {
   }, [state.manualInput, performSearch, dispatch]);
 
   // Handle selection of a result from multiple options
-  const handleResultSelection = async (result: SuburbResult) => {
+  const handleResultSelection = async (result: EnhancedPlaceSuggestion) => {
     dispatch({ type: 'SET_SELECTED_RESULT', payload: result });
-    setResult(result);
-    dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Selected: ${result.canonicalSuburb}`, result: result.canonicalSuburb, timestamp: Date.now() } });
+    dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Selected: ${result.description}`, result: result.description, timestamp: Date.now() } });
     if (conversation.status === 'connected') {
-      const selectionSummary = `User has selected: "${result.canonicalSuburb}". Selection is now confirmed.`;
+      const selectionSummary = `User has selected: "${result.description}". Selection is now confirmed.`;
       console.log(`[AgentComms] Sending selection to agent: ${selectionSummary}`);
       try {
         await conversation.sendUserMessage(selectionSummary);
@@ -618,9 +593,7 @@ export default function ConvAddress() {
 
   // Handle selection of enhanced place suggestions
   const handleEnhancedPlaceSelection = async (suggestion: EnhancedPlaceSuggestion) => {
-    const compatibleResult = { canonicalSuburb: suggestion.description, placeId: suggestion.placeId, geocode: { lat: 0, lng: 0 }, types: suggestion.types };
-    dispatch({ type: 'SET_SELECTED_RESULT', payload: compatibleResult });
-    setResult(compatibleResult);
+    dispatch({ type: 'SET_SELECTED_RESULT', payload: suggestion });
     resetEnhanced();
     dispatch({ type: 'ADD_SEARCH_HISTORY', payload: { input: `Enhanced: ${suggestion.structuredFormatting.mainText}`, result: suggestion.description, timestamp: Date.now() } });
     if (conversation.status === 'connected') {
@@ -644,7 +617,7 @@ export default function ConvAddress() {
     if (state.isClientMounted) {
       syncToElevenLabs();
     }
-  }, [state.isClientMounted, suggestions.length, canonicalSuburb, syncToElevenLabs, state.selectedResult]);
+  }, [state.isClientMounted, spellingSuggestions.length, syncToElevenLabs, state.selectedResult, enhancedPlaceResult]);
 
   // Animate out suggestions when a result is selected
   useEffect(() => {
@@ -732,12 +705,12 @@ export default function ConvAddress() {
                 disabled={isLoading}
               />
               <Button type="submit" disabled={isLoading || !state.manualInput.trim()}>
-                {isLoading || isEnhancedLoading ? 'Searching...' : 'Search'}
+                {isLoading ? 'Searching...' : 'Search'}
               </Button>
             </form>
 
             {/* Loading State */}
-            {(isLoading || isEnhancedLoading) && (
+            {isLoading && (
               <div className="flex items-center justify-center py-4">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
                 <span className="ml-2">Searching for places...</span>
@@ -745,12 +718,12 @@ export default function ConvAddress() {
             )}
 
             {/* Error State */}
-            {(error || enhancedError) && (
+            {error && (
               <Card className="bg-red-50 border-red-200">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">❌</span>
-                    <p className="text-red-700">{error || enhancedError}</p>
+                    <p className="text-red-700">{error}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -773,7 +746,7 @@ export default function ConvAddress() {
                 detectedIntent={enhancedPlaceResult.detectedIntent}
                 onSelect={handleEnhancedPlaceSelection}
                 onCancel={() => resetEnhanced()}
-                isLoading={isEnhancedLoading}
+                isLoading={isLoading}
               />
             </motion.div>
           )}
@@ -793,7 +766,7 @@ export default function ConvAddress() {
               <div className="space-y-3">
                 <div>
                   <p className="font-semibold text-purple-800">Location:</p>
-                  <p className="text-purple-700 font-medium">{state.selectedResult.canonicalSuburb}</p>
+                  <p className="text-purple-700 font-medium">{state.selectedResult.description}</p>
                 </div>
                 <div className="bg-white p-3 rounded border">
                   <p className="font-medium text-purple-800">Place ID:</p>
