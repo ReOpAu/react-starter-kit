@@ -241,6 +241,39 @@ export const getPlaceSuggestions = action({
       
       console.log(`[getPlaceSuggestions] Query: "${query}", Detected Intent: ${detectedIntent}`);
       
+      // 🎯 NEW: Handle single-word queries that might be suburbs OR streets
+      const isSingleWord = !query.includes(' ');
+      if (isSingleWord && detectedIntent === "suburb") {
+        console.log(`[getPlaceSuggestions] Single word, suburb intent. Trying suburb-first search.`);
+        
+        // First, try searching for suburbs
+        const suburbResult = await getPlacesApiSuggestions(
+          query,
+          "suburb",
+          maxResults,
+          apiKey,
+          args.location,
+          args.radius
+        );
+
+        // If we find suburb results, return them.
+        if (suburbResult.success && suburbResult.suggestions.length > 0) {
+          console.log(`[getPlaceSuggestions] Found ${suburbResult.suggestions.length} suburb results.`);
+          return suburbResult;
+        }
+        
+        // If no suburb results, fall back to searching for streets.
+        console.log(`[getPlaceSuggestions] No suburb results found. Falling back to street search.`);
+        return await getPlacesApiSuggestions(
+          query,
+          "street", // Force street intent
+          maxResults,
+          apiKey,
+          args.location,
+          args.radius
+        );
+      }
+      
       // 🎯 NEW TWO-STEP PROCESS - but only for explicit validation, not autocomplete
       if (detectedIntent === "address" && !args.isAutocomplete) {
         console.log(`[getPlaceSuggestions] Using two-step validation for full address`);
