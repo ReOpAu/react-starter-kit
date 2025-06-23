@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as addressFinder from "../addressFinder.js";
 import type * as autocomplete from "../autocomplete.js";
 import type * as http from "../http.js";
 import type * as location from "../location.js";
@@ -35,6 +36,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  addressFinder: typeof addressFinder;
   autocomplete: typeof autocomplete;
   http: typeof http;
   location: typeof location;
