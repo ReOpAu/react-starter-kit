@@ -46,8 +46,8 @@ export default function AddressFinder() {
     }
   }, []);
 
-  // Convex action for searching places
-  const searchAction = useAction(api.addressFinder.search);
+  // Use the more powerful location search action
+  const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
   
   // React Query as the single source of truth for search results
   const { 
@@ -62,8 +62,22 @@ export default function AddressFinder() {
       if (!searchQuery || searchQuery.trim().length < 3) {
         return [];
       }
-      const result = await searchAction({ query: searchQuery });
-      return result?.success ? result.suggestions || [] : [];
+      
+      // Call the enhanced action
+      const result = await getPlaceSuggestionsAction({ query: searchQuery });
+      
+      // The new action returns a different structure, so we adapt
+      if (result.success) {
+        // Log the detected intent for debugging
+        log(`Detected intent: ${result.detectedIntent}`);
+        return result.suggestions || [];
+      }
+      
+      // If the action was not successful, log the error and return an empty array
+      if (!result.success) {
+        log(`Search failed: ${result.error}`);
+      }
+      return [];
     },
     enabled: !!searchQuery && searchQuery.trim().length >= 3,
     staleTime: 5 * 60 * 1000, // 5 minutes
