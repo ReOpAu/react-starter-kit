@@ -351,7 +351,7 @@ export default function AddressFinder() {
           suggestions={suggestions}
           isLoading={isSearchingQuery}
           isError={isError}
-          error={error instanceof Error ? error.message : null}
+          error={error instanceof Error ? error : null}
           onSelect={handleSelectResult}
         />
 
