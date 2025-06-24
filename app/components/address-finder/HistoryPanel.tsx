@@ -21,9 +21,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-2 max-h-40 overflow-y-auto">
-          {history.map((entry) => (
+          {history.map((entry, index) => (
             <div
-              key={entry.timestamp}
+              key={`${entry.timestamp}-${index}`}
               className={cn('flex items-center justify-between p-2 rounded text-sm', {
                 'bg-blue-50': entry.type === 'agent',
                 'bg-gray-50': entry.type === 'user',
@@ -32,7 +32,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {
             >
               <span>{entry.text}</span>
               <span className="text-xs text-muted-foreground">
-                {new Date(entry.timestamp).toLocaleTimeString()}
+                {new Date(entry.timestamp || Date.now()).toLocaleTimeString()}
               </span>
             </div>
           ))}

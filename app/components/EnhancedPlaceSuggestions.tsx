@@ -3,7 +3,8 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
-import { useSuburbAutocomplete, type PlaceSuggestion, type LocationIntent } from "~/hooks/useSuburbAutocomplete";
+import { useSuburbAutocomplete, type LocationIntent } from "~/hooks/useSuburbAutocomplete";
+import type { PlaceSuggestion } from "../../convex/location";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 
 // Helper function to get result type color
@@ -34,7 +35,15 @@ const getIntentColor = (intent: LocationIntent) => {
   }
 };
 
-export function EnhancedPlaceSuggestions() {
+interface EnhancedPlaceSuggestionsProps {
+  aiSuggestions?: PlaceSuggestion[];
+  isInputDisabled?: boolean;
+}
+
+export function EnhancedPlaceSuggestions({ 
+  aiSuggestions = [], 
+  isInputDisabled = false 
+}: EnhancedPlaceSuggestionsProps) {
   const [query, setQuery] = useState('');
   const [selectedIntent, setSelectedIntent] = useState<LocationIntent | undefined>(undefined);
   const [selectedSuggestion, setSelectedSuggestion] = useState<PlaceSuggestion | null>(null);
@@ -126,6 +135,13 @@ export function EnhancedPlaceSuggestions() {
         <CardContent className="space-y-4">
           {/* Search Input */}
           <div className="space-y-2">
+            {isInputDisabled && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                <p className="text-orange-700 text-sm font-medium">
+                  🎤 AI Mode Active - Manual search disabled. Use voice commands to populate suggestions.
+                </p>
+              </div>
+            )}
             <div className="flex gap-2">
               <Input
                 placeholder="Enter suburb, street, or address (e.g., 'Richmond', 'Smith Street', '123 Smith St')"
@@ -133,11 +149,12 @@ export function EnhancedPlaceSuggestions() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="flex-1"
+                disabled={isInputDisabled}
               />
-              <Button onClick={handleSearch} disabled={isLoading || !query.trim()}>
+              <Button onClick={handleSearch} disabled={isLoading || !query.trim() || isInputDisabled}>
                 {isLoading ? 'Searching...' : 'Search'}
               </Button>
-              <Button variant="outline" onClick={handleClear}>
+              <Button variant="outline" onClick={handleClear} disabled={isInputDisabled}>
                 Clear
               </Button>
             </div>
@@ -286,7 +303,72 @@ export function EnhancedPlaceSuggestions() {
         </CardContent>
       </Card>
 
-      {/* Results */}
+      {/* AI-Generated Suggestions */}
+      {aiSuggestions.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                🤖 AI-Generated Suggestions
+                <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                  {aiSuggestions.length} results
+                </Badge>
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {aiSuggestions.map((suggestion, index) => (
+                <button
+                  key={suggestion.placeId}
+                  type="button"
+                  className="w-full p-4 border border-blue-200 rounded-lg cursor-pointer transition-colors text-left bg-white hover:bg-blue-50"
+                  onClick={() => handleSuggestionSelect(suggestion)}
+                  aria-label={`Select ${suggestion.description}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-medium text-lg">{suggestion.structuredFormatting.mainText}</h3>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${getResultTypeColor(suggestion.resultType)}`}
+                        >
+                          {suggestion.resultType}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {suggestion.structuredFormatting.secondaryText}
+                      </p>
+                      <p className="text-xs text-gray-600 mb-2">
+                        {suggestion.description}
+                      </p>
+                      
+                      {/* Technical Details */}
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <Badge variant="outline" className="bg-gray-50">
+                          Confidence: {Math.round(suggestion.confidence * 100)}%
+                        </Badge>
+                        <Badge variant="outline" className="bg-gray-50">
+                          AI Generated
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    {/* Ranking */}
+                    <div className="ml-4 text-center">
+                      <div className="text-lg font-bold text-blue-600">#{index + 1}</div>
+                      <div className="text-xs text-muted-foreground">rank</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Manual Search Results */}
       {suggestions.length > 0 && (
         <Card>
           <CardHeader>
@@ -368,7 +450,7 @@ export function EnhancedPlaceSuggestions() {
                         <Badge variant="outline" className="bg-gray-50">
                           ID: {suggestion.placeId.slice(0, 10)}...
                         </Badge>
-                        {suggestion.types.slice(0, 3).map(type => (
+                        {suggestion.types.slice(0, 3).map((type: string) => (
                           <Badge key={type} variant="outline" className="bg-gray-50 text-xs">
                             {type}
                           </Badge>
@@ -427,7 +509,7 @@ export function EnhancedPlaceSuggestions() {
               <div>
                 <p className="text-sm font-medium text-blue-700">Google Types:</p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {selectedSuggestion.types.map(type => (
+                  {selectedSuggestion.types.map((type: string) => (
                     <Badge key={type} variant="outline" className="text-xs">
                       {type}
                     </Badge>

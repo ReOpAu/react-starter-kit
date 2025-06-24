@@ -1,0 +1,323 @@
+---
+description: State management strategy for React Query + Zustand + ElevenLabs agent sync with complete user action tracking. Enforces unified state flow for API data, UI interactions, and agent synchronization.
+globs: 
+alwaysApply: false
+---
+---
+description: State management strategy for React Query + Zustand + ElevenLabs agent sync with complete user action tracking. Enforces unified state flow for API data, UI interactions, and agent synchronization.
+globs: ["**/routes/**/*.tsx", "**/stores/**/*.ts", "**/hooks/**/*.ts", "**/components/**/address-finder/**/*.tsx", "**/components/**/conversation/**/*.tsx"]
+alwaysApply: false
+---
+
+## CORE PRINCIPLE: Single Source of Truth
+- React Query is the ONLY source of truth for ALL API data (Google Places, Address Validation)
+- Zustand stores UI-specific state and syncs FROM React Query for agent communication
+- NEVER create dual storage patterns
+
+## FORBIDDEN PATTERNS ❌
+
+### 1. Separate Storage for AI vs Manual Results
+```typescript
+// ❌ NEVER DO THIS
+const [aiSuggestions, setAiSuggestions] = useState<Suggestion[]>([]);
+const { data: suggestions } = useQuery(['places', query]);
+const currentSuggestions = isRecording ? aiSuggestions : suggestions;
+
+// ❌ NEVER DO THIS  
+const handleAIResult = (results) => {
+  setAiSuggestions(results); // Bypasses React Query
+}
+```
+
+### 2. Client Tools Bypassing React Query
+```typescript
+// ❌ NEVER DO THIS
+searchAddress: async (params) => {
+  const result = await api.search(query);
+  setLocalState(result.suggestions); // Bypasses React Query
+}
+```
+
+### 3. Direct State Updates Without Sync
+```typescript
+// ❌ NEVER DO THIS
+setSelectedResult(newResult);
+// Missing: syncToAgent();
+```
+
+### 4. User Actions Without Agent Notification
+```typescript
+// ❌ NEVER DO THIS
+const handleClick = (suggestion) => {
+  setSelectedResult(suggestion); // No agent notification
+}
+
+const handleInput = (value) => {
+  setSearchQuery(value); // No user action tracking
+}
+```
+
+## REQUIRED PATTERNS ✅
+
+### 1. Unified API Results Through React Query
+```typescript
+// ✅ ALWAYS DO THIS
+const { data: suggestions, isLoading, error } = useQuery({
+  queryKey: ['addressSearch', searchQuery, source],
+  queryFn: () => getPlaceSuggestionsAction({ query: searchQuery })
+});
+
+// ✅ Agent updates via React Query
+searchAddress: async (params) => {
+  const result = await api.search(query);
+  
+  // Update React Query directly
+  queryClient.setQueryData(['addressSearch', query, 'ai'], {
+    suggestions: result.suggestions,
+    source: 'ai',
+    timestamp: Date.now()
+  });
+  
+  syncToAgent(); // Always sync after updates
+}
+```
+
+### 2. Zustand Syncs FROM React Query
+```typescript
+// ✅ ALWAYS DO THIS
+useEffect(() => {
+  // Sync React Query state to Zustand for agent access
+  setApiResults({
+    suggestions: suggestions || [],
+    isLoading,
+    error: error?.message || null,
+    source: isRecording ? 'voice' : 'manual'
+  });
+  syncToAgent();
+}, [suggestions, isLoading, error, isRecording]);
+```
+
+### 3. Required Agent Sync Pattern
+```typescript
+// ✅ ALWAYS include syncToAgent() after state changes
+const handleStateChange = useCallback((newState) => {
+  setZustandState(newState);
+  syncToAgent(); // REQUIRED
+}, [syncToAgent]);
+```
+
+### 4. User Action Tracking Pattern
+```typescript
+// ✅ ALWAYS track user actions for agent awareness
+const handleUserClick = useCallback((suggestion) => {
+  // Update state
+  setSelectedResult(suggestion);
+  
+  // Track user action
+  const windowWithElevenLabs = window as any;
+  windowWithElevenLabs.setVariable?.("lastUserAction", {
+    type: "click",
+    action: "select_suggestion",
+    data: suggestion,
+    timestamp: Date.now()
+  });
+  
+  // Sync to agent
+  syncToAgent();
+}, [setSelectedResult, syncToAgent]);
+
+const handleUserInput = useCallback((value) => {
+  // Update state
+  setSearchQuery(value);
+  
+  // Track typing action
+  const windowWithElevenLabs = window as any;
+  windowWithElevenLabs.setVariable?.("lastUserAction", {
+    type: "typing",
+    value,
+    timestamp: Date.now(),
+    field: "searchQuery"
+  });
+  
+  // Sync to agent
+  syncToAgent();
+}, [setSearchQuery, syncToAgent]);
+```
+
+## REQUIRED DATA FLOW
+```
+API Call → React Query → Zustand → ElevenLabs Variables → Agent
+```
+
+## MANDATORY SYNC HOOK USAGE
+```typescript
+// ✅ Use centralized sync hook
+const { syncToAgent } = useAgentSync();
+
+// ✅ Call after every state change that affects agent
+useEffect(() => {
+  syncToAgent();
+}, [/* relevant dependencies */]);
+```
+
+## ZUSTAND STORE REQUIREMENTS
+- Store UI-specific state only (isRecording, selectedResult, currentIntent)
+- API results stored in React Query, referenced in Zustand for agent sync
+- Always include syncToAgent() in action functions
+- Never store raw API responses - store normalized UI state
+- Include user interaction tracking (inputHistory, clickHistory)
+- Track user action context for agent awareness
+
+## CLIENT TOOLS REQUIREMENTS
+- Must use queryClient.setQueryData() or invalidateQueries() for updates
+- Must call syncToAgent() after React Query updates
+- Must include loading/error states in responses
+- Must wait for React Query state updates before returning
+
+## AGENT SYNC REQUIREMENTS
+- Sync comprehensive state including API loading/error states
+- Include React Query cache status in agent variables
+- Provide unified suggestions regardless of source (manual/AI)
+- Update ElevenLabs variables on every state change
+- Include user interaction context (last action, input method, capabilities)
+- Track user action history for conversation context
+- Notify agent of all user interactions (typing, clicking, form submission)
+
+## VALIDATION RULES
+1. No useState for API results - use React Query only
+2. All agent client tools must update React Query first
+3. Every state mutation must call syncToAgent()
+4. Agent must see same data as UI (no dual sources)
+5. Include isLoading and error states in all agent communications
+6. All user interactions must be tracked and synced to agent
+7. Include user action context in agent state
+8. Event handlers must track user actions before state updates
+
+## EXAMPLES
+
+### ✅ Correct Implementation
+```typescript
+// Component with proper state management
+export function AddressFinder() {
+  const { syncToAgent } = useAgentSync();
+  const queryClient = useQueryClient();
+  
+  // Single source for all suggestions
+  const { data: suggestions, isLoading, error } = useQuery({
+    queryKey: ['addressSearch', searchQuery],
+    queryFn: () => getPlaceSuggestionsAction({ query: searchQuery })
+  });
+  
+  // Client tools update React Query
+  const clientTools = {
+    searchAddress: async (params) => {
+      const result = await api.search(query);
+      
+      // Update React Query cache
+      queryClient.setQueryData(['addressSearch', query], {
+        suggestions: result.suggestions,
+        source: 'ai'
+      });
+      
+      syncToAgent(); // Always sync
+      return JSON.stringify({ status: 'success', count: result.suggestions.length });
+    }
+  };
+  
+  // User action handlers with tracking
+  const handleUserInput = useCallback((value) => {
+    setSearchQuery(value);
+    
+    // Track user action for agent
+    const windowWithElevenLabs = window as any;
+    windowWithElevenLabs.setVariable?.("lastUserAction", {
+      type: "typing",
+      value,
+      timestamp: Date.now()
+    });
+    
+    syncToAgent();
+  }, [setSearchQuery, syncToAgent]);
+  
+  const handleSuggestionClick = useCallback((suggestion) => {
+    setSelectedResult(suggestion);
+    
+    // Track user action for agent
+    const windowWithElevenLabs = window as any;
+    windowWithElevenLabs.setVariable?.("lastUserAction", {
+      type: "click",
+      action: "select_suggestion",
+      data: suggestion,
+      timestamp: Date.now()
+    });
+    
+    syncToAgent();
+  }, [setSelectedResult, syncToAgent]);
+  
+  // Sync to agent on state changes
+  useEffect(() => {
+    syncToAgent();
+  }, [suggestions, isLoading, error, selectedResult]);
+}
+```
+
+### ❌ Incorrect Implementation
+```typescript
+// DON'T DO THIS - dual storage anti-pattern
+export function AddressFinder() {
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const { data: suggestions } = useQuery(['places', query]);
+  
+  const clientTools = {
+    searchAddress: async (params) => {
+      const result = await api.search(query);
+      setAiSuggestions(result.suggestions); // Bypasses React Query
+      // Missing syncToAgent()
+    }
+  };
+  
+  // Dual storage confusion
+  const currentSuggestions = isRecording ? aiSuggestions : suggestions;
+  
+  // Missing user action tracking
+  const handleClick = (suggestion) => {
+    setSelectedResult(suggestion); // No agent notification
+  };
+  
+  const handleInput = (value) => {
+    setSearchQuery(value); // No user action tracking
+  };
+}
+```
+
+## USER INTERACTION REQUIREMENTS
+
+### All Event Handlers Must:
+```typescript
+// ✅ Track user action + Update state + Sync to agent
+const handleUserAction = useCallback((data) => {
+  // 1. Update application state
+  updateState(data);
+  
+  // 2. Track user action for agent
+  const windowWithElevenLabs = window as any;
+  windowWithElevenLabs.setVariable?.("lastUserAction", {
+    type: "click" | "typing" | "submit" | "focus",
+    action: "specific_action",
+    data,
+    timestamp: Date.now(),
+    context: "component_context"
+  });
+  
+  // 3. Sync to agent
+  syncToAgent();
+}, [updateState, syncToAgent]);
+```
+
+### Required User Action Types:
+- **typing**: Text input changes
+- **click**: Button/suggestion clicks  
+- **submit**: Form submissions
+- **focus**: Element focus/blur
+- **mode_change**: UI mode toggles
+- **clear**: Clear/reset actions

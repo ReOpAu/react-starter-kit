@@ -190,7 +190,8 @@ export const getPlaceSuggestions = action({
       lng: v.number()
     })),
     radius: v.optional(v.number()),
-    isAutocomplete: v.optional(v.boolean()) // NEW: Flag to indicate if this is for autocomplete (vs explicit validation)
+    isAutocomplete: v.optional(v.boolean()), // NEW: Flag to indicate if this is for autocomplete (vs explicit validation)
+    sessionToken: v.optional(v.string()) // NEW: Session token for Google's autocomplete billing optimization
   },
   returns: v.union(
     v.object({
@@ -253,7 +254,8 @@ export const getPlaceSuggestions = action({
           maxResults,
           apiKey,
           args.location,
-          args.radius
+          args.radius,
+          args.sessionToken
         );
 
         // If we find suburb results, return them.
@@ -270,7 +272,8 @@ export const getPlaceSuggestions = action({
           maxResults,
           apiKey,
           args.location,
-          args.radius
+          args.radius,
+          args.sessionToken
         );
       }
       
@@ -283,12 +286,12 @@ export const getPlaceSuggestions = action({
       // During autocomplete, even "address" intent should use Places API for suggestions
       if (detectedIntent === "address" && args.isAutocomplete) {
         console.log(`[getPlaceSuggestions] Autocomplete mode: Using Places API for address suggestions (no validation)`);
-        return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius);
+        return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius, args.sessionToken);
       }
       
       // For suburbs, streets, general - use Places API directly (no validation needed)
       console.log(`[getPlaceSuggestions] Using Places API directly for intent: ${detectedIntent}`);
-      return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius);
+      return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius, args.sessionToken);
 
     } catch (error) {
       console.error('Error in getPlaceSuggestions:', error);
@@ -1846,7 +1849,8 @@ async function getPlacesApiSuggestions(
   maxResults: number,
   apiKey: string,
   location?: { lat: number; lng: number },
-  radius?: number
+  radius?: number,
+  sessionToken?: string
 ): Promise<{ success: true; suggestions: PlaceSuggestion[]; detectedIntent: LocationIntent } | { success: false; error: string }> {
   try {
     console.log(`[Places API] Getting suggestions for intent: ${actualIntent}`);
@@ -1889,10 +1893,13 @@ async function getPlacesApiSuggestions(
       }
     }
 
-    // Single consolidated API call to prevent duplicates
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=${config.types}&components=country:au${locationParam}&key=${apiKey}`;
+    // Build session token parameter for Google's billing optimization
+    const sessionParam = sessionToken ? `&sessiontoken=${sessionToken}` : '';
     
-    console.log(`[Places API] Single call with types: ${config.types} for intent: ${actualIntent}`);
+    // Single consolidated API call to prevent duplicates
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=${config.types}&components=country:au${locationParam}${sessionParam}&key=${apiKey}`;
+    
+    console.log(`[Places API] Single call with types: ${config.types} for intent: ${actualIntent}${sessionToken ? ' with session token' : ''}`);
     
     const response = await fetch(url);
     const data = await response.json();

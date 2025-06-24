@@ -17,7 +17,10 @@
       "routes/success": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/subscription-required": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/conv-address": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/conv-address-improved": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/address-finder": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/enhanced-address": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/api.validate-address": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/settings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
@@ -92,11 +95,38 @@
           "runtime": "nodejs"
         }
       },
+      "routes/conv-address-improved": {
+        "id": "routes/conv-address-improved",
+        "parentId": "root",
+        "file": "app/routes/conv-address-improved.tsx",
+        "path": "conv-address-improved",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/address-finder": {
+        "id": "routes/address-finder",
+        "parentId": "root",
+        "file": "app/routes/address-finder.tsx",
+        "path": "address-finder",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
       "routes/enhanced-address": {
         "id": "routes/enhanced-address",
         "parentId": "root",
         "file": "app/routes/enhanced-address.tsx",
         "path": "enhanced-address",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/api.validate-address": {
+        "id": "routes/api.validate-address",
+        "parentId": "root",
+        "file": "app/routes/api.validate-address.tsx",
+        "path": "api/validate-address",
         "config": {
           "runtime": "nodejs"
         }
@@ -195,11 +225,29 @@
         "file": "routes/conv-address.tsx",
         "path": "conv-address"
       },
+      "routes/conv-address-improved": {
+        "id": "routes/conv-address-improved",
+        "parentId": "root",
+        "file": "routes/conv-address-improved.tsx",
+        "path": "conv-address-improved"
+      },
+      "routes/address-finder": {
+        "id": "routes/address-finder",
+        "parentId": "root",
+        "file": "routes/address-finder.tsx",
+        "path": "address-finder"
+      },
       "routes/enhanced-address": {
         "id": "routes/enhanced-address",
         "parentId": "root",
         "file": "routes/enhanced-address.tsx",
         "path": "enhanced-address"
+      },
+      "routes/api.validate-address": {
+        "id": "routes/api.validate-address",
+        "parentId": "root",
+        "file": "routes/api.validate-address.tsx",
+        "path": "api/validate-address"
       },
       "routes/dashboard/layout": {
         "id": "routes/dashboard/layout",
