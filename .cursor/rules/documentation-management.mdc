@@ -1,0 +1,216 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## DOCUMENTATION UPDATE PROTOCOL: Always Ask First
+
+### CORE PRINCIPLE: Documentation is Critical Infrastructure
+Documentation shapes how developers understand and work with the codebase. All documentation changes must be deliberate, accurate, and approved by the user.
+
+### MANDATORY USER CONSULTATION TRIGGERS
+
+#### ✅ ALWAYS ASK USER BEFORE:
+- **Adding new documentation** files or sections
+- **Updating architectural descriptions** or design principles
+- **Changing component responsibilities** or interfaces
+- **Modifying state management patterns** or rules
+- **Updating implementation examples** or code snippets
+- **Correcting outdated information** discovered during development
+- **Adding new development guidelines** or best practices
+- **Updating troubleshooting guides** or common issues
+- **Creating new Cursor Rules** (.mdc files) or modifying existing ones
+- **Updating rule descriptions** or glob patterns in .mdc files
+- **Adding new enforcement patterns** or constraints to rules
+- **Modifying rule priorities** or alwaysApply settings
+
+#### ✅ SPECIFIC SCENARIOS REQUIRING CONSULTATION:
+- **Code changes reveal outdated docs**: "I notice the docs say X but the code does Y. Should I update the documentation to reflect the current implementation?"
+- **New patterns emerge**: "I see we're using a new pattern for Z. Should I document this pattern for other developers?"
+- **Architecture evolves**: "The component structure has changed since the docs were written. Should I update the architecture section?"
+- **Examples become stale**: "The code examples in the docs are using old patterns. Should I modernize them?"
+- **Missing documentation**: "I don't see documentation for this important feature/pattern. Should I create documentation for it?"
+- **Rule gaps identified**: "I notice we don't have a Cursor Rule for X pattern that we use frequently. Should I create a rule to enforce consistency?"
+- **Rule conflicts found**: "Two rules seem to contradict each other in scenario Y. Should I update one of them to resolve the conflict?"
+- **New enforcement needed**: "I see a pattern that could benefit from automated enforcement. Should I create/update a Cursor Rule for this?"
+- **Rule scope issues**: "This rule's glob pattern doesn't cover all the files it should. Should I update the target files?"
+
+### REQUIRED CONSULTATION FORMAT
+
+#### When Asking About Documentation Updates:
+```
+🔍 **DOCUMENTATION UPDATE NEEDED**
+
+**What I Found:** [Describe what's outdated/missing/incorrect]
+**Current State:** [What the docs currently say]
+**Actual State:** [What the code/implementation actually does]
+**Proposed Update:** [What I think should be changed]
+
+**Question:** Should I update the documentation to reflect this? Would you like me to:
+1. Update it as proposed
+2. Update it with modifications
+3. Leave it as-is for now
+4. Create new documentation instead
+```
+
+#### For New Documentation:
+```
+📚 **NEW DOCUMENTATION OPPORTUNITY**
+
+**Gap Identified:** [What's missing from current docs]
+**Importance:** [Why this documentation would be valuable]
+**Proposed Content:** [Brief outline of what I'd document]
+**Target Audience:** [Who would benefit from this documentation]
+
+**Question:** Should I create documentation for this? What level of detail would you prefer?
+```
+
+#### For Cursor Rule Changes:
+```
+⚙️ **CURSOR RULE UPDATE NEEDED**
+
+**Rule Type:** [New rule / Update existing rule / Fix rule conflict]
+**Pattern/Issue:** [What development pattern needs enforcement/guidance]
+**Current State:** [What happens now without the rule / What current rule says]
+**Proposed Rule:** [Brief description of the rule logic/enforcement]
+**Target Files:** [Glob patterns that should be affected]
+**Benefit:** [How this will improve development workflow/consistency]
+
+**Question:** Should I create/update this Cursor Rule? What specific constraints or guidance should it include?
+```
+
+### DOCUMENTATION CATEGORIES & UPDATE FREQUENCY
+
+#### 🔥 **CRITICAL (Always Ask Immediately):**
+- Architectural principles and meta-patterns
+- State management strategies
+- Component design guidelines
+- API interfaces and contracts
+- Security considerations
+- **Cursor Rules (.mdc files)** - All rule creation/modification
+- **Rule enforcement patterns** - Changes to automated checks
+- **Development workflow rules** - Patterns that affect how code is written
+
+#### ⚡ **HIGH PRIORITY (Ask During Development):**
+- Implementation examples
+- Troubleshooting guides
+- Configuration instructions
+- Environment setup
+- Testing strategies
+
+#### 📋 **STANDARD (Ask Before Completing Task):**
+- Feature descriptions
+- Usage instructions
+- Performance considerations
+- Best practices
+- Code style guides
+
+### COLLABORATION WORKFLOW
+
+#### Step 1: Identify Documentation Gap/Issue
+- Spot outdated, missing, or incorrect documentation
+- Assess impact on developer experience
+- Determine urgency and importance
+
+#### Step 2: Consult User
+- Use required consultation format above
+- Provide clear context and proposed solution
+- Ask for specific direction and preferences
+
+#### Step 3: Implement Approved Changes
+- Follow user's guidance exactly
+- Maintain consistency with existing documentation style
+- Cross-reference related documentation for consistency
+
+#### Step 4: Validate Completeness
+- Ensure all related documentation is updated
+- Check for broken links or references
+- Verify examples still work with current code
+
+### DOCUMENTATION QUALITY STANDARDS
+
+#### ✅ ALL DOCUMENTATION UPDATES MUST:
+- **Be accurate** to current implementation
+- **Include working examples** where appropriate
+- **Follow consistent formatting** and style
+- **Cross-reference related concepts** properly
+- **Consider developer workflow** and usability
+- **Include "last updated" timestamps** when significant
+
+#### ✅ CONSULTATION BENEFITS:
+- **User maintains control** over documentation direction
+- **Ensures accuracy** through user expertise
+- **Prevents documentation drift** from actual implementation
+- **Aligns with user's vision** for the project
+- **Catches important context** only user knows
+
+### EMERGENCY DOCUMENTATION UPDATES
+
+#### When NOT to Wait for Consultation:
+- **Security vulnerabilities** requiring immediate documentation
+- **Critical bugs** with workaround instructions
+- **Breaking changes** that prevent development
+
+#### In These Cases:
+1. **Make minimal necessary updates** to prevent developer harm
+2. **Clearly mark as temporary** with "NEEDS USER REVIEW" comments
+3. **Ask for consultation immediately** after emergency fix
+4. **Be prepared to revert/modify** based on user feedback
+
+### FORBIDDEN ACTIONS ❌
+
+#### NEVER DO WITHOUT ASKING:
+- **Delete existing documentation** sections
+- **Change architectural decisions** reflected in docs
+- **Add new development rules** or constraints
+- **Modify component interfaces** in documentation
+- **Change configuration examples** that might break setups
+- **Update version numbers** or release information
+- **Create new Cursor Rules** without consultation
+- **Modify existing rule enforcement** logic or patterns
+- **Change rule priorities** or alwaysApply settings
+- **Update glob patterns** that affect which files rules target
+- **Delete or disable existing rules** without explicit approval
+
+### EXAMPLE INTERACTIONS
+
+#### Good Consultation:
+```
+🔍 **DOCUMENTATION UPDATE NEEDED**
+
+**What I Found:** The state-management-strategy.md shows ManualSearchForm directly importing useAddressFinderStore, but we've updated it to use only callbacks.
+
+**Current State:** Docs show ManualSearchForm accessing global state directly
+**Actual State:** ManualSearchForm now uses onSelect callback pattern only
+**Proposed Update:** Update the examples to show the new callback-only interface
+
+**Question:** Should I update the documentation to reflect this architectural change? The new pattern prevents the infinite loop issues we solved.
+```
+
+#### Good New Documentation Request:
+```
+📚 **NEW DOCUMENTATION OPPORTUNITY**
+
+**Gap Identified:** No documentation for the meta-architectural principles we established
+**Importance:** Critical for onboarding new developers and preventing architecture drift
+**Proposed Content:** Purpose-driven component design guide with Brain vs Widget patterns
+**Target Audience:** All developers working on the codebase
+
+**Question:** Should I create comprehensive documentation for these principles? What level of detail and examples would you prefer?
+```
+
+#### Good Cursor Rule Consultation:
+```
+⚙️ **CURSOR RULE UPDATE NEEDED**
+
+**Rule Type:** New rule
+**Pattern/Issue:** I notice we're using the Brain vs Widget pattern consistently, but there's no automated enforcement
+**Current State:** Developers can accidentally import global stores in widget components
+**Proposed Rule:** Enforce that components in **/widgets/** directories cannot import from stores or call syncToAgent()
+**Target Files:** ["**/components/**/widgets/**/*.tsx", "**/widgets/**/*.tsx"]
+**Benefit:** Prevents architectural violations and infinite loop issues we've seen
+
+**Question:** Should I create this rule to automatically catch Brain vs Widget violations? What specific imports should be forbidden in widget components?
+```
+
+This rule ensures documentation remains a collaborative, thoughtful process that serves the project's true needs while respecting your expertise and vision.

@@ -9,14 +9,13 @@ import {
   SuggestionsDisplay,
   SelectedResultCard,
   HistoryPanel,
+  StateDebugPanel,
 } from '~/components/address-finder';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
 import { useConversation } from '@elevenlabs/react';
 import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
-import { Switch } from '~/components/ui/switch';
-import { Label } from '~/components/ui/label';
 import { Badge } from '~/components/ui/badge';
 
 // Helper function to classify intent based on what user actually selected
@@ -45,15 +44,45 @@ const classifySelectedResult = (suggestion: Suggestion): LocationIntent => {
     return 'general';
 };
 
+// Helper function to de-duplicate suggestions by placeId with source priority
+const deduplicateSuggestions = <T extends Suggestion & { source: string }>(
+  suggestions: T[]
+): T[] => {
+  // Define source priority: agentCache > unified > ai > autocomplete
+  const sourcePriority = { 
+    agentCache: 4, 
+    unified: 3, 
+    ai: 2, 
+    autocomplete: 1 
+  };
+  
+  return suggestions.reduce((acc, current) => {
+    const existingIndex = acc.findIndex(item => item.placeId === current.placeId);
+    
+    if (existingIndex === -1) {
+      // No duplicate found, add the suggestion
+      acc.push(current);
+    } else {
+      // Duplicate found, keep the one with higher priority source
+      const currentPriority = sourcePriority[current.source as keyof typeof sourcePriority] || 0;
+      const existingPriority = sourcePriority[acc[existingIndex].source as keyof typeof sourcePriority] || 0;
+      
+      if (currentPriority > existingPriority) {
+        acc[existingIndex] = current;
+      }
+    }
+    
+    return acc;
+  }, [] as T[]);
+};
+
 export default function AddressFinder() {
   const queryClient = useQueryClient();
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const { syncToAgent } = useAgentSync();
   
-  // Persistent cache for agent tools - survives conversation state changes
-  const agentSuggestionsCache = useRef<Suggestion[]>([]);
-  const agentCacheQuery = useRef<string>('');
+  // Note: Removed persistent agent cache - React Query is now the single source of truth
 
   // Global state from Zustand
   const {
@@ -74,11 +103,13 @@ export default function AddressFinder() {
     clear,
     setCurrentIntent,
     setIsSmartValidationEnabled,
-    setApiResults,
-  } = useAddressFinderStore();
+  } = useAddressFinderStore(); // Removed setApiResults - no longer needed
   
   // Debounced search query - only used when conversation is NOT active
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  
+  // Track when agent specifically requests manual input
+  const [agentRequestedManual, setAgentRequestedManual] = useState(false);
   
   // Session token for Google's autocomplete billing optimization
   const sessionTokenRef = useRef<string | null>(null);
@@ -100,90 +131,123 @@ export default function AddressFinder() {
     }
   }, []);
 
-  // Logging utility
+  // Logging utility - STABLE: No dependencies to prevent infinite loops
   const log = useCallback((...args: any[]) => {
     if (useAddressFinderStore.getState().isLoggingEnabled) {
       console.log('[AddressFinder]', ...args);
     }
-  }, []);
+  }, []); // Empty dependency array makes this completely stable
+
+  // Enhanced sync function for reliable state synchronization
+  const performReliableSync = useCallback(async (context: string = 'general') => {
+    log(`🔧 RELIABLE SYNC START - Context: ${context}`);
+    
+    try {
+      // Ensure state updates have been processed by React
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      // Perform initial sync
+      syncToAgent();
+      log(`🔧 Initial sync completed for ${context}`);
+      
+      // Wait for state propagation and validate
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Validate synchronization by checking state consistency
+      const storeState = useAddressFinderStore.getState();
+      const hasValidState = storeState.selectedResult?.description || storeState.searchQuery;
+      
+      if (hasValidState) {
+        // Perform confirmation sync
+        syncToAgent();
+        log(`🔧 Confirmation sync completed for ${context}`);
+        
+        // Final state verification
+        const finalState = useAddressFinderStore.getState();
+        log(`🔧 Final state verified for ${context}:`, {
+          selectedResult: finalState.selectedResult?.description,
+          currentIntent: finalState.currentIntent,
+          searchQuery: finalState.searchQuery
+        });
+      } else {
+        log(`⚠️ No significant state to sync for ${context}`);
+      }
+      
+      log(`✅ RELIABLE SYNC COMPLETE - Context: ${context}`);
+    } catch (error) {
+      log(`❌ Sync failed for ${context}:`, error);
+    }
+  }, [syncToAgent]); // Removed log from dependencies - it's stable
 
   // Use the more powerful location search action
   const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
   
-  // AUTOCOMPLETE QUERY - Only for manual input (disabled during conversation)
+  // UNIFIED QUERY - Single source of truth for all API data (manual and voice)
   const { 
-    data: autocompleteSuggestions = [], 
-    isLoading: isAutocompleteLoading, 
-    isError: isAutocompleteError,
-    error: autocompleteError 
+    data: suggestions = [], 
+    isLoading, 
+    isError,
+    error 
   } = useQuery({
-    queryKey: ['autocomplete', debouncedSearchQuery],
+    queryKey: ['addressSearch', searchQuery],
     queryFn: async () => {
-      log('🔍 Autocomplete query triggered:', debouncedSearchQuery);
-      if (!debouncedSearchQuery || debouncedSearchQuery.trim().length < 3) {
+      log('🔍 === UNIFIED QUERY TRIGGERED ===');
+      log('📊 QUERY STATE:', {
+        searchQuery,
+        currentIntent,
+        isRecording,
+        sessionToken: sessionTokenRef.current?.substring(0, 8) + '...',
+        mode: isRecording ? 'conversation' : 'manual'
+      });
+      
+      if (!searchQuery || searchQuery.trim().length < 3) {
+        log('⚠️ Query too short or empty, returning empty results');
         return [];
       }
       
       const result = await getPlaceSuggestionsAction({ 
-        query: debouncedSearchQuery,
-        intent: 'general', // Always use general intent for autocomplete
-        isAutocomplete: true, // Flag this as autocomplete for backend optimization
+        query: searchQuery,
+        intent: (currentIntent && currentIntent !== 'general') ? currentIntent : 'general', // Use current intent with fallback
+        isAutocomplete: !isRecording, // Autocomplete mode when not recording
         sessionToken: getSessionToken(), // Include session token for billing optimization
       });
       
       if (result.success) {
-        log(`🔍 Autocomplete found ${result.suggestions?.length} suggestions for "${debouncedSearchQuery}"`);
+        log(`✅ UNIFIED QUERY SUCCESS:`, {
+          query: searchQuery,
+          suggestionsCount: result.suggestions?.length || 0,
+          intent: currentIntent,
+          mode: isRecording ? 'conversation' : 'manual',
+          suggestions: result.suggestions?.map(s => ({ 
+            placeId: s.placeId, 
+            description: s.description 
+          })) || []
+        });
         return result.suggestions || [];
       }
       
       if (!result.success) {
-        log(`🔍 Autocomplete failed: ${result.error}`);
+        log(`❌ UNIFIED QUERY FAILED:`, {
+          query: searchQuery,
+          error: result.error,
+          intent: currentIntent,
+          mode: isRecording ? 'conversation' : 'manual'
+        });
       }
       return [];
     },
-    enabled: !!debouncedSearchQuery && debouncedSearchQuery.trim().length >= 3 && !isRecording, // DISABLED during conversation
+    enabled: !!searchQuery && searchQuery.trim().length >= 3,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 
-  // AI SUGGESTIONS QUERY - For displaying AI-generated results (always enabled)
-  const { 
-    data: aiSuggestions = [], 
-    isLoading: isAiLoading, 
-    isError: isAiError,
-    error: aiError 
-  } = useQuery({
-    queryKey: ['aiSuggestions', searchQuery],
-    queryFn: async () => {
-      // This query is managed by clientTools.searchAddress - return empty by default
-      return [];
-    },
-    enabled: false, // This query is only updated via queryClient.setQueryData from clientTools
-    staleTime: Infinity, // AI results don't expire
-    retry: false,
-  });
+  // ManualSearchForm is now self-contained with its own autocomplete query
 
-  // UNIFIED SUGGESTIONS - Use autocomplete when not recording, AI when recording
-  const suggestions = isRecording ? aiSuggestions : autocompleteSuggestions;
-  const isLoading = isRecording ? isAiLoading : isAutocompleteLoading;
-  const isError = isRecording ? isAiError : isAutocompleteError;
-  const error = isRecording ? aiError : autocompleteError;
+  // REMOVED: Problematic sync from React Query to Zustand was causing infinite loops
+  // Agent sync now gets data directly from React Query via useAgentSync hook
 
-  // DISABLED: Sync React Query state to Zustand - this was causing infinite loops
-  // The change detection with array comparison (suggestions !== currentSuggestions) 
-  // always returns true even for same content, causing infinite updates
-  // 
-  // useEffect(() => {
-  //   setApiResults({
-  //     suggestions,
-  //     isLoading: isSearchingQuery, 
-  //     error: error?.message || null,
-  //     source: isRecording ? 'voice' : 'manual',
-  //     timestamp: Math.floor(Date.now() / 1000) * 1000,
-  //   });
-  // }, [suggestions, isSearchingQuery, error, isRecording, setApiResults]);
-
-  // REMOVED: Automatic sync effect - only manual sync on user actions to prevent loops
+  // REMOVED: Separate sync effect was causing infinite loops with logging toggle
+  // The useAgentSync hook handles sync automatically with stable dependencies
 
   // Note: Using centralized syncToAgent instead of separate syncToElevenLabs
   
@@ -233,25 +297,16 @@ export default function AddressFinder() {
         if (result.success && result.suggestions && result.suggestions.length > 0) {
           log(`🔧 Updating cache for query: "${query}" with ${result.suggestions.length} suggestions`);
           
-          // PERSISTENT AGENT CACHE - Store suggestions in ref that survives state changes
-          agentSuggestionsCache.current = result.suggestions;
-          agentCacheQuery.current = query;
-          log(`🔧 Agent cache updated: ${agentSuggestionsCache.current.length} suggestions for "${agentCacheQuery.current}"`);
-          
           // Update search query first to ensure query keys match
           setSearchQuery(query);
           
-          // Update AI suggestions cache with BOTH current and new query keys to ensure no mismatch
-          queryClient.setQueryData(['aiSuggestions', query], result.suggestions);
-          // Also set for current searchQuery in case it's different
-          queryClient.setQueryData(['aiSuggestions', searchQuery], result.suggestions);
+          // Update unified cache for the query being used
+          queryClient.setQueryData(['addressSearch', query], result.suggestions);
           
           // Force React Query to refetch with the new query to ensure UI updates
-          queryClient.invalidateQueries({ queryKey: ['aiSuggestions', query] });
-          queryClient.invalidateQueries({ queryKey: ['aiSuggestions', searchQuery] });
+          queryClient.invalidateQueries({ queryKey: ['addressSearch', query] });
           
-          // Manual sync after AI search
-          setTimeout(() => syncToAgent(), 100);
+          // Note: Centralized sync effect will handle sync automatically
           
           if (result.suggestions.length === 1) {
             // Auto-select if only one result
@@ -286,38 +341,25 @@ export default function AddressFinder() {
     
     getSuggestions: async () => {
       log('🔧 Tool Call: getSuggestions');
-      // PRIORITY ORDER: Agent persistent cache > React Query suggestions
-      const persistentSuggestions = agentSuggestionsCache.current;
-      const allSuggestions = persistentSuggestions.length > 0 ? persistentSuggestions :
-                           suggestions.length > 0 ? suggestions : 
-                           aiSuggestions.length > 0 ? aiSuggestions :
-                           autocompleteSuggestions.length > 0 ? autocompleteSuggestions : [];
+      // Using unified React Query source for all suggestions
+      const allSuggestions = suggestions.length > 0 ? suggestions : [];
       
-      log('🔧 getSuggestions returning:', {
+      log('🔧 getSuggestions returning (unified source):', {
         totalSuggestions: allSuggestions.length,
-        agentCache: persistentSuggestions.length,
-        agentCacheQuery: agentCacheQuery.current,
-        unified: suggestions.length,
-        ai: aiSuggestions.length, 
-        autocomplete: autocompleteSuggestions.length,
+        unified: suggestions.length, 
         isRecording,
-        source: persistentSuggestions.length > 0 ? 'agentCache' :
-                suggestions.length > 0 ? 'unified' : 
-                aiSuggestions.length > 0 ? 'ai' : 
-                autocompleteSuggestions.length > 0 ? 'autocomplete' : 'none'
+        source: suggestions.length > 0 ? 'unified' : 'none',
+        note: 'Using unified React Query source for all suggestions'
       });
       
       return JSON.stringify({ 
         suggestions: allSuggestions,
         count: allSuggestions.length,
-        source: suggestions.length > 0 ? 'unified' : 
-                aiSuggestions.length > 0 ? 'ai' : 
-                autocompleteSuggestions.length > 0 ? 'autocomplete' : 'none',
+        source: suggestions.length > 0 ? 'unified' : 'none',
         mode: isRecording ? 'conversation' : 'manual',
         availableArrays: {
           unified: suggestions.length,
-          ai: aiSuggestions.length,
-          autocomplete: autocompleteSuggestions.length
+          note: 'single source of truth via React Query'
         }
       });
     },
@@ -344,42 +386,20 @@ export default function AddressFinder() {
         });
       }
       
-      // ENHANCED ROBUST SELECTION: Search ALL available suggestions including persistent agent cache
-      const persistentSuggestions = agentSuggestionsCache.current;
+      // UNIFIED SELECTION: Search unified React Query suggestions only
       log(`🔧 SelectSuggestion debug:`, {
         isRecording,
         searchQuery,
-        agentCache: persistentSuggestions.length,
-        agentCacheQuery: agentCacheQuery.current,
-        aiSuggestions: aiSuggestions.length,
-        autocompleteSuggestions: autocompleteSuggestions.length,
-        unifiedSuggestions: suggestions.length,
-        lookingForPlaceId: placeId
+        unified: suggestions.length,
+        lookingForPlaceId: placeId,
+        note: 'Using unified React Query source for selections'
       });
       
-      // Create a comprehensive list including persistent agent cache (highest priority)
-      const allAvailableSuggestions = [
-        ...persistentSuggestions.map((s: Suggestion) => ({ ...s, source: 'agentCache' })),
-        ...suggestions.map((s: Suggestion) => ({ ...s, source: 'unified' })),
-        ...aiSuggestions.map((s: Suggestion) => ({ ...s, source: 'ai' })),
-        ...autocompleteSuggestions.map((s: Suggestion) => ({ ...s, source: 'autocomplete' }))
-      ];
+      // Create list from unified suggestions only
+      const allAvailableSuggestions = suggestions.map((s: Suggestion) => ({ ...s, source: 'unified' }));
       
-              // Remove duplicates by placeId (prefer agentCache > unified > ai > autocomplete)
-        const uniqueSuggestions = allAvailableSuggestions.reduce((acc, current) => {
-          const existingIndex = acc.findIndex(item => item.placeId === current.placeId);
-          if (existingIndex === -1) {
-            acc.push(current);
-          } else {
-            // Keep the one with higher priority source
-            const sourcePriority = { agentCache: 4, unified: 3, ai: 2, autocomplete: 1 };
-            if (sourcePriority[current.source as keyof typeof sourcePriority] > 
-                sourcePriority[acc[existingIndex].source as keyof typeof sourcePriority]) {
-              acc[existingIndex] = current;
-            }
-          }
-          return acc;
-        }, [] as (Suggestion & { source: string })[]);
+      // Remove duplicates by placeId using extracted utility function
+      const uniqueSuggestions = deduplicateSuggestions(allAvailableSuggestions);
       
       // Try to find the selection
       const selection = uniqueSuggestions.find((s) => s.placeId === placeId);
@@ -409,20 +429,7 @@ export default function AddressFinder() {
           
           log('🔧 STATE UPDATED - After update calls made');
           
-          // Enhanced confirmation - sync multiple times to ensure state propagation
-          log('🔧 SYNCING TO AGENT...');
-          setTimeout(() => {
-            log('🔧 First sync call');
-            syncToAgent();
-          }, 50);
-          setTimeout(() => {
-            log('🔧 Second sync call');
-            syncToAgent();
-            log('🔧 Final state check:', {
-              selectedResult: useAddressFinderStore.getState().selectedResult?.description,
-              currentIntent: useAddressFinderStore.getState().currentIntent
-            });
-          }, 150);
+          // Note: Centralized sync effect will handle sync automatically
           
           const confirmationResponse = { 
             status: "confirmed", 
@@ -437,21 +444,16 @@ export default function AddressFinder() {
         }
       
       log('❌ Selection not found for placeId:', placeId);
-      // Log all available suggestions from all sources
-      const debugSuggestions = [
-        ...aiSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description, source: 'ai' })),
-        ...autocompleteSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description, source: 'autocomplete' })),
-        ...suggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description, source: 'unified' }))
-      ];
-      log('Available suggestions from all sources:', debugSuggestions);
+      // Log available unified suggestions
+      const debugSuggestions = suggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description, source: 'unified' }));
+      log('Available unified suggestions:', debugSuggestions);
       
       return JSON.stringify({ 
         status: "not_found",
         searchedPlaceId: placeId,
         availableSources: {
-          aiSuggestions: aiSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description })),
-          autocompleteSuggestions: autocompleteSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description })),
-          unifiedSuggestions: suggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description }))
+          unified: suggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description })),
+          note: "Using unified React Query source for all suggestions"
         }
       });
     },
@@ -536,8 +538,7 @@ export default function AddressFinder() {
           text: `✅ Confirmed: "${currentSelection.description}" (${currentIntent})` 
         });
         
-        // Sync to ensure agent variables are updated
-        setTimeout(() => syncToAgent(), 50);
+        // Note: Centralized sync effect will handle sync automatically
         
         return JSON.stringify(response);
       } else {
@@ -548,7 +549,87 @@ export default function AddressFinder() {
         });
       }
     },
-  }), [log, isRecording, suggestions, aiSuggestions, autocompleteSuggestions, selectedResult, currentIntent, addHistory, getPlaceSuggestionsAction, getSessionToken, setCurrentIntent, setSelectedResult, setSearchQuery, clearSessionToken, syncToAgent]);
+    
+    requestManualInput: async (params: unknown) => {
+      log('🔧 ===== Tool Call: requestManualInput =====');
+      log('🔧 AGENT REQUESTING MANUAL INPUT with params:', params);
+      
+      let reason = 'I think manual input might be more accurate for this address.';
+      let context = 'general';
+      
+      // Parse parameters for reason and context
+      if (typeof params === 'string') {
+        reason = params;
+      } else if (params && typeof params === 'object') {
+        const paramObj = params as Record<string, unknown>;
+        if (paramObj.reason && typeof paramObj.reason === 'string') {
+          reason = paramObj.reason;
+        }
+        if (paramObj.context && typeof paramObj.context === 'string') {
+          context = paramObj.context;
+        }
+      }
+      
+      log('🔧 Manual input request details:', { 
+        reason, 
+        context, 
+        isCurrentlyRecording: isRecording
+      });
+      
+      // For hybrid mode: ALWAYS enable manual input, even during recording
+      log('🔧 Enabling hybrid mode - conversation continues with manual input available');
+      
+      try {
+        // HYBRID MODE: Set flag to enable ManualSearchForm during conversation
+        setAgentRequestedManual(true);
+        
+        // Add helpful explanation to history
+        addHistory({ 
+          type: 'agent', 
+          text: `🤖 → 📝 ${reason}` 
+        });
+        
+        // Add system message explaining hybrid mode
+        if (isRecording) {
+          addHistory({ 
+            type: 'system', 
+            text: 'Hybrid mode activated - You can now type while the conversation continues' 
+          });
+        } else {
+          addHistory({ 
+            type: 'system', 
+            text: 'Manual input ready - Type your address in the form below' 
+          });
+        }
+        
+        log('✅ Successfully enabled hybrid manual input mode');
+        
+        const response = {
+          status: "hybrid_mode_activated",
+          reason,
+          context,
+          timestamp: Date.now(),
+          message: isRecording 
+            ? "I've enabled manual input so you can type while we continue talking. The search form is now available below."
+            : "Manual input is now available. You can type your address in the search form below."
+        };
+        
+        return JSON.stringify(response);
+      } catch (error) {
+        log('❌ Failed to enable manual input:', error);
+        addHistory({ 
+          type: 'system', 
+          text: `Error enabling manual input: ${error instanceof Error ? error.message : String(error)}` 
+        });
+        
+        return JSON.stringify({
+          status: "error",
+          error: error instanceof Error ? error.message : "Failed to enable manual input",
+          message: "I had trouble enabling manual input. Please try the search form below if it's available."
+        });
+      }
+    },
+  }), [isRecording, suggestions, selectedResult, currentIntent, addHistory, getPlaceSuggestionsAction, getSessionToken, setCurrentIntent, setSelectedResult, setSearchQuery, clearSessionToken, syncToAgent, setIsVoiceActive, setAgentRequestedManual]); // Removed log from dependencies - it's stable
 
   // Conversation setup with enhanced clientTools
   const conversation = useConversation({
@@ -556,14 +637,12 @@ export default function AddressFinder() {
     agentId: import.meta.env.VITE_ELEVENLABS_ADDRESS_AGENT_ID,
     onConnect: () => {
       log('🔗 Connected to ElevenLabs');
-      // Manual sync on connect
-      setTimeout(() => syncToAgent(), 100);
+      // Note: Centralized sync effect will handle sync automatically
     },
     onDisconnect: () => {
       log('🔌 Disconnected from ElevenLabs');
       setIsRecording(false);
-      // Manual sync on disconnect
-      setTimeout(() => syncToAgent(), 100);
+      // Note: Centralized sync effect will handle sync automatically
     },
     onTranscription: (text: string) => {
       // ENHANCED TRANSCRIPTION LOGGING
@@ -601,6 +680,15 @@ export default function AddressFinder() {
   }, []);
 
   const startRecording = useCallback(async () => {
+    log('🎤 === STARTING RECORDING ===');
+    log('📊 PRE-RECORDING STATE:', {
+      isRecording,
+      isVoiceActive,
+      searchQuery,
+      selectedResult: selectedResult?.description,
+      conversationStatus: conversation.status,
+    });
+    
     cleanupAudio();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -630,25 +718,37 @@ export default function AddressFinder() {
 
       await conversation.startSession();
       setIsRecording(true);
+      setAgentRequestedManual(false); // Reset manual request flag when starting voice
       addHistory({ type: 'system', text: 'Recording started - Autocomplete disabled' });
-      // Manual sync after starting recording
-      setTimeout(() => syncToAgent(), 100);
+      
+      log('✅ RECORDING STARTED SUCCESSFULLY');
+      // Note: Centralized sync effect will handle sync automatically
     } catch (err) {
+      log('❌ RECORDING START FAILED:', err);
       console.error('Error starting recording:', err);
       addHistory({ type: 'system', text: `Error starting recording: ${err instanceof Error ? err.message : String(err)}`});
     }
-  }, [conversation, addHistory, setIsRecording, setIsVoiceActive, cleanupAudio, log]);
+  }, [conversation, addHistory, setIsRecording, setIsVoiceActive, setAgentRequestedManual, cleanupAudio, log, isRecording, isVoiceActive, searchQuery, selectedResult]); // Removed log from dependencies - it's stable
 
   const stopRecording = useCallback(async () => {
+    log('🎤 === STOPPING RECORDING ===');
+    log('📊 PRE-STOP STATE:', {
+      isRecording,
+      isVoiceActive,
+      conversationStatus: conversation.status,
+      suggestionsCount: suggestions.length,
+    });
+    
     await conversation.endSession();
     setIsRecording(false);
     setIsVoiceActive(false);
     cleanupAudio();
     // Note: No need to clear suggestions - React Query manages state
     addHistory({ type: 'system', text: 'Recording stopped - Autocomplete re-enabled' });
-    // Manual sync after stopping recording
-    setTimeout(() => syncToAgent(), 100);
-      }, [conversation, addHistory, setIsRecording, setIsVoiceActive, cleanupAudio, log]);
+    
+    log('✅ RECORDING STOPPED SUCCESSFULLY');
+    // Note: Centralized sync effect will handle sync automatically
+      }, [conversation, addHistory, setIsRecording, setIsVoiceActive, cleanupAudio, log, isRecording, isVoiceActive, suggestions]); // Removed log from dependencies - it's stable
 
   useEffect(() => {
     return () => {
@@ -656,62 +756,9 @@ export default function AddressFinder() {
     };
   }, [cleanupAudio]);
 
-  // Debug effect to track isRecording changes specifically  
-  useEffect(() => {
-    log('🎤 ===== RECORDING STATE CHANGE DETECTED =====');
-    log('🎤 isRecording changed to:', {
-      isRecording,
-      conversationStatus: conversation.status,
-      timestamp: Date.now(),
-      agentCacheCount: agentSuggestionsCache.current.length,
-      aiSuggestionsCount: aiSuggestions.length,
-      suggestionsCount: suggestions.length
-    });
-  }, [isRecording, conversation.status, log]);
-
-  // Debug effect to track selectedResult changes
-  useEffect(() => {
-    log('🔄 ===== SELECTION STATE CHANGE DETECTED =====');
-    log('🔄 selectedResult changed in component:', {
-      hasSelection: !!selectedResult,
-      description: selectedResult?.description,
-      placeId: selectedResult?.placeId,
-      types: selectedResult?.types,
-      currentIntent: currentIntent,
-      searchQuery: searchQuery,
-      isRecording: isRecording,
-      timestamp: Date.now()
-    });
-    
-    // Also check the store state for comparison
-    const storeState = useAddressFinderStore.getState();
-    log('🔄 Store state comparison:', {
-      componentSelected: selectedResult?.description,
-      storeSelected: storeState.selectedResult?.description,
-      match: selectedResult?.description === storeState.selectedResult?.description
-    });
-  }, [selectedResult, currentIntent, searchQuery, isRecording, log]);
-
-  // Debug effect to track aiSuggestions changes (only log when suggestions actually change)
-  useEffect(() => {
-    if (aiSuggestions.length > 0) {
-      log('🔄 aiSuggestions changed:', {
-        count: aiSuggestions.length,
-        isRecording,
-        searchQuery,
-        suggestions: aiSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description }))
-      });
-    }
-  }, [aiSuggestions, isRecording, searchQuery, log]);
-
   // Note: Agent sync handled by centralized useEffect above
   
-  const handleManualSearch = useCallback((query: string) => {
-    // Only allow manual search when conversation is not active
-    if (!isRecording) {
-      setSearchQuery(query);
-    }
-  }, [setSearchQuery, isRecording]);
+  // handleManualSearch removed - ManualSearchForm now handles its own queries
   
   const handleSelectResult = useCallback((result: Suggestion) => {
     log('🎯 === SELECTION FLOW START ===');
@@ -724,14 +771,33 @@ export default function AddressFinder() {
     const intent = classifySelectedResult(result);
     log(`🎯 Selected result classified as: ${intent}`);
     
+    // Log pre-update state
+    log('📊 PRE-SELECTION STATE:', {
+      previousIntent: currentIntent,
+      previousResult: selectedResult?.description,
+      previousQuery: searchQuery,
+      newIntent: intent,
+      newResult: result.description,
+    });
+    
     // Update state
     setCurrentIntent(intent);
     setSelectedResult(result);
     setSearchQuery(result.description);
+    setAgentRequestedManual(false); // Reset manual request flag when user makes selection
     addHistory({ type: 'user', text: `Selected: "${result.description}"`});
     
     // Clear session token when user makes a selection (Google best practice)
     clearSessionToken();
+    
+    // Log post-update state (delayed to ensure state updates have propagated)
+    setTimeout(() => {
+      log('📊 POST-SELECTION STATE:', {
+        currentIntent: useAddressFinderStore.getState().currentIntent,
+        currentResult: useAddressFinderStore.getState().selectedResult?.description,
+        currentQuery: useAddressFinderStore.getState().searchQuery,
+      });
+    }, 100);
     
     // CRITICAL: Check conversation state and notify agent
     log('🎯 Conversation state check:', {
@@ -762,46 +828,51 @@ export default function AddressFinder() {
       });
     }
     
-    // Manual sync after user selection
-    log('🎯 Syncing to agent...');
-    setTimeout(() => {
-      log('🎯 Executing syncToAgent');
-      syncToAgent();
-      log('🎯 === SELECTION FLOW END ===');
-    }, 100);
-  }, [log, setCurrentIntent, setSelectedResult, setSearchQuery, addHistory, clearSessionToken, isRecording, conversation, syncToAgent]);
+    // Note: Centralized sync effect will handle sync automatically
+    log('🎯 === SELECTION FLOW END ===');
+  }, [setCurrentIntent, setSelectedResult, setSearchQuery, setAgentRequestedManual, addHistory, clearSessionToken, isRecording, conversation]); // Removed log from dependencies - it's stable
   
-  const handleClearSearch = useCallback(() => {
-    if (!isRecording) {
-      setSearchQuery('');
-      setSelectedResult(null);
-      setCurrentIntent('general');
-      clearSessionToken();
-      // Note: syncToAgent will be called automatically by centralized useEffect
-    }
-  }, [setSearchQuery, setSelectedResult, setCurrentIntent, clearSessionToken, isRecording]);
+  // handleClearSearch removed - ManualSearchForm now handles its own clearing
 
   const handleClear = useCallback(() => {
+    log('🗑️ === CLEARING ALL STATE ===');
+    log('📊 PRE-CLEAR STATE:', {
+      searchQuery,
+      debouncedSearchQuery,
+      selectedResult: selectedResult?.description,
+      historyLength: history.length,
+      suggestionsCount: suggestions.length,
+      isRecording,
+    });
+    
     if (searchQuery) {
-      queryClient.removeQueries({ queryKey: ['autocomplete', searchQuery] });
-      queryClient.removeQueries({ queryKey: ['aiSuggestions', searchQuery] });
+      queryClient.removeQueries({ queryKey: ['addressSearch', searchQuery] });
+      log('🔧 Cleared React Query cache for:', searchQuery);
     }
     if (debouncedSearchQuery) {
-      queryClient.removeQueries({ queryKey: ['autocomplete', debouncedSearchQuery] });
+      queryClient.removeQueries({ queryKey: ['addressSearch', debouncedSearchQuery] });
+      log('🔧 Cleared React Query cache for:', debouncedSearchQuery);
     }
-    // Clear agent persistent cache
-    agentSuggestionsCache.current = [];
-    agentCacheQuery.current = '';
-    log('🔧 Agent cache cleared');
+    
     clear();
+    log('✅ ALL STATE CLEARED');
     // Note: syncToAgent will be called automatically by centralized useEffect
-  }, [searchQuery, debouncedSearchQuery, queryClient, clear, log]);
+  }, [searchQuery, debouncedSearchQuery, queryClient, clear, selectedResult, history, suggestions, isRecording, log]); // Removed log from dependencies - it's stable
 
   const handleClearSelection = useCallback(() => {
+    log('🗑️ CLEARING SELECTION');
+    log('📊 PRE-CLEAR SELECTION STATE:', {
+      currentSelection: selectedResult?.description,
+      currentIntent: currentIntent,
+      searchQuery,
+    });
+    
     setSelectedResult(null);
     addHistory({ type: 'user', text: 'Selection cleared' });
+    
+    log('✅ SELECTION CLEARED');
     // Note: syncToAgent will be called automatically by centralized useEffect
-  }, [setSelectedResult, addHistory]);
+  }, [setSelectedResult, addHistory, selectedResult, currentIntent, searchQuery, log]);
 
   const getIntentColor = (intent: LocationIntent) => {
     switch (intent) {
@@ -812,42 +883,22 @@ export default function AddressFinder() {
     }
   };
 
-  // ✅ UNIFIED: Always use suggestions from React Query (single source of truth)
-  // isLoading is now defined above with the unified suggestions
+  // Switch components removed to eliminate infinite loop issues
+  // Logging is always enabled, smart validation is always enabled by default
+
+  // AUTOCOMPLETE: Works silently in ManualSearchForm, only populates confirmed selection
+  // AI SUGGESTIONS: Displayed in suggestions section during conversation mode
+
+  // Determine when to show ManualSearchForm: traditional manual mode OR hybrid mode
+  const shouldShowManualForm = !isRecording || agentRequestedManual;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Intelligent Address Finder v3</h1>
-          <div className="flex items-center justify-center space-x-2">
-            <Switch
-              id="logging-switch"
-              checked={isLoggingEnabled}
-              onCheckedChange={setIsLoggingEnabled}
-            />
-            <Label htmlFor="logging-switch">Enable Logging</Label>
-          </div>
+          <p className="text-sm text-gray-600">Voice-enabled address search with AI assistance</p>
         </div>
-        
-        {/* New controls from GoogleMapsAutocomplete */}
-        <Card className="bg-yellow-50">
-          <CardContent className="pt-4 space-y-2">
-             <div className="flex items-center justify-between">
-                <Label htmlFor="smart-validation-switch" className="font-medium">Smart Validation</Label>
-                <Switch
-                  id="smart-validation-switch"
-                  checked={isSmartValidationEnabled}
-                  onCheckedChange={setIsSmartValidationEnabled}
-                />
-             </div>
-             <p className="text-xs text-gray-600">
-                {isSmartValidationEnabled 
-                    ? "Smart fallback for unit addresses Google can't validate."
-                    : "Use only Google's standard validation."}
-             </p>
-          </CardContent>
-        </Card>
         
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={getIntentColor(currentIntent)}>
@@ -855,7 +906,8 @@ export default function AddressFinder() {
           </Badge>
           {isRecording && (
             <Badge variant="secondary" className="animate-pulse bg-red-100 text-red-800">
-              🎤 Conversation Active - Autocomplete Disabled
+              🎤 Conversation Active
+              {agentRequestedManual && " + Manual Input"}
             </Badge>
           )}
         </div>
@@ -873,41 +925,59 @@ export default function AddressFinder() {
             />
             <Separator />
             
-            {/* Show disabled state when recording */}
-            {isRecording ? (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                <p className="text-sm text-gray-600 mb-2">🤖 Voice conversation is active</p>
-                <p className="text-xs text-gray-500">Manual input is disabled. The AI will manage place suggestions through conversation.</p>
+            {/* Hybrid Mode Support: Show ManualSearchForm in both manual and hybrid modes */}
+            {shouldShowManualForm ? (
+              <div className="space-y-4">
+                {/* Show helpful message when agent specifically requested manual input */}
+                {agentRequestedManual && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="text-blue-600 text-lg">🤖 → 📝</div>
+                      <div>
+                        <p className="text-sm font-medium text-blue-800 mb-1">
+                          {isRecording ? "Hybrid Mode Active" : "AI Agent requested manual input"}
+                        </p>
+                        <p className="text-xs text-blue-600">
+                          {isRecording 
+                            ? "You can now type addresses while continuing the voice conversation."
+                            : "The AI suggested typing your address manually for better accuracy."
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <ManualSearchForm
+                  onSelect={handleSelectResult}
+                />
               </div>
             ) : (
-              <ManualSearchForm
-                onSearch={handleManualSearch}
-                isLoading={isLoading}
-                suggestions={suggestions}
-                onSelect={handleSelectResult}
-                searchQuery={searchQuery}
-                onClear={handleClearSearch}
-              />
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <p className="text-sm text-gray-600 mb-2">🤖 Voice conversation is active</p>
+                <p className="text-xs text-gray-500">The AI will manage place suggestions through conversation. It can enable manual input if needed.</p>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* ✅ UNIFIED: Suggestions display - always from React Query */}
-        {suggestions.length > 0 && (
-          <Card className={isRecording ? "border-blue-200 bg-blue-50" : "border-gray-200"}>
+        {/* AI-Generated Suggestions Display - Following strict display rules */}
+        {suggestions.length > 0 && isRecording && !selectedResult && !agentRequestedManual && (
+          <Card className="border-blue-200 bg-blue-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {isRecording ? "🤖 AI-Generated" : "🔍 Search"} Place Suggestions
-                <Badge variant="outline" className={isRecording ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}>
+                🤖 AI-Generated Place Suggestions
+                <Badge variant="outline" className="bg-blue-100 text-blue-800">
                   {suggestions.length} results
                 </Badge>
               </CardTitle>
+              <p className="text-sm text-blue-600">Agent-generated suggestions during conversation</p>
             </CardHeader>
             <CardContent>
               <SuggestionsDisplay
                 suggestions={suggestions}  
                 onSelect={(suggestion) => {
-                  log('🎯 CLICKED SUGGESTION IN SUGGESTIONSCARD:', { 
+                  log('🎯 CLICKED AI SUGGESTION:', { 
                     description: suggestion.description,
                     placeId: suggestion.placeId,
                     isRecording: isRecording,
@@ -931,6 +1001,18 @@ export default function AddressFinder() {
         )}
         
         <HistoryPanel history={history} />
+
+        <StateDebugPanel
+          suggestions={suggestions}
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          debouncedSearchQuery={debouncedSearchQuery}
+          agentRequestedManual={agentRequestedManual}
+          sessionToken={sessionTokenRef.current}
+          conversationStatus={conversation.status}
+          conversationConnected={conversation.status === 'connected'}
+        />
 
         <div className="text-center space-x-4">
             <Button onClick={handleClear} variant="outline">Clear All State</Button>

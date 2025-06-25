@@ -1,18 +1,331 @@
 ---
-description: State management strategy for React Query + Zustand + ElevenLabs agent sync with complete user action tracking. Enforces unified state flow for API data, UI interactions, and agent synchronization.
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 ---
-description: State management strategy for React Query + Zustand + ElevenLabs agent sync with complete user action tracking. Enforces unified state flow for API data, UI interactions, and agent synchronization.
+description: State manipulation strategy for React Query + Zustand + ElevenLabs agent sync. Enforces shared state manipulation as the synchronization mechanism between UI interactions and conversational AI agent.
 globs: ["**/routes/**/*.tsx", "**/stores/**/*.ts", "**/hooks/**/*.ts", "**/components/**/address-finder/**/*.tsx", "**/components/**/conversation/**/*.tsx"]
 alwaysApply: false
 ---
 
-## CORE PRINCIPLE: Single Source of Truth
+## META-ARCHITECTURAL PRINCIPLE: Purpose-Driven Component Design
+
+### UNIVERSAL TRUTH: Only Critical Information Flows to The Brain
+**Information Flow Hierarchy:**
+```
+INTERNAL WIDGET STATE → (Filter) → CRITICAL EVENTS → The Brain → AI Agent
+```
+
+### CRITICAL vs INTERNAL Information Classification
+
+#### ✅ CRITICAL (Must Sync to Agent):
+- **User selections**: Address chosen, file uploaded, option picked
+- **Intent changes**: User switches goals or modes  
+- **State transitions**: Form completion, process steps, mode switching
+- **Error states**: API failures, validation errors, system issues
+- **Completion events**: Tasks finished, submissions successful
+
+#### ❌ INTERNAL (Widget-Only, Never Sync):
+- **Cosmetic states**: Focus/blur, hover, visual feedback
+- **Animation states**: Transitions, loading spinners, progress bars
+- **Validation formatting**: Real-time input formatting, character counters
+- **UI convenience**: Dropdown show/hide, tab highlighting, tooltip display
+- **Processing states**: Internal calculations, data transformation
+
+### PURPOSE-FIRST DEVELOPMENT RULES
+
+#### Before Building ANY Component:
+1. **What is this component's TRUE purpose?** (Data collection? User feedback? Display?)
+2. **What CRITICAL information does it produce?** (Only final outcomes matter to user's goal)
+3. **What should NEVER leave this component?** (All internal UX state and cosmetic changes)
+4. **How does it serve the user's actual intent?** (Focus on end goal, not interaction mechanics)
+
+#### Component Classification:
+- **🧠 Brain Components** (Few): Orchestrate global state, call `syncToAgent()`, handle agent communication
+- **🔧 Widget Components** (Many): Self-contained UX, report only critical outcomes via callbacks
+- **🎨 Display Components** (Passive): Pure presentation, no state or side effects
+
+#### Development Efficiency Rules:
+- ✅ **Widgets can have complex internal state** for excellent UX
+- ✅ **Widgets communicate ONLY via callbacks** to their Brain (`onSelect`, `onError`, `onComplete`)
+- ❌ **Widgets NEVER import global stores** or call `syncToAgent()`
+- ❌ **Widgets NEVER know about** recording mode, agent status, or global application flow
+
+## HYBRID VOICE + MANUAL MODE RULES
+
+### CRITICAL: requestManualInput() Tool Behavior
+When the agent calls `requestManualInput()`, it should **NEVER stop the conversation**. Instead:
+
+#### ✅ CORRECT Hybrid Mode Implementation:
+```typescript
+requestManualInput: async (params) => {
+  // KEEP conversation active - NO stopRecording() or endSession()
+  // ONLY set UI flags to enable widget during conversation
+  setAgentRequestedManual(true);
+  
+  // Add helpful context for user
+  addHistory({ type: 'agent', text: `🤖 → 📝 ${reason}` });
+  
+  return JSON.stringify({
+    status: "hybrid_mode_activated",
+    message: "Manual input enabled - conversation continues"
+  });
+}
+```
+
+#### ❌ FORBIDDEN: Do NOT Stop Conversation
+```typescript
+// ❌ NEVER DO THIS - breaks hybrid mode concept
+requestManualInput: async (params) => {
+  await conversation.endSession(); // ❌ Conversation should continue
+  setIsRecording(false);           // ❌ Recording should stay active
+  // This makes it "switch modes" instead of "collaborative input"
+}
+```
+
+### UI Rendering During Hybrid Mode
+The Brain component should render ManualSearchForm when EITHER:
+- `!isRecording` (traditional manual mode), OR  
+- `isRecording && agentRequestedManual` (hybrid mode)
+
+```typescript
+// ✅ CORRECT conditional rendering for hybrid support
+const shouldShowManualForm = !isRecording || agentRequestedManual;
+
+{shouldShowManualForm ? (
+  <ManualSearchForm onSelect={handleSelectResult} />
+) : (
+  <div>Voice conversation is active</div>
+)}
+```
+
+### Hybrid Mode State Flow
+```
+Agent calls requestManualInput()
+├─ isRecording stays TRUE (conversation continues)
+├─ agentRequestedManual becomes TRUE (enables widget)
+├─ UI shows ManualSearchForm WITH voice controls
+├─ User types → Widget callbacks → Brain → Agent sync
+└─ Agent continues conversation with new data
+```
+
+### Widget Isolation Maintained
+Even in hybrid mode, ManualSearchForm:
+- ✅ Remains unaware of `isRecording` state
+- ✅ Uses same `onSelect()` callback interface
+- ✅ Handles own autocomplete API calls
+- ✅ Never imports global stores
+
+The Brain orchestrates the hybrid mode WITHOUT breaking Widget isolation.
+
+## CORE PRINCIPLE: State Manipulation as Synchronization Mechanism
+- SHARED STATE: Both UI and Agent manipulate the SAME state stores (React Query + Zustand)
+- SYNCHRONIZATION: State manipulation IS the synchronization strategy
 - React Query is the ONLY source of truth for ALL API data (Google Places, Address Validation)
 - Zustand stores UI-specific state and syncs FROM React Query for agent communication
+- Persistent refs handle conversation state survival across ElevenLabs resets
 - NEVER create dual storage patterns
+- ALWAYS maintain mode isolation between voice and manual input
+
+## ⚠️ CRITICAL: INFINITE LOOP PREVENTION RULES
+
+### 🚫 FORBIDDEN DEPENDENCY PATTERNS (Will Cause Infinite Loops)
+
+#### 1. Never Include State Setters in useEffect Dependencies
+```typescript
+// ❌ NEVER DO THIS - setState functions cause infinite loops
+useEffect(() => {
+  setApiResults({ suggestions, isLoading });
+}, [suggestions, isLoading, setApiResults]); // ❌ setApiResults causes loop
+
+// ✅ ALWAYS DO THIS - exclude stable setter functions
+useEffect(() => {
+  setApiResults({ suggestions, isLoading });
+}, [suggestions, isLoading]); // ✅ Only reactive dependencies
+```
+
+#### 2. Never Include Zustand Actions in Dependencies
+```typescript
+// ❌ NEVER DO THIS - Zustand setters cause infinite loops
+const { setSearchQuery, setSelectedResult } = useAddressFinderStore();
+
+useEffect(() => {
+  setSearchQuery(newQuery);
+}, [newQuery, setSearchQuery]); // ❌ setSearchQuery causes loop
+
+// ✅ ALWAYS DO THIS - Zustand setters are stable by design
+useEffect(() => {
+  setSearchQuery(newQuery);
+}, [newQuery]); // ✅ Only include reactive values
+```
+
+#### 3. Never Include Callback Functions with Unstable Dependencies
+```typescript
+// ❌ NEVER DO THIS - unstable callback in dependencies
+const log = useCallback((...args) => {
+  if (isLoggingEnabled) console.log(...args);
+}, [isLoggingEnabled]); // ❌ Reactive dependency makes callback unstable
+
+useEffect(() => {
+  performAction();
+  log('Action performed');
+}, [performAction, log]); // ❌ log changes when isLoggingEnabled changes
+
+// ✅ ALWAYS DO THIS - make callbacks completely stable
+const log = useCallback((...args) => {
+  const { isLoggingEnabled } = useAddressFinderStore.getState();
+  if (isLoggingEnabled) console.log(...args);
+}, []); // ✅ Empty deps - uses getState() pattern
+
+useEffect(() => {
+  performAction();
+  log('Action performed');
+}, [performAction]); // ✅ log is now stable, removed from deps
+```
+
+#### 4. Never Create State Update Cycles in useEffect
+```typescript
+// ❌ NEVER DO THIS - state updates trigger more state updates
+useEffect(() => {
+  if (isAddressSelected) {
+    setShowSuggestions(false);
+    return;
+  }
+  
+  if (suggestions.length > 0 && hasMinimumChars) {
+    setShowSuggestions(true); // ❌ State update in effect with state dependencies
+  }
+}, [suggestions, isAddressSelected, hasMinimumChars]); // ❌ Causes cascading updates
+
+// ✅ ALWAYS DO THIS - handle state updates in event handlers
+const handleInputChange = useCallback((value) => {
+  setInputValue(value);
+  
+  // Handle suggestion visibility imperatively
+  if (isAddressSelected) {
+    setShowSuggestions(false);
+  } else if (value.length >= MIN_CHARS) {
+    setShowSuggestions(true);
+  } else {
+    setShowSuggestions(false);
+  }
+}, [isAddressSelected]); // ✅ Minimal dependencies, no state update cycles
+```
+
+### ✅ REQUIRED PATTERNS TO PREVENT INFINITE LOOPS
+
+#### 1. Stable Callback Pattern for Logging and Utilities
+```typescript
+// ✅ ALWAYS DO THIS - completely stable callbacks
+const log = useCallback((...args: any[]) => {
+  // Use getState() pattern to avoid reactive dependencies
+  const { isLoggingEnabled } = useAddressFinderStore.getState();
+  if (isLoggingEnabled) {
+    console.log('[AddressFinder]', ...args);
+  }
+}, []); // ✅ Empty dependency array makes this completely stable
+```
+
+#### 2. Safe State Synchronization Pattern
+```typescript
+// ✅ ALWAYS DO THIS - avoid sync loops
+const { syncToAgent } = useAgentSync(); // ✅ This is stable
+
+useEffect(() => {
+  // Direct sync without additional state updates
+  syncToAgent();
+}, [suggestions, isLoading, error, isRecording]); // ✅ Only include reactive values
+
+// ❌ NEVER include syncToAgent in dependencies - it's stable by design
+```
+
+#### 3. Event-Driven State Updates Instead of Reactive Effects
+```typescript
+// ✅ ALWAYS DO THIS - handle complex state logic in event handlers
+const handleSearch = useCallback((query: string) => {
+  setSearchQuery(query);
+  
+  // Handle all related state updates imperatively
+  setShowSuggestions(query.length >= MIN_CHARS);
+  setSelectedIndex(-1);
+  setIsAddressSelected(false);
+  
+  // Only one sync call after all updates
+  syncToAgent();
+}, [setSearchQuery, syncToAgent]);
+
+// ❌ AVOID multiple useEffects with interconnected state dependencies
+```
+
+#### 4. Safe useEffect Dependency Guidelines
+```typescript
+// ✅ SAFE DEPENDENCIES - Include these in useEffect deps:
+// - Props values
+// - State values from useState
+// - Computed values that change
+// - Values from context
+// - Values from custom hooks return
+
+// ❌ NEVER INCLUDE - These cause infinite loops:
+// - setState functions (from useState or Zustand)
+// - Stable callback functions 
+// - Functions from useCallback with empty deps []
+// - queryClient, dispatch, or other stable utilities
+// - Refs (useRef values)
+```
+
+#### 5. React Query + Zustand Integration Pattern
+```typescript
+// ✅ CORRECT - Direct data flow without sync loops
+const { data: suggestions, isLoading } = useQuery({
+  queryKey: ['addressSearch', searchQuery],
+  queryFn: () => getPlaceSuggestionsAction({ query: searchQuery })
+});
+
+// ✅ Agent gets data directly from React Query (no intermediate sync)
+const { syncToAgent } = useAgentSync(); // Gets data via queryClient.getQueryData()
+
+// ❌ NEVER DO THIS - Creates sync loops
+// useEffect(() => {
+//   setApiResults({ suggestions, isLoading }); // ❌ Unnecessary intermediate sync
+// }, [suggestions, isLoading, setApiResults]);
+```
+
+### 🔍 DEBUGGING INFINITE LOOPS
+
+#### Warning Signs to Watch For:
+1. **React DevTools showing rapid re-renders**
+2. **Console errors about "Maximum update depth exceeded"**
+3. **Browser becoming unresponsive**
+4. **Multiple HMR updates in rapid succession**
+
+#### Quick Fix Checklist:
+1. ✅ Remove all state setters from useEffect dependencies
+2. ✅ Remove all Zustand actions from useEffect dependencies  
+3. ✅ Make callback functions stable with empty deps []
+4. ✅ Eliminate useEffects that update state based on state dependencies
+5. ✅ Move complex state logic to event handlers instead of effects
+6. ✅ Use getState() pattern instead of reactive dependencies for utilities
+
+#### Emergency Fix - Remove Problematic Code:
+```typescript
+// When in doubt, DELETE problematic useEffects entirely
+// It's better to handle state updates imperatively in event handlers
+// than to create complex reactive dependency chains
+
+// ❌ DELETE THIS if it's causing loops:
+// useEffect(() => {
+//   // Complex state update logic
+// }, [/* many dependencies */]);
+
+// ✅ REPLACE WITH imperative updates in handlers:
+const handleEvent = useCallback(() => {
+  // Update state directly in response to user action
+  updateState();
+  syncToAgent();
+}, []);
+```
 
 ## FORBIDDEN PATTERNS ❌
 
@@ -29,120 +342,194 @@ const handleAIResult = (results) => {
 }
 ```
 
-### 2. Client Tools Bypassing React Query
+### 2. Client Tools Bypassing Shared State Manipulation
 ```typescript
-// ❌ NEVER DO THIS
+// ❌ NEVER DO THIS - Agent bypasses shared state
 searchAddress: async (params) => {
   const result = await api.search(query);
-  setLocalState(result.suggestions); // Bypasses React Query
+  setLocalState(result.suggestions); // Bypasses shared state manipulation
 }
 ```
 
-### 3. Direct State Updates Without Sync
+### 3. Simple Sync Without Validation
 ```typescript
-// ❌ NEVER DO THIS
+// ❌ NEVER DO THIS - Simple sync fails in complex scenarios
 setSelectedResult(newResult);
-// Missing: syncToAgent();
+syncToAgent(); // No validation or timing coordination
 ```
 
-### 4. User Actions Without Agent Notification
+### 4. Mode Interference
 ```typescript
-// ❌ NEVER DO THIS
-const handleClick = (suggestion) => {
-  setSelectedResult(suggestion); // No agent notification
-}
+// ❌ NEVER DO THIS - Allows autocomplete during voice
+const { data: suggestions } = useQuery({
+  queryKey: ['autocomplete', query],
+  enabled: !!query // Missing !isRecording
+});
+```
 
-const handleInput = (value) => {
-  setSearchQuery(value); // No user action tracking
-}
+### 5. Removing Persistent Cache
+```typescript
+// ❌ NEVER DO THIS - Breaks conversation state survival
+// const agentSuggestionsCache = useRef<Suggestion[]>([]); // DELETED
+// This breaks agent context across conversation resets
 ```
 
 ## REQUIRED PATTERNS ✅
 
-### 1. Unified API Results Through React Query
+### 1. Multi-Modal Query Management
 ```typescript
-// ✅ ALWAYS DO THIS
-const { data: suggestions, isLoading, error } = useQuery({
-  queryKey: ['addressSearch', searchQuery, source],
-  queryFn: () => getPlaceSuggestionsAction({ query: searchQuery })
+// ✅ ALWAYS DO THIS - Mode isolation with different query keys
+const { 
+  data: autocompleteSuggestions = [], 
+  isLoading: isAutocompleteLoading 
+} = useQuery({
+  queryKey: ['autocomplete', debouncedSearchQuery],
+  queryFn: async () => getPlaceSuggestionsAction({ 
+    query: debouncedSearchQuery,
+    isAutocomplete: true,
+    sessionToken: getSessionToken()
+  }),
+  enabled: !!debouncedSearchQuery && !isRecording, // Mode isolation
+  staleTime: 5 * 60 * 1000
 });
 
-// ✅ Agent updates via React Query
-searchAddress: async (params) => {
-  const result = await api.search(query);
-  
-  // Update React Query directly
-  queryClient.setQueryData(['addressSearch', query, 'ai'], {
-    suggestions: result.suggestions,
-    source: 'ai',
-    timestamp: Date.now()
-  });
-  
-  syncToAgent(); // Always sync after updates
-}
+const { 
+  data: aiSuggestions = [] 
+} = useQuery({
+  queryKey: ['aiSuggestions', searchQuery],
+  queryFn: async () => [], // Managed by clientTools
+  enabled: false, // Updated via queryClient.setQueryData
+  staleTime: Infinity
+});
 ```
 
-### 2. Zustand Syncs FROM React Query
+### 2. Persistent Agent Cache (Conversation Survival)
 ```typescript
-// ✅ ALWAYS DO THIS
-useEffect(() => {
-  // Sync React Query state to Zustand for agent access
-  setApiResults({
-    suggestions: suggestions || [],
-    isLoading,
-    error: error?.message || null,
-    source: isRecording ? 'voice' : 'manual'
-  });
-  syncToAgent();
-}, [suggestions, isLoading, error, isRecording]);
+// ✅ REQUIRED - Survives ElevenLabs conversation resets
+const agentSuggestionsCache = useRef<Suggestion[]>([]);
+const agentCacheQuery = useRef<string>('');
+const sessionTokenRef = useRef<string | null>(null);
+
+// ✅ Agent manipulates shared state (same as user actions)
+const searchAddress = async (params: unknown) => {
+  const result = await getPlaceSuggestionsAction({ query });
+  
+  if (result.success && result.suggestions) {
+    // Manipulate persistent cache (shared state)
+    agentSuggestionsCache.current = result.suggestions;
+    agentCacheQuery.current = query;
+    
+    // Manipulate React Query (shared state)
+    queryClient.setQueryData(['aiSuggestions', query], result.suggestions);
+    
+    // Sync manipulated state to agent
+    await performReliableSync('ai-search');
+  }
+};
 ```
 
-### 3. Required Agent Sync Pattern
+### 3. Reliable Multi-Step Sync Pattern
 ```typescript
-// ✅ ALWAYS include syncToAgent() after state changes
-const handleStateChange = useCallback((newState) => {
-  setZustandState(newState);
-  syncToAgent(); // REQUIRED
+// ✅ REQUIRED - Handles asynchronous timing challenges
+const performReliableSync = useCallback(async (context: string = 'general') => {
+  try {
+    // 1. Ensure React state updates are processed
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // 2. Perform initial sync
+    syncToAgent();
+    
+    // 3. Wait for state propagation
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // 4. Validate synchronization
+    const storeState = useAddressFinderStore.getState();
+    const hasValidState = storeState.selectedResult?.description || storeState.searchQuery;
+    
+    if (hasValidState) {
+      // 5. Confirmation sync
+      syncToAgent();
+    }
+  } catch (error) {
+    console.error(`Sync failed for ${context}:`, error);
+  }
 }, [syncToAgent]);
+
+// ✅ Use after all critical state changes
+setSelectedResult(result);
+performReliableSync('user-selection').catch(console.error);
 ```
 
-### 4. User Action Tracking Pattern
+### 4. Conflict Resolution Pattern
 ```typescript
-// ✅ ALWAYS track user actions for agent awareness
-const handleUserClick = useCallback((suggestion) => {
-  // Update state
-  setSelectedResult(suggestion);
+// ✅ REQUIRED - User actions manipulate shared state (take precedence over agent)
+const handleSelectResult = useCallback((result: Suggestion) => {
+  // Manipulate shared state (user action)
+  setSelectedResult(result);        // ← Manipulate Zustand state
+  setSearchQuery(result.description); // ← Manipulate search state
   
-  // Track user action
-  const windowWithElevenLabs = window as any;
-  windowWithElevenLabs.setVariable?.("lastUserAction", {
-    type: "click",
-    action: "select_suggestion",
-    data: suggestion,
-    timestamp: Date.now()
-  });
+  // Notify agent during conversation (prevent override)
+  if (isRecording && conversation.status === 'connected') {
+    const selectionMessage = `I have selected "${result.description}" from the available options. Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed.`;
+    conversation.sendUserMessage?.(selectionMessage);
+  }
   
-  // Sync to agent
-  syncToAgent();
-}, [setSelectedResult, syncToAgent]);
-
-const handleUserInput = useCallback((value) => {
-  // Update state
-  setSearchQuery(value);
-  
-  // Track typing action
-  const windowWithElevenLabs = window as any;
-  windowWithElevenLabs.setVariable?.("lastUserAction", {
-    type: "typing",
-    value,
-    timestamp: Date.now(),
-    field: "searchQuery"
-  });
-  
-  // Sync to agent
-  syncToAgent();
-}, [setSearchQuery, syncToAgent]);
+  // Sync manipulated state to agent
+  performReliableSync('user-selection').catch(console.error);
+}, [setSelectedResult, setSearchQuery, isRecording, conversation, performReliableSync]);
 ```
+
+### 5. Source Priority Deduplication
+```typescript
+// ✅ REQUIRED - Handle multiple suggestion sources with priority
+const deduplicateSuggestions = <T extends Suggestion & { source: string }>(
+  suggestions: T[]
+): T[] => {
+  const sourcePriority = { 
+    agentCache: 4, 
+    unified: 3, 
+    ai: 2, 
+    autocomplete: 1 
+  };
+  
+  return suggestions.reduce((acc, current) => {
+    const existingIndex = acc.findIndex(item => item.placeId === current.placeId);
+    
+    if (existingIndex === -1) {
+      acc.push(current);
+    } else {
+      const currentPriority = sourcePriority[current.source as keyof typeof sourcePriority] || 0;
+      const existingPriority = sourcePriority[acc[existingIndex].source as keyof typeof sourcePriority] || 0;
+      
+      if (currentPriority > existingPriority) {
+        acc[existingIndex] = current;
+      }
+    }
+    
+    return acc;
+  }, [] as T[]);
+};
+```
+
+## STATE MANIPULATION SYNCHRONIZATION FLOW
+
+### How Synchronization Works Through State Manipulation:
+
+```
+User Types → Manipulate searchQuery state → Sync to Agent → Agent knows user typed
+User Clicks → Manipulate selectedResult state → Sync to Agent → Agent knows user selected  
+Agent Searches → Manipulate React Query cache → Sync to Agent → UI shows agent results
+Agent Selects → Manipulate selectedResult state → Sync to Agent → UI shows agent choice
+```
+
+### Key Rules for State Manipulation:
+1. **Both UI and Agent manipulate the SAME shared state stores**
+2. **Every state manipulation MUST be followed by syncToAgent()**  
+3. **User actions manipulate Zustand state first**
+4. **Agent actions manipulate React Query state first**
+5. **All manipulations flow through the same synchronization hooks**
+
+## MULTI-MODAL STATE FLOW
 
 ## REQUIRED DATA FLOW
 ```
@@ -214,9 +601,10 @@ export function AddressFinder() {
       const result = await api.search(query);
       
       // Update React Query cache
-      queryClient.setQueryData(['addressSearch', query], {
+      queryClient.setQueryData(['addressSearch', query, 'ai'], {
         suggestions: result.suggestions,
-        source: 'ai'
+        source: 'ai',
+        timestamp: Date.now()
       });
       
       syncToAgent(); // Always sync
@@ -321,3 +709,251 @@ const handleUserAction = useCallback((data) => {
 - **focus**: Element focus/blur
 - **mode_change**: UI mode toggles
 - **clear**: Clear/reset actions
+
+## WIDGET ARCHITECTURE ENFORCEMENT
+
+### CRITICAL: Self-Contained Widget Requirements
+Every widget component must be completely self-sufficient with minimal external dependencies.
+
+#### ✅ REQUIRED Widget Patterns:
+```typescript
+// ✅ CORRECT: Minimal interface with single callback
+interface WidgetProps {
+  onSelect: (data: SelectionType) => void;          // ✅ Primary action callback
+  onError?: (error: Error) => void;                // ✅ Optional error callback  
+  onComplete?: () => void;                         // ✅ Optional completion callback
+  disabled?: boolean;                              // ✅ Simple state control
+  className?: string;                              // ✅ Styling only
+}
+
+// ✅ CORRECT: Widget handles own queries and state
+export const SelfContainedWidget = ({ onSelect }: WidgetProps) => {
+  const [internalState, setInternalState] = useState();
+  
+  // ✅ Widget's own independent query
+  const { data, isLoading } = useQuery({
+    queryKey: ['widgetData', internalState],
+    queryFn: () => api.getData(internalState),
+    enabled: !!internalState
+  });
+  
+  // ✅ Widget handles all internal complexity
+  const handleInternalAction = (item) => {
+    setInternalState(item);
+    onSelect(item); // Simple callback to Brain
+  };
+  
+  return (/* Widget UI with internal state management */);
+};
+```
+
+#### ❌ FORBIDDEN Widget Anti-Patterns:
+```typescript
+// ❌ NEVER DO THIS: Complex interface with multiple data dependencies
+interface ComplexWidgetProps {
+  onSearch: (query: string) => void;               // ❌ Parent manages queries
+  isLoading: boolean;                              // ❌ Parent manages loading state
+  suggestions?: DataType[];                        // ❌ Parent provides data
+  onSelect: (item: DataType) => void;              // ❌ Mixed responsibilities
+  searchQuery: string;                             // ❌ Parent controls input
+  onClear: () => void;                             // ❌ Parent manages clearing
+  sessionToken?: string;                           // ❌ Parent manages sessions
+  error?: string;                                  // ❌ Parent handles errors
+}
+
+// ❌ NEVER DO THIS: Widget depends on parent for data/queries
+export const DependentWidget = ({ 
+  onSearch, isLoading, suggestions, searchQuery, onClear 
+}: ComplexWidgetProps) => {
+  // ❌ No internal state management
+  // ❌ Relies on parent for everything
+  // ❌ Cannot be tested in isolation
+  // ❌ Causes prop drilling and complex interfaces
+};
+```
+
+### MANDATORY Widget Isolation Rules
+
+#### 1. ✅ Widgets MUST Be Self-Contained
+- **Own API calls**: Use independent `useQuery` with unique keys
+- **Own state management**: All internal state via `useState`/`useReducer`
+- **Own error handling**: Internal error states and recovery
+- **Own session management**: Session tokens, cleanup, optimization
+- **Own UX logic**: Debouncing, validation, formatting, animations
+
+#### 2. ❌ Widgets MUST NEVER Import Global State
+```typescript
+// ❌ FORBIDDEN: Importing global stores
+import { useAddressFinderStore } from '~/stores/addressFinderStore';
+import { useAgentSync } from '~/hooks/useAgentSync';
+
+// ❌ FORBIDDEN: Accessing global state
+const { isRecording, syncToAgent } = useAddressFinderStore();
+
+// ❌ FORBIDDEN: Global agent communication
+syncToAgent();
+```
+
+#### 3. ✅ Widgets MUST Use Minimal Callback Interfaces
+- **Maximum 3 callbacks**: `onSelect`, `onError`, `onComplete`
+- **Simple data types**: Pass only essential data, not complex state
+- **No state setters**: Never pass `setState` functions as props
+- **No query controls**: Widget manages own queries internally
+
+#### 4. ❌ FORBIDDEN: Complex Prop Interfaces
+If a widget needs more than 5 props, it violates self-containment:
+```typescript
+// ❌ FORBIDDEN: Too many props indicates poor separation
+interface OverlyComplexProps {
+  prop1: string;    // 1
+  prop2: boolean;   // 2  
+  prop3: () => void; // 3
+  prop4: any[];     // 4
+  prop5: object;    // 5
+  prop6: string;    // 6 ← TOO MANY - redesign needed
+}
+```
+
+## BRAIN COMPONENT ENFORCEMENT
+
+### ✅ REQUIRED Brain Patterns:
+```typescript
+// ✅ Brain orchestrates with minimal widget interfaces
+export default function BrainComponent() {
+  const { syncToAgent } = useAgentSync();
+  
+  // ✅ Simple widget usage
+  const handleSelection = useCallback((data: SelectionType) => {
+    updateGlobalState(data);
+    syncToAgent();
+  }, [updateGlobalState, syncToAgent]);
+  
+  return (
+    <div>
+      <SelfContainedWidget onSelect={handleSelection} />
+    </div>
+  );
+}
+```
+
+### ❌ FORBIDDEN Brain Anti-Patterns:
+```typescript
+// ❌ NEVER DO THIS: Complex widget management
+<ComplexWidget
+  data={complexData}
+  isLoading={isLoading}
+  onSearch={handleSearch}
+  onSelect={handleSelect}
+  onClear={handleClear}
+  searchQuery={searchQuery}
+  sessionToken={sessionToken}
+  error={error}
+/>
+```
+
+## HYBRID MODE ENFORCEMENT
+
+### ✅ REQUIRED Hybrid Mode Patterns:
+```typescript
+// ✅ CORRECT: Keep conversation active during requestManualInput
+requestManualInput: async (params) => {
+  // ✅ NO conversation termination
+  setAgentRequestedManual(true);
+  addHistory({ type: 'agent', text: `🤖 → 📝 ${params.reason}` });
+  
+  return JSON.stringify({
+    status: "hybrid_mode_activated",
+    message: "Manual input enabled - conversation continues"
+  });
+}
+
+// ✅ CORRECT: Conditional rendering for hybrid mode
+const shouldShowManualForm = !isRecording || agentRequestedManual;
+```
+
+### ❌ FORBIDDEN Hybrid Mode Anti-Patterns:
+```typescript
+// ❌ NEVER DO THIS: Stop conversation during manual input
+requestManualInput: async (params) => {
+  await conversation.endSession();  // ❌ Breaks hybrid mode
+  setIsRecording(false);           // ❌ Ends conversation
+  stopRecording();                 // ❌ Not collaborative
+}
+```
+
+## AUTOMATIC VIOLATION DETECTION
+
+### Widget Violation Patterns to Flag:
+- **Import violations**: `import.*store.*|import.*useAgentSync`
+- **Complex interfaces**: More than 5 props in widget interface
+- **Prop drilling**: Props like `isLoading`, `suggestions`, `onSearch` together
+- **State dependencies**: Props ending in `Query`, `State`, `Token`
+- **Global calls**: `syncToAgent()`, `useAddressFinderStore()` in widgets
+
+### Brain Violation Patterns to Flag:
+- **Complex widget usage**: More than 3 props passed to widgets
+- **Data prop passing**: Passing `data`, `suggestions`, `results` to widgets
+- **State prop passing**: Passing `isLoading`, `error`, `query` to widgets
+- **Session prop passing**: Passing `sessionToken`, `cache` to widgets
+
+### Hybrid Mode Violation Patterns to Flag:
+- **Conversation termination**: `endSession()`, `stopRecording()` in `requestManualInput`
+- **Mode switching**: `setIsRecording(false)` in manual input tools
+- **Missing continuity**: Not preserving conversation state during manual input
+
+## UI BEHAVIOR RULES FOR AI SUGGESTIONS
+
+### CRITICAL: AI Suggestions Display Logic
+AI suggestions should ONLY be displayed when ALL of the following conditions are met:
+
+#### ✅ AI Suggestions Should Show When:
+1. **Active conversation mode**: `isRecording === true`
+2. **Suggestions available**: `suggestions.length > 0`
+3. **No confirmed selection**: `!selectedResult` (user hasn't made a final choice)
+4. **Agent-driven**: Suggestions came from agent `searchAddress` tool calls
+
+#### ❌ AI Suggestions Should NEVER Show When:
+1. **Manual mode**: `isRecording === false` (ManualSearchForm handles its own autocomplete)
+2. **User has selected**: `selectedResult` exists (user made a confirmed selection)
+3. **Pure autocomplete**: User is typing in manual mode (widget handles this internally)
+
+#### 🔧 Implementation Pattern:
+```typescript
+// ✅ CORRECT AI Suggestions Conditional Rendering
+{suggestions.length > 0 && isRecording && !selectedResult && (
+  <Card className="border-blue-200 bg-blue-50">
+    <CardHeader>
+      <CardTitle>🤖 AI-Generated Place Suggestions</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <SuggestionsDisplay suggestions={suggestions} onSelect={handleSelectResult} />
+    </CardContent>
+  </Card>
+)}
+
+// ❌ WRONG - Shows AI suggestions even when user made manual selection
+{suggestions.length > 0 && (
+  <Card>🤖 AI Suggestions</Card>
+)}
+```
+
+### BRAIN VS WIDGET UI SEPARATION
+
+#### ManualSearchForm Widget Autocomplete:
+- **Independent query system**: Uses `['manualAutocomplete', query]` React Query key
+- **Self-contained UI**: Dropdown shown/hidden by widget internally
+- **Only during manual mode**: `!isRecording` or `agentRequestedManual` hybrid mode
+- **Never interferes with AI suggestions**: Completely separate data flow
+
+#### AI Suggestions Display:
+- **Brain-controlled**: Managed by main route component
+- **Agent-driven data**: Uses `['addressSearch', query]` React Query key
+- **Only during conversation**: `isRecording === true`
+- **Cleared on selection**: Hidden when `selectedResult` exists
+
+### HYBRID MODE EXCEPTION
+During hybrid mode (`agentRequestedManual === true`):
+- **ManualSearchForm**: Enabled for user typing
+- **AI Suggestions**: May still show if agent is actively searching
+- **Clear separation**: Both can coexist but serve different purposes
+- **Priority rule**: Manual selection always takes precedence and hides AI suggestions

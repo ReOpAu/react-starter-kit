@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAction } from 'convex/react';
+import { api } from 'convex/_generated/api';
 import { type Suggestion } from '~/stores/addressFinderStore';
 import { Badge } from '~/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,27 +26,18 @@ const renderHighlightedText = (text: string, searchTerm: string): React.ReactNod
 };
 
 interface ManualSearchFormProps {
-  onSearch: (query: string) => void;
-  isLoading: boolean;
-  suggestions?: Suggestion[];
   onSelect: (suggestion: Suggestion) => void;
-  searchQuery: string;
-  onClear: () => void;
 }
 
 const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({ 
-  onSearch, 
-  isLoading,
-  suggestions = [],
   onSelect,
-  searchQuery,
-  onClear,
  }) => {
-    const [inputValue, setInputValue] = useState(searchQuery);
+    const [inputValue, setInputValue] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isAddressSelected, setIsAddressSelected] = useState(false);
     const [hasMinimumChars, setHasMinimumChars] = useState(false);
+    const [internalQuery, setInternalQuery] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const isUserTypingRef = useRef(false);
@@ -51,31 +45,56 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
     // Google's recommended minimum character threshold
     const MIN_SEARCH_CHARS = 3;
 
-    // Only update inputValue when searchQuery changes from external source (not user typing)
-    useEffect(() => {
-        if (!isUserTypingRef.current && searchQuery !== inputValue) {
-            setInputValue(searchQuery);
-        }
-        // Reset the flag after a short delay to handle external updates
-        const timer = setTimeout(() => {
-            isUserTypingRef.current = false;
-        }, 100);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
+    // Session token for Google's autocomplete billing optimization
+    const sessionTokenRef = useRef<string | null>(null);
     
-            // Better suggestion visibility logic - similar to GoogleMapsAutocomplete
-    useEffect(() => {
-        if (isAddressSelected) {
-            setShowSuggestions(false);
-            return;
-        }
+    // Generate session token following Google's best practices
+    const getSessionToken = useCallback(() => {
+      if (!sessionTokenRef.current) {
+        sessionTokenRef.current = crypto.randomUUID();
+      }
+      return sessionTokenRef.current;
+    }, []);
+    
+    // Clear session token when user selects a result (session complete)
+    const clearSessionToken = useCallback(() => {
+      if (sessionTokenRef.current) {
+        sessionTokenRef.current = null;
+      }
+    }, []);
 
-        if (suggestions.length > 0 && inputRef.current === document.activeElement && hasMinimumChars) {
-            setShowSuggestions(true);
-        } else if (suggestions.length === 0) {
-            setShowSuggestions(false);
+    // ManualSearchForm's own autocomplete query - completely independent
+    const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
+    
+    const { 
+      data: autocompleteSuggestions = [], 
+      isLoading, 
+      isError,
+      error 
+    } = useQuery({
+      queryKey: ['manualAutocomplete', internalQuery],
+      queryFn: async () => {
+        if (!internalQuery || internalQuery.trim().length < MIN_SEARCH_CHARS) {
+          return [];
         }
-    }, [suggestions, isAddressSelected, hasMinimumChars]);
+        
+        const result = await getPlaceSuggestionsAction({ 
+          query: internalQuery,
+          intent: 'general',
+          isAutocomplete: true, // This is autocomplete mode
+          sessionToken: getSessionToken(),
+        });
+        
+        if (result.success) {
+          return result.suggestions || [];
+        }
+        
+        return [];
+      },
+      enabled: !!internalQuery && internalQuery.trim().length >= MIN_SEARCH_CHARS,
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    });
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -92,36 +111,28 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
         
-        // Capture current state values to avoid reactive dependencies
-        const currentValue = inputValue;
-        const currentIsAddressSelected = isAddressSelected;
-        
-        const trimmedOldValue = currentValue.trim();
         const trimmedNewValue = query.trim();
         const meetsMinimum = trimmedNewValue.length >= MIN_SEARCH_CHARS;
         
-        isUserTypingRef.current = true; // Mark that user is typing
+        isUserTypingRef.current = true;
         setInputValue(query);
         setSelectedIndex(-1);
         setHasMinimumChars(meetsMinimum);
+        setIsAddressSelected(false);
         
-        // Only reset address selection if the actual content changed (not just whitespace)
-        if (trimmedOldValue !== trimmedNewValue) {
-            setIsAddressSelected(false);
-        }
-        
-        // Only trigger search if we meet minimum character threshold (Google best practice)
-        if (meetsMinimum) {
-            onSearch(query);
-        }
-        
-        // Only show suggestions if we have content, meet minimum chars, and haven't selected an address
-        if (meetsMinimum && !currentIsAddressSelected) {
+        // Debounced internal query update for autocomplete
+        const timer = setTimeout(() => {
+          if (meetsMinimum) {
+            setInternalQuery(query);
             setShowSuggestions(true);
-        } else {
+          } else {
+            setInternalQuery('');
             setShowSuggestions(false);
-        }
-    }, [onSearch]); // Only depend on onSearch which should be stable
+          }
+        }, 300);
+        
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleSelect = useCallback((suggestion: Suggestion) => {
         onSelect(suggestion);
@@ -129,15 +140,26 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
         setShowSuggestions(false);
         setSelectedIndex(-1);
         setIsAddressSelected(true);
-        isUserTypingRef.current = false; // Reset typing flag
-    }, [onSelect]);
+        setInternalQuery(''); // Clear autocomplete query
+        clearSessionToken(); // Complete the session
+        isUserTypingRef.current = false;
+    }, [onSelect, clearSessionToken]);
+
+    const handleSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        if (inputValue.trim()) {
+            // If user submits without selecting, trigger search in parent
+            setInternalQuery(inputValue.trim());
+            setShowSuggestions(false);
+        }
+    }, [inputValue]);
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (showSuggestions && suggestions.length > 0) {
+        if (showSuggestions && autocompleteSuggestions.length > 0) {
             switch (e.key) {
                 case 'ArrowDown':
                     e.preventDefault();
-                    setSelectedIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : prev));
+                    setSelectedIndex(prev => (prev < autocompleteSuggestions.length - 1 ? prev + 1 : prev));
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
@@ -146,7 +168,7 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
                 case 'Enter':
                     e.preventDefault();
                     if (selectedIndex >= 0) {
-                        handleSelect(suggestions[selectedIndex]);
+                        handleSelect(autocompleteSuggestions[selectedIndex]);
                     } else {
                         handleSubmit(e);
                     }
@@ -157,39 +179,28 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
                     break;
             }
         }
-    }, [showSuggestions, suggestions, selectedIndex, handleSelect]);
-    
-    const handleSubmit = useCallback((e: React.FormEvent) => {
-        e.preventDefault();
-        if (inputValue.trim()) {
-            onSearch(inputValue.trim());
-            setShowSuggestions(false);
-        }
-    }, [inputValue, onSearch]);
+    }, [showSuggestions, autocompleteSuggestions, selectedIndex, handleSelect, handleSubmit]);
 
     const handleClearInput = useCallback(() => {
-        onClear();
         setInputValue('');
+        setInternalQuery('');
         setIsAddressSelected(false);
         setShowSuggestions(false);
         setSelectedIndex(-1);
-        isUserTypingRef.current = false; // Reset typing flag
+        clearSessionToken();
+        isUserTypingRef.current = false;
         // Keep focus on input after clearing
         setTimeout(() => {
             inputRef.current?.focus();
         }, 0);
-    }, [onClear]);
+    }, [clearSessionToken]);
 
     const handleFocus = useCallback(() => {
-        // Capture current state to avoid reactive dependencies
-        const currentSuggestionsLength = suggestions.length;
-        const currentHasMinimumChars = hasMinimumChars;
-        const currentIsAddressSelected = isAddressSelected;
-        
-        if (currentSuggestionsLength > 0 && currentHasMinimumChars && !currentIsAddressSelected) {
+        // Only show suggestions if we have meaningful input and haven't selected yet
+        if (inputValue.trim().length >= MIN_SEARCH_CHARS && !isAddressSelected && autocompleteSuggestions.length > 0) {
             setShowSuggestions(true);
         }
-    }, []); // No dependencies to prevent loops
+    }, [inputValue, isAddressSelected, autocompleteSuggestions.length]);
 
     const handleBlur = useCallback(() => {
         // Use setTimeout to prevent premature closing when clicking on suggestions
@@ -200,7 +211,7 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
 
     return (
         <div className="relative" ref={containerRef}>
-                            <AddressInput
+            <AddressInput
                 ref={inputRef}
                 value={inputValue}
                 onChange={handleInputChange}
@@ -223,8 +234,16 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
                     Type at least {MIN_SEARCH_CHARS} characters to see suggestions
                 </div>
             )}
+            
+            {/* Error state */}
+            {isError && (
+                <div className="absolute z-10 w-full mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+                    {error instanceof Error ? error.message : 'Failed to load suggestions'}
+                </div>
+            )}
+            
             <AnimatePresence>
-                {showSuggestions && suggestions.length > 0 && hasMinimumChars && (
+                {showSuggestions && autocompleteSuggestions.length > 0 && hasMinimumChars && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -236,18 +255,18 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
                     >
                         <AnimatePresence mode="wait">
                             <motion.div
-                                key={suggestions.map(s => s.placeId).join(',')} // Re-render when suggestions change
+                                key={autocompleteSuggestions.map((s: Suggestion) => s.placeId).join(',')} // Re-render when suggestions change
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.1 }}
                             >
-                                {suggestions.map((suggestion, index) => (
+                                                                 {autocompleteSuggestions.map((suggestion: Suggestion, index: number) => (
                                     <div
                                         key={suggestion.placeId}
                                         className={`px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors duration-75 ${
                                             index === selectedIndex ? 'bg-blue-50 border-l-2 border-blue-500' : ''
-                                        } ${index === 0 ? 'rounded-t-md' : ''} ${index === suggestions.length - 1 ? 'rounded-b-md' : ''}`}
+                                        } ${index === 0 ? 'rounded-t-md' : ''} ${index === autocompleteSuggestions.length - 1 ? 'rounded-b-md' : ''}`}
                                         onClick={() => handleSelect(suggestion)}
                                         onMouseDown={(e) => e.preventDefault()} // Prevent blur on mousedown
                                         role="option"
