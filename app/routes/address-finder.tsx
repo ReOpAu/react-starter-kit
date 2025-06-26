@@ -14,7 +14,7 @@ import {
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Separator } from '~/components/ui/separator';
-import { useConversation } from '@elevenlabs/react';
+import { useConversation, type Message } from '@elevenlabs/react';
 import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { Badge } from '~/components/ui/badge';
 import AgentStatePanel from '~/components/address-finder/AgentStatePanel';
@@ -735,9 +735,11 @@ export default function AddressFinder() {
         log('📝 Empty or null transcription received');
       }
     },
-    onMessage: (message) => {
+    onMessage: (message: Message) => {
       log('🤖 Agent message received:', message);
-      addHistory({ type: 'agent', text: `Agent: ${message}` });
+      if (message.type === 'text') {
+        addHistory({ type: 'agent', text: `Agent: ${message.text}` });
+      }
     },
     onStatusChange: (status: string) => {
       log('🔄 Conversation status changed:', status);
