@@ -46,6 +46,45 @@ Agent Action → State Manipulation → UI Update + Agent Awareness
 
 ---
 
+## 🏛️ The Four Pillars of Brain State
+
+To manage complexity, the "Brain" (our central state) is organized into four distinct categories. Understanding this separation is key to developing features reliably.
+
+| Category | Purpose | Where It Lives | Primary Changers |
+| :--- | :--- | :--- | :--- |
+| **1. API State** | **The "What"**: Represents knowledge from the outside world (search results, validation status). It is asynchronous and volatile. | **React Query** | System, Agent |
+| **2. User Input & Intent** | **The "Why"**: Captures the user's direct inputs (text, clicks) and our inferred goal for them. | **Zustand** | User, Agent |
+| **3. App Mode & UI** | **The "How"**: Defines the application's current interaction mode (e.g., voice vs. manual) and controls UI visibility. | **Zustand** | User, Agent, System |
+| **4. Session & History** | **The "Where We've Been"**: Maintains a contextual log of interactions and session-specific data (like billing tokens). | **Zustand, Refs** | User, Agent, System |
+
+---
+
+## ⚙️ How State Changes: Primary Actions & Cascading Reactions
+
+Our architecture's reliability comes from a clear separation between the *cause* of a state change and its *effect*.
+
+### 1. Primary Changes (Direct Actions)
+These are the **"cause"** of a state update. They are explicit, imperative state setter calls that happen directly inside an event handler or an agent tool in response to a specific action.
+
+-   **Examples**:
+    -   A user types in a field, triggering `setSearchQuery("new text")`.
+    -   A user clicks a suggestion, triggering `setSelectedResult(...)`.
+    -   The agent uses a tool, triggering `setAgentRequestedManual(true)`.
+
+### 2. Secondary Changes (Cascading Reactions)
+These are the **"effect"** of one or more primary changes. They happen automatically and reactively, ensuring the rest of the application ecosystem stays consistent with the new state.
+
+-   **Implementation**: This is handled almost exclusively by our **centralized `useEffect` hook** in `address-finder.tsx`.
+-   **The Flow**:
+    1.  A **Primary Change** updates a state variable (e.g., `selectedResult`).
+    2.  React detects this change.
+    3.  The main `useEffect`, which "listens" to `selectedResult`, is triggered.
+    4.  The **Secondary Changes** inside the effect now run automatically: the Zustand bridge is updated, and `syncToAgent()` is called, synchronizing the new state to the agent.
+
+**Why is this critical?** This pattern makes our code predictable, testable, and robust. Event handlers are simple and only responsible for their direct action, while the complex logic of synchronization is centralized, de-duplicated, and guaranteed to run when—and only when—it's needed.
+
+---
+
 ## 🚨 WHY WE DO THIS: Preventing Critical Failures
 
 ### Problem 1: The Dual Storage Anti-Pattern

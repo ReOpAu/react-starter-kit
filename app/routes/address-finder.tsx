@@ -380,17 +380,20 @@ export default function AddressFinder() {
         
         if (result.success && result.suggestions && result.suggestions.length > 0) {
           log(`🔧 Updating cache for query: "${query}" with ${result.suggestions.length} suggestions`);
-          
-          // Update search query first to ensure query keys match
-          setSearchQuery(query);
-          
-          // Update unified cache for the query being used
+
+          // As per documentation, update React Query cache first. This ensures
+          // the data source is updated before any state change that might trigger a sync.
           queryClient.setQueryData(['addressSearch', query], result.suggestions);
-          
-          // Force React Query to refetch with the new query to ensure UI updates
-          queryClient.invalidateQueries({ queryKey: ['addressSearch', query] });
-          
-          // Note: Centralized sync effect will handle sync automatically
+
+          // Now, update the search query in the Zustand store. This change will
+          // be picked up by the consolidated useEffect, which will then sync
+          // the complete, consistent state to the agent.
+          setSearchQuery(query);
+
+          // The call to `invalidateQueries` is removed as it's redundant.
+          // `setQueryData` updates the cache, and the `useQuery` hook will
+          // automatically re-render with the new data. Invalidating would
+          // cause an unnecessary network request.
           
           if (result.suggestions.length === 1) {
             // Auto-select if only one result
