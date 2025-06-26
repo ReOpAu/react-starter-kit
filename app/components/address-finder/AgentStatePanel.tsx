@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { useState } from 'react';
+import { ClientOnly } from '~/components/ui/client-only';
 
 export interface AgentStatePanelProps {
   agentState: {
@@ -95,7 +96,9 @@ export default function AgentStatePanel({ agentState, className = "" }: AgentSta
         <Section title="UI State" data={agentState.ui} variant="outline" />
         <Section title="API State" data={{ ...agentState.api, suggestions: `Array(${agentState.api.suggestions.length})` }} variant="secondary" />
         <Section title="Selection State" data={agentState.selection} variant="default" />
-        <Section title="Meta" data={{ ...agentState.meta, lastUpdate: new Date(agentState.meta.lastUpdate).toLocaleString() }} variant="default" />
+        <ClientOnly>
+          <Section title="Meta" data={{ ...agentState.meta, lastUpdate: new Date(agentState.meta.lastUpdate).toLocaleString() }} variant="default" />
+        </ClientOnly>
         {isExpanded && (
           <div className="pt-2">
             <Section title="Suggestions Detail" data={{ suggestions: agentState.api.suggestions }} variant="destructive" />

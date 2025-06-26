@@ -366,6 +366,9 @@ export default function AddressFinder() {
       
       addHistory({ type: 'agent', text: `Searching for: "${query}"` });
       
+      // Reset intent for a new search
+      setCurrentIntent('general');
+      
       try {
         // Update React Query cache (eliminates dual storage)
         const result = await getPlaceSuggestionsAction({ 
@@ -467,19 +470,22 @@ export default function AddressFinder() {
         });
       }
       
-      // UNIFIED SELECTION: Search unified React Query suggestions only
+      // DECOUPLED STATE: Fetch fresh state directly to avoid stale closures.
+      const currentSearchQuery = useAddressFinderStore.getState().searchQuery;
+      const currentSuggestions = queryClient.getQueryData<Suggestion[]>(['addressSearch', currentSearchQuery]) || [];
+      
       log(`🔧 SelectSuggestion debug:`, {
-        isRecording,
-        searchQuery,
-        unified: suggestions.length,
+        isRecording: useAddressFinderStore.getState().isRecording,
+        searchQuery: currentSearchQuery,
+        unified: currentSuggestions.length,
         lookingForPlaceId: placeId,
-        note: 'Using unified React Query source for selections'
+        note: 'Using fresh state from store/cache'
       });
       
-      // Try to find the selection directly from the unified suggestions array
-      const selection = suggestions.find((s) => s.placeId === placeId);
+      // Try to find the selection directly from the fresh suggestions array
+      const selection = currentSuggestions.find((s) => s.placeId === placeId);
       
-      log(`🔧 Selection search in ${suggestions.length} unified suggestions:`, { 
+      log(`🔧 Selection search in ${currentSuggestions.length} fresh suggestions:`, { 
         found: !!selection,
       });
       
@@ -532,9 +538,12 @@ export default function AddressFinder() {
     
     getConfirmedSelection: async () => {
       log('🔧 ===== Tool Call: getConfirmedSelection =====');
+      
+      // DECOUPLED STATE: Fetch fresh state directly from the store.
+      const { selectedResult, currentIntent, searchQuery, isRecording } = useAddressFinderStore.getState();
       const hasSelection = !!selectedResult;
       
-      log('🔧 Current state snapshot:', {
+      log('🔧 Current state snapshot (fresh from store):', {
         hasSelection,
         selectedResultExists: !!selectedResult,
         selectedDescription: selectedResult?.description,
@@ -701,7 +710,7 @@ export default function AddressFinder() {
         });
       }
     },
-  }), [isRecording, suggestions, selectedResult, currentIntent, addHistory, getPlaceSuggestionsAction, getSessionToken, setCurrentIntent, setSelectedResult, setSearchQuery, clearSessionToken, syncToAgent, setIsVoiceActive, setAgentRequestedManual]); // Removed log from dependencies - it's stable
+  }), [addHistory, getPlaceSuggestionsAction, getSessionToken, setCurrentIntent, setSelectedResult, setSearchQuery, clearSessionToken, syncToAgent, setIsVoiceActive, setAgentRequestedManual, queryClient]); // Removed state dependencies
 
   // Conversation setup with enhanced clientTools
   const conversation = useConversation({
