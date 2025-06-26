@@ -660,6 +660,23 @@ useEffect(() => {
 }, [suggestions, isLoading, error]);
 ```
 
+#### 4. Conversational Sync (Anti-Pattern)
+```typescript
+// ❌ CRITICAL ANTI-PATTERN: Never use conversational messages for state sync.
+const handleSelectResult = useCallback((result: Suggestion) => {
+  setSelectedResult(result);
+  
+  // ❌ The agent may ignore, misunderstand, or be too slow to process this.
+  if (isRecording) {
+    const message = "Hey agent, just letting you know I clicked a thing."
+    conversation.sendUserMessage?.(message); // UNRELIABLE
+  }
+  
+  // This creates a race condition between unreliable chat and reliable sync.
+  syncToAgent();
+});
+```
+
 ### ✅ REQUIRED PATTERNS TO PREVENT INFINITE LOOPS
 
 #### 1. The Consolidated Sync `useEffect`
@@ -766,3 +783,69 @@ This comprehensive state management strategy transforms your current dual storag
 - ✅ Reduced technical debt
 
 **This strategy is not just about fixing current problems - it's about building a foundation for sophisticated AI-driven user experiences that will scale with your application's growth.**
+
+### 4. User Action Precedence Pattern (Formerly Conflict Resolution)
+
+**Rule**: User actions on the UI (clicks, form submissions) are definitive and take precedence. They MUST be synchronized programmatically, not communicated conversationally.
+
+```typescript
+// ✅ CORRECT: Programmatic sync is the only source of truth.
+const handleSelectResult = useCallback((result: Suggestion) => {
+  // 1. Manipulate shared state directly. This is the user's explicit choice.
+  setSelectedResult(result);
+  setSearchQuery(result.description);
+  
+  // 2. Programmatically sync the new, definitive state to the agent.
+  //    This is the ONLY required method to inform the agent.
+  //    DO NOT send a conversational message.
+  performReliableSync('user-selection').catch(console.error);
+  
+}, [setSelectedResult, setSearchQuery, performReliableSync]);
+```
+
+### 5. Source Priority Deduplication
+```typescript
+// ✅ REQUIRED - Handle multiple suggestion sources with priority
+const deduplicateSuggestions = <T extends Suggestion & { source: string }>(
+  suggestions: T[],
+  source: string
+): T[] => {
+  const result: T[] = [];
+  const seen = new Set<string>();
+  
+  for (const suggestion of suggestions) {
+    if (!seen.has(suggestion.placeId) && suggestion.source === source) {
+      result.push(suggestion);
+      seen.add(suggestion.placeId);
+    }
+  }
+  
+  return result;
+};
+```
+
+### 6. Conversational Sync (Anti-Pattern)
+```typescript
+// ❌ CRITICAL ANTI-PATTERN: Never use conversational messages for state sync.
+const handleSelectResult = useCallback((result: Suggestion) => {
+  setSelectedResult(result);
+  
+  // ❌ The agent may ignore, misunderstand, or be too slow to process this.
+  if (isRecording) {
+    const message = "Hey agent, just letting you know I clicked a thing."
+    conversation.sendUserMessage?.(message); // UNRELIABLE
+  }
+  
+  // This creates a race condition between unreliable chat and reliable sync.
+  syncToAgent();
+});
+```
+
+## REQUIRED PATTERNS ✅
+
+### 1. Multi-Modal Query Management
+```typescript
+// ✅ ALWAYS DO THIS - Mode isolation with different query keys
+// ... existing code ...
+
+</rewritten_file>
