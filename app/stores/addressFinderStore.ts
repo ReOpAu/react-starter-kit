@@ -95,7 +95,7 @@ export const useAddressFinderStore = create<AddressFinderState>()(
       setIsSmartValidationEnabled: (enabled: boolean) => set({ isSmartValidationEnabled: enabled }),
       // NEW: API results management
       setApiResults: (results) => set((state) => ({
-        apiResults: { ...state.apiResults, ...results }
+        apiResults: { ...state.apiResults, ...results, timestamp: Date.now() }
       })),
     }),
     { name: 'AddressFinderStore' }

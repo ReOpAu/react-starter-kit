@@ -17,6 +17,8 @@ import { Separator } from '~/components/ui/separator';
 import { useConversation } from '@elevenlabs/react';
 import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { Badge } from '~/components/ui/badge';
+import AgentStatePanel from '~/components/address-finder/AgentStatePanel';
+import AgentDebugCopyPanel from '~/components/address-finder/AgentDebugCopyPanel';
 
 // Helper function to classify intent based on what user actually selected
 const classifySelectedResult = (suggestion: Suggestion): LocationIntent => {
@@ -103,7 +105,8 @@ export default function AddressFinder() {
     clear,
     setCurrentIntent,
     setIsSmartValidationEnabled,
-  } = useAddressFinderStore(); // Removed setApiResults - no longer needed
+    setApiResults,
+  } = useAddressFinderStore();
   
   // Debounced search query - only used when conversation is NOT active
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -184,7 +187,7 @@ export default function AddressFinder() {
   
   // UNIFIED QUERY - Single source of truth for all API data (manual and voice)
   const { 
-    data: suggestions = [], 
+    data, 
     isLoading, 
     isError,
     error 
@@ -240,6 +243,84 @@ export default function AddressFinder() {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+
+  // STABLE SUGGESTIONS: Prevent infinite loops by creating a stable reference for suggestions
+  // When data is undefined, useMemo ensures the same empty array reference is used.
+  const suggestions = useMemo(() => data || [], [data]);
+
+  // REQUIRED & CONSOLIDATED: Sync React Query state to Zustand and then to Agent
+  useEffect(() => {
+    // This effect serves as the single point of synchronization from the UI's
+    // data layer (React Query) to the agent's context.
+
+    // 1. Update the Zustand store with the latest API state from React Query.
+    //    This acts as a bridge, ensuring the store reflects the data layer.
+    setApiResults({
+      suggestions: suggestions || [],
+      isLoading,
+      error: error ? (error as Error).message : null,
+      source: isRecording ? 'voice' : 'manual',
+    });
+
+    // 2. Immediately sync the updated state to the agent. This ensures the
+    //    agent always has the most current view of the UI state.
+    syncToAgent();
+
+    // 3. The dependency array intentionally omits setters (setApiResults, syncToAgent)
+    //    to prevent infinite render loops. These setters are stable.
+  }, [
+    suggestions,
+    isLoading,
+    error,
+    isRecording,
+    isVoiceActive,
+    selectedResult,
+    currentIntent,
+    searchQuery,
+  ]);
+
+  // Construct a snapshot of the agent's state for debugging panels
+  const agentStateForDebug = useMemo(() => {
+    const timestamp = Date.now();
+    return {
+      ui: {
+        isRecording,
+        isVoiceActive,
+        currentIntent: currentIntent || 'general',
+        searchQuery,
+        hasQuery: !!searchQuery,
+      },
+      api: {
+        suggestions,
+        isLoading,
+        error: error ? (error as Error).message : null,
+        hasResults: suggestions.length > 0,
+        hasMultipleResults: suggestions.length > 1,
+        resultCount: suggestions.length,
+        source: isRecording ? 'voice' : 'manual',
+      },
+      selection: {
+        selectedResult,
+        hasSelection: !!selectedResult,
+        selectedAddress: selectedResult?.description || null,
+        selectedPlaceId: selectedResult?.placeId || null,
+      },
+      meta: {
+        lastUpdate: timestamp,
+        sessionActive: isRecording,
+        dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
+      }
+    };
+  }, [
+    isRecording, 
+    isVoiceActive, 
+    currentIntent, 
+    searchQuery, 
+    suggestions, 
+    isLoading, 
+    error, 
+    selectedResult
+  ]);
 
   // ManualSearchForm is now self-contained with its own autocomplete query
 
@@ -395,20 +476,11 @@ export default function AddressFinder() {
         note: 'Using unified React Query source for selections'
       });
       
-      // Create list from unified suggestions only
-      const allAvailableSuggestions = suggestions.map((s: Suggestion) => ({ ...s, source: 'unified' }));
+      // Try to find the selection directly from the unified suggestions array
+      const selection = suggestions.find((s) => s.placeId === placeId);
       
-      // Remove duplicates by placeId using extracted utility function
-      const uniqueSuggestions = deduplicateSuggestions(allAvailableSuggestions);
-      
-      // Try to find the selection
-      const selection = uniqueSuggestions.find((s) => s.placeId === placeId);
-      const sourceFound = selection?.source || 'none';
-      
-      log(`🔧 Selection search in ${uniqueSuggestions.length} unique suggestions:`, { 
+      log(`🔧 Selection search in ${suggestions.length} unified suggestions:`, { 
         found: !!selection,
-        sourceFound,
-        allSources: uniqueSuggestions.map(s => ({ placeId: s.placeId, desc: s.description, source: s.source }))
       });
       
               if (selection) {
@@ -1002,17 +1074,28 @@ export default function AddressFinder() {
         
         <HistoryPanel history={history} />
 
-        <StateDebugPanel
-          suggestions={suggestions}
-          isLoading={isLoading}
-          isError={isError}
-          error={error}
-          debouncedSearchQuery={debouncedSearchQuery}
-          agentRequestedManual={agentRequestedManual}
-          sessionToken={sessionTokenRef.current}
-          conversationStatus={conversation.status}
-          conversationConnected={conversation.status === 'connected'}
-        />
+        <details className="group rounded-lg bg-gray-50 p-4 border border-gray-200">
+          <summary className="cursor-pointer text-sm font-medium text-gray-700 select-none">
+            Toggle Debug Panels
+          </summary>
+          <div className="mt-4 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <StateDebugPanel
+                suggestions={suggestions}
+                isLoading={isLoading}
+                isError={isError}
+                error={error}
+                debouncedSearchQuery={debouncedSearchQuery}
+                agentRequestedManual={agentRequestedManual}
+                sessionToken={sessionTokenRef.current}
+                conversationStatus={conversation.status}
+                conversationConnected={conversation.status === 'connected'}
+              />
+              <AgentStatePanel agentState={agentStateForDebug} />
+            </div>
+            <AgentDebugCopyPanel agentState={agentStateForDebug} history={history} />
+          </div>
+        </details>
 
         <div className="text-center space-x-4">
             <Button onClick={handleClear} variant="outline">Clear All State</Button>

@@ -153,8 +153,6 @@ export function useAgentSync() {
   const syncToAgent = useCallback(() => {
     const windowWithElevenLabs = window as any;
     if (typeof windowWithElevenLabs.setVariable === 'function') {
-      const queryData = queryClient.getQueryData(['addressSearch', store.searchQuery]);
-      
       const agentState = {
         ui: {
           isRecording: store.isRecording,
@@ -162,19 +160,20 @@ export function useAgentSync() {
           selectedResult: store.selectedResult,
         },
         api: {
-          suggestions: queryData?.suggestions || [],
-          isLoading: queryClient.getQueryState(['addressSearch', store.searchQuery])?.fetchStatus === 'fetching',
-          hasResults: (queryData?.suggestions || []).length > 0,
+          suggestions: store.apiResults.suggestions,
+          isLoading: store.apiResults.isLoading,
+          error: store.apiResults.error,
+          hasResults: store.apiResults.suggestions.length > 0,
         },
         meta: {
           lastUpdate: Date.now(),
-          dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent'
+          dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
         }
       };
       
       windowWithElevenLabs.setVariable("agentState", agentState);
     }
-  }, [store, queryClient]);
+  }, [store]);
   
   return { syncToAgent };
 }
@@ -223,37 +222,47 @@ export default function AddressFinder() {
   const { syncToAgent } = useAgentSync();
   const { setApiResults } = useAddressFinderStore();
   
-  // STEP 1: Single source API data
-  const { data: suggestions = [], isLoading, error } = useQuery({
+  // STEP 1: Single source API data. Use useMemo for stable reference.
+  const { data, isLoading, error } = useQuery({
     queryKey: ['addressSearch', searchQuery],
     queryFn: () => getPlaceSuggestionsAction({ query: searchQuery }),
     enabled: !!searchQuery && !isRecording,
   });
+  const suggestions = useMemo(() => data || [], [data]);
   
-  // STEP 2: Sync React Query → Zustand → Agent
+  // STEP 2: The Consolidated Sync Effect. This is the single source of truth for syncing state.
   useEffect(() => {
+    // Bridge the latest data from React Query into our Zustand store
     setApiResults({
       suggestions,
       isLoading,
-      error: error?.message || null,
+      error: error ? (error as Error).message : null,
       source: isRecording ? 'voice' : 'manual',
-      timestamp: Date.now(),
     });
-    syncToAgent(); // REQUIRED after every state change
-  }, [suggestions, isLoading, error, isRecording, setApiResults, syncToAgent]);
+    // Immediately sync the entire, updated state to the agent
+    syncToAgent();
+  }, [
+    suggestions,
+    isLoading,
+    error,
+    isRecording,
+    isVoiceActive,
+    selectedResult,
+    currentIntent,
+    searchQuery,
+  ]);
   
-  // STEP 3: User actions manipulate shared state (agent gets synchronized)
-  const handleUserInput = useCallback((value: string) => {
-    setSearchQuery(value);    // ← Manipulate shared state
-    syncToAgent();           // ← Sync manipulated state to agent
-  }, [setSearchQuery, syncToAgent]);
-  
+  // STEP 3: User actions simply manipulate state. The useEffect above handles the sync.
   const handleSuggestionClick = useCallback((suggestion: Suggestion) => {
-    setSelectedResult(suggestion); // ← Manipulate shared state  
-    syncToAgent();                 // ← Agent now knows user's selection
-  }, [setSelectedResult, syncToAgent]);
+    // Manipulate state...
+    setSelectedResult(suggestion);
+    setCurrentIntent(classifySelectedResult(suggestion));
+    setSearchQuery(suggestion.description);
+    // ... and that's it! The state change will trigger the useEffect,
+    // which handles the synchronization automatically. No syncToAgent() call needed here.
+  }, [setSelectedResult, setCurrentIntent, setSearchQuery]);
   
-  // STEP 4: Client tools - agent actions manipulate shared state
+  // STEP 4: Client tools for the agent also just manipulate state.
   const clientTools = useMemo(() => ({
     searchAddress: async (params) => {
       // Agent manipulates same shared state as user
@@ -582,6 +591,131 @@ return (
 - **Debounced input** (300ms) reduces API calls
 - **Stable callback patterns** prevent infinite loops
 - **Persistent refs** survive conversation resets
+
+---
+
+## ⚠️ CRITICAL: Infinite Loop Prevention
+
+Infinite re-render loops are the most common and dangerous side effect of this sophisticated state management pattern. They occur when a `useEffect` hook that synchronizes state accidentally triggers itself. Adhering to these rules is mandatory to prevent application crashes.
+
+### 🚫 FORBIDDEN DEPENDENCY PATTERNS (Will Cause Infinite Loops)
+
+#### 1. Never Include State Setters in `useEffect` Dependencies
+State setters from `useState` or Zustand are guaranteed to be stable and never need to be in a dependency array. Including them is redundant and can mask other issues.
+
+```typescript
+// ❌ NEVER DO THIS - `setApiResults` is a stable function
+useEffect(() => {
+  setApiResults({ suggestions, isLoading });
+}, [suggestions, isLoading, setApiResults]); // ❌ setApiResults is unnecessary
+
+// ✅ ALWAYS DO THIS - Exclude stable setter functions
+useEffect(() => {
+  setApiResults({ suggestions, isLoading });
+}, [suggestions, isLoading]);
+```
+
+#### 2. Never Destructure `useQuery` Data with a Default Array `[]`
+When a `useQuery` is disabled, its `data` is `undefined`. Using a default `[]` in the destructuring creates a **new array reference on every single render**, which will always trigger `useEffect` hooks that depend on it.
+
+```typescript
+// ❌ NEVER DO THIS - Creates a new `[]` on every render, causing a loop
+const { data: suggestions = [] } = useQuery({ enabled: false, ... });
+
+useEffect(() => {
+  // This will run on every render when the query is disabled
+}, [suggestions]);
+
+// ✅ ALWAYS DO THIS - Create a stable reference with `useMemo`
+const { data } = useQuery({ enabled: false, ... });
+const suggestions = useMemo(() => data || [], [data]); // ✅ Stable reference
+
+useEffect(() => {
+  // This will only run when `data` actually changes
+}, [suggestions]);
+```
+
+#### 3. Never Have Multiple `useEffect` Hooks Triggering the Same Sync
+If two separate `useEffect` hooks both call `syncToAgent()`, they can create cascading updates that lead to an infinite loop.
+
+```typescript
+// ❌ NEVER DO THIS - Creates cascading updates
+useEffect(() => {
+  setApiResults(...);
+}, [data]);
+
+useEffect(() => {
+  syncToAgent();
+}, [apiResults]); // ❌ `apiResults` changes, which re-runs this, causing a loop
+
+// ✅ ALWAYS DO THIS - Consolidate into a single, responsible effect
+useEffect(() => {
+  // 1. Update the state bridge
+  setApiResults({ suggestions, isLoading, error });
+  
+  // 2. Immediately sync to the agent
+  syncToAgent();
+  
+// 3. Only depend on the source data, not the setters
+}, [suggestions, isLoading, error]);
+```
+
+### ✅ REQUIRED PATTERNS TO PREVENT INFINITE LOOPS
+
+#### 1. The Consolidated Sync `useEffect`
+This is the **only correct way** to bridge React Query to Zustand and sync to the agent. It performs all actions in one place and has a safe dependency array.
+
+```typescript
+// ✅ THE GOLD STANDARD - The one required pattern
+const { data, isLoading, error } = useQuery(...);
+const suggestions = useMemo(() => data || [], [data]);
+
+useEffect(() => {
+  // STEP 1: Bridge data from React Query to Zustand
+  setApiResults({
+    suggestions,
+    isLoading,
+    error: error ? (error as Error).message : null,
+    source: isRecording ? 'voice' : 'manual',
+  });
+  
+  // STEP 2: Sync the now-updated store to the agent
+  syncToAgent();
+  
+// DEPENDENCIES: Include all reactive state that the agent needs to be aware of.
+// The setters (setApiResults, syncToAgent) are stable and must be excluded.
+}, [
+  suggestions,
+  isLoading,
+  error,
+  isRecording,
+  isVoiceActive,
+  selectedResult,
+  currentIntent,
+  searchQuery,
+]);
+```
+
+#### 2. Stable Callback Pattern (`useCallback`)
+For helper functions or event handlers passed as props, wrap them in `useCallback` with an empty dependency array `[]` if they don't depend on props or state. This prevents child components from re-rendering unnecessarily.
+
+```typescript
+// ✅ ALWAYS DO THIS - Create a completely stable callback
+const log = useCallback((...args: any[]) => {
+  // Use getState() to access store values without creating a dependency
+  if (useAddressFinderStore.getState().isLoggingEnabled) {
+    console.log('[AddressFinder]', ...args);
+  }
+}, []); // ✅ Empty dependency array makes this function reference stable
+```
+
+### 🔍 DEBUGGING INFINITE LOOPS: A CHECKLIST
+
+If you encounter a "Maximum update depth exceeded" error, follow these steps:
+1.  **Check `useEffect` Dependencies**: Immediately look for any state setters (`setSomething`, `syncToAgent`, etc.) in any `useEffect` dependency array. Remove them.
+2.  **Check `useQuery` Destructuring**: Find all `useQuery` calls. If you see `const { data: name = [] }`, change it to the `useMemo` pattern.
+3.  **Look for Multiple Syncs**: Search for all calls to `syncToAgent()`. If it's being called from more than one `useEffect`, consolidate them into the single required pattern shown above.
+4.  **Examine Callback Dependencies**: If you are using `useCallback`, ensure its dependency array is correct. Unstable callbacks passed to effects can also cause loops.
 
 ---
 

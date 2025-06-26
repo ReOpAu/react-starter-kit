@@ -14,19 +14,9 @@ export function useAgentSync() {
       if (typeof windowWithElevenLabs.setVariable === 'function') {
         // Get current state from stores (no dependencies to avoid loops)
         const store = useAddressFinderStore.getState();
-        const queryState = queryClient.getQueryState(['addressSearch', store.searchQuery]);
-        const queryData = queryClient.getQueryData(['addressSearch', store.searchQuery]);
         
-        // Handle both array and object formats from React Query
-        let suggestions: any[] = [];
-        if (Array.isArray(queryData)) {
-          suggestions = queryData;
-        } else if (queryData && typeof queryData === 'object' && 'suggestions' in queryData) {
-          suggestions = (queryData as any).suggestions || [];
-        }
-        
-        const isLoading = queryState?.fetchStatus === 'fetching';
-        const error = queryState?.error as Error | null;
+        // The store is now the single source of truth for API state
+        const { suggestions, isLoading, error } = store.apiResults;
         
         // Create comprehensive agent state - use stable timestamp (rounded to nearest second)
         const timestamp = Math.floor(Date.now() / 1000) * 1000;
@@ -40,11 +30,11 @@ export function useAgentSync() {
             hasQuery: !!store.searchQuery,
           },
           
-          // API State (from React Query - single source of truth)
+          // API State (from Zustand - single source of truth)
           api: {
             suggestions,
             isLoading,
-            error: error?.message || null,
+            error: error || null,
             hasResults: suggestions.length > 0,
             hasMultipleResults: suggestions.length > 1,
             resultCount: suggestions.length,
@@ -63,7 +53,7 @@ export function useAgentSync() {
           meta: {
             lastUpdate: timestamp,
             sessionActive: store.isRecording,
-            dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent'
+            dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
           }
         };
         
