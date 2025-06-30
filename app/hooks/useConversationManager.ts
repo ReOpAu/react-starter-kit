@@ -3,7 +3,7 @@ import { useConversation } from '@elevenlabs/react';
 import { useAddressFinderStore } from '~/stores/addressFinderStore';
 
 export function useConversationManager(clientTools: Record<string, any>) {
-  const { addHistory } = useAddressFinderStore();
+  const { addHistory, setIsRecording, setIsVoiceActive } = useAddressFinderStore();
 
   // Logging utility - STABLE: No dependencies to prevent infinite loops
   const log = useCallback((...args: any[]) => {
@@ -22,8 +22,9 @@ export function useConversationManager(clientTools: Record<string, any>) {
     },
     onDisconnect: () => {
       log('🔌 Disconnected from ElevenLabs');
-      // Note: setIsRecording handled by audio manager
-      // Note: Centralized sync effect will handle sync automatically
+      // Force state update on external disconnect
+      useAddressFinderStore.getState().setIsRecording(false);
+      useAddressFinderStore.getState().setIsVoiceActive(false);
     },
     onTranscription: (text: string) => {
       // ENHANCED TRANSCRIPTION LOGGING
