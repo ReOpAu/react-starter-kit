@@ -60,4 +60,16 @@ export const deduplicateSuggestions = <T extends Suggestion & { source: string }
     
     return acc;
   }, [] as T[]);
+};
+
+/**
+ * Returns a Tailwind CSS class string for styling based on location intent.
+ */
+export const getIntentColor = (intent: LocationIntent): string => {
+  switch (intent) {
+    case 'suburb': return 'bg-blue-100 text-blue-800';
+    case 'street': return 'bg-green-100 text-green-800';
+    case 'address': return 'bg-purple-100 text-purple-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
 }; 

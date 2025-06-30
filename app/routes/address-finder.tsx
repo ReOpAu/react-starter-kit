@@ -8,7 +8,7 @@ import { useReliableSync } from '~/hooks/useReliableSync';
 import { useAddressFinderClientTools } from '~/hooks/useAddressFinderClientTools';
 import { useConversationManager } from '~/hooks/useConversationManager';
 import { useActionHandler } from '~/hooks/useActionHandler';
-import { classifySelectedResult } from '~/utils/addressFinderUtils';
+import { classifySelectedResult, getIntentColor } from '~/utils/addressFinderUtils';
 import {
   VoiceInputController,
   ManualSearchForm,
@@ -272,15 +272,6 @@ export default function AddressFinder() {
     }
   }, [conversation, addHistory, log]);
 
-  const getIntentColor = (intent: LocationIntent) => {
-    switch (intent) {
-      case 'suburb': return 'bg-blue-100 text-blue-800';
-      case 'street': return 'bg-green-100 text-green-800';
-      case 'address': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   // Dynamic UI visibility
   const shouldShowSuggestions = suggestions.length > 0 && !selectedResult && !isLoading;
   const shouldShowManualForm = !isRecording || agentRequestedManual;
@@ -315,7 +306,7 @@ export default function AddressFinder() {
             <VoiceInputController
               isRecording={isRecording}
               isVoiceActive={isVoiceActive}
-              startRecording={() => startRecording(conversation, setAgentRequestedManual)}
+              startRecording={() => startRecording(conversation)}
               stopRecording={() => stopRecording(conversation)}
             />
             <Separator />
