@@ -37,17 +37,18 @@ export default function AddressFinder() {
     isVoiceActive,
     history,
     currentIntent,
+    agentRequestedManual,
     setSearchQuery,
     setSelectedResult,
     setCurrentIntent,
     addHistory,
     clear,
     setApiResults,
+    setAgentRequestedManual,
   } = useAddressFinderStore();
   
   // Local component state
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  const [agentRequestedManual, setAgentRequestedManual] = useState(false);
   
   // Session token management
   const sessionTokenRef = useRef<string | null>(null);
@@ -164,6 +165,7 @@ export default function AddressFinder() {
     selectedResult,
     currentIntent,
     searchQuery,
+    agentRequestedManual,
   ]);
 
   // Debounced search query effect
@@ -205,6 +207,7 @@ export default function AddressFinder() {
       meta: {
         lastUpdate: timestamp,
         sessionActive: isRecording,
+        agentRequestedManual,
         dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
       }
     };
@@ -216,7 +219,8 @@ export default function AddressFinder() {
     suggestions, 
     isLoading, 
     error, 
-    selectedResult
+    selectedResult,
+    agentRequestedManual
   ]);
 
   // Event handlers
@@ -292,6 +296,18 @@ export default function AddressFinder() {
     log('✅ SELECTION CLEARED');
   }, [setSelectedResult, addHistory, log]);
 
+  const handleRequestAgentState = useCallback(() => {
+    if (conversation.status === 'connected') {
+      const prompt = "Please report your current state. Use the getCurrentState tool to find out what it is, and then tell me the result.";
+      log('🤖 Requesting agent state with prompt:', prompt);
+      conversation.sendUserMessage?.(prompt);
+      addHistory({ type: 'user', text: 'Requested current state from agent.' });
+    } else {
+      log('⚠️ Cannot request agent state, conversation not connected.');
+      addHistory({ type: 'system', text: 'Error: Conversation not connected.' });
+    }
+  }, [conversation, addHistory, log]);
+
   const getIntentColor = (intent: LocationIntent) => {
     switch (intent) {
       case 'suburb': return 'bg-blue-100 text-blue-800';
@@ -303,19 +319,6 @@ export default function AddressFinder() {
 
   // Determine when to show ManualSearchForm
   const shouldShowManualForm = !isRecording || agentRequestedManual;
-
-  // Handle agent request for manual input by watching for clientTools response
-  useEffect(() => {
-    const checkForManualInputRequest = () => {
-      // This will be triggered by the clientTools.requestManualInput response
-      // The actual setAgentRequestedManual(true) call should happen in response to the tool
-    };
-    
-    // Listen for manual input requests from client tools
-    if (conversation.status === 'connected') {
-      checkForManualInputRequest();
-    }
-  }, [conversation.status]);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -439,6 +442,7 @@ export default function AddressFinder() {
         </details>
 
         <div className="text-center space-x-4">
+          <Button onClick={handleRequestAgentState} variant="secondary">Get Agent State</Button>
           <Button onClick={handleClear} variant="outline">Clear All State</Button>
         </div>
       </div>

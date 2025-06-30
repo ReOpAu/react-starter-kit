@@ -25,6 +25,7 @@ export function useAgentSync() {
           ui: {
             isRecording: store.isRecording,
             isVoiceActive: store.isVoiceActive,
+            agentRequestedManual: store.agentRequestedManual,
             currentIntent: store.currentIntent,
             searchQuery: store.searchQuery,
             hasQuery: !!store.searchQuery,
@@ -53,6 +54,7 @@ export function useAgentSync() {
           meta: {
             lastUpdate: timestamp,
             sessionActive: store.isRecording,
+            agentRequestedManual: store.agentRequestedManual,
             dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
           }
         };

@@ -91,9 +91,17 @@ AI suggestions should **ONLY** be displayed when **ALL** of the following condit
 This ensures clean separation between manual autocomplete (widget-managed) and AI suggestions (brain-managed), preventing confusing duplicate displays.
 
 ### 4. State Synchronization
+
 - **React Query**: Single source of truth for API data
 - **Zustand**: UI state and agent communication
 - **Agent Sync**: Real-time sync with ElevenLabs variables
+
+#### Synchronization Mechanism: Live State Updates vs. Dynamic Variables
+It is critical to understand the method used for synchronization in this application.
+
+- **Dynamic Variables (Not Used for Live Sync):** The [ElevenLabs Dynamic Variables](https://elevanlabs.io/docs/conversational-ai/customization/personalization/dynamic-variables) feature is designed to inject data **once** at the beginning of a conversation (e.g., a user's name). It is not suitable for the real-time, continuous state updates required by our application.
+
+- **Live State Synchronization (Our Method):** This application uses a live, push-based method. The `useAgentSync` hook calls a function (`syncToAgent`) that continuously pushes a complete snapshot of "The Brain's" state to the agent during the conversation. This ensures the agent's context is always aligned with the UI in real-time. The `getCurrentState` tool is a mechanism to verify the success of this live push.
 
 ## Application Flow
 
@@ -167,202 +175,20 @@ This creates true **collaborative address finding** where voice AI and manual in
 ## Backend Implementation
 
 ### Location Service (`convex/location.ts`)
-The main backend function `getPlaceSuggestions` provides:
+The main backend function `
 
-1. **Intent Detection**: Analyzes query to determine search type
-2. **Multi-API Strategy**: 
-   - Google Places API for general searches
-   - Address Validation API for complete addresses
-   - Smart fallback between APIs
-3. **Result Enhancement**: Adds confidence scores, suburb extraction, result classification
-4. **Session Management**: Supports Google's session tokens for billing optimization
+### Agent Interaction Troubleshooting
 
-### Key Parameters
-```typescript
-getPlaceSuggestions({
-  query: string,           // Search query
-  intent?: LocationIntent, // Optional intent override
-  maxResults?: number,     // Result limit (default: 5)
-  isAutocomplete?: boolean,// Autocomplete vs explicit search
-  sessionToken?: string    // Google billing optimization
-})
-```
+When the agent fails to use a tool correctly, the errors can be cryptic. Here is a guide to diagnosing common issues, based on the specific error message received.
 
-## State Management Strategy
+| Error Message                                                                        | Likely Cause                                                                                                                                                                  | How to Fix                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `I am sorry, I cannot use the [tool_name] tool because it does not exist.`             | **Dual Configuration Failure.** The tool is likely defined in the agent prompt but not registered in the ElevenLabs platform's Tool Registry UI.                               | Go to the ElevenLabs dashboard and ensure the tool is registered with the exact same name (`[tool_name]`) used in the client-side code and prompt.                                                                     |
+| `I am sorry, an error occurred when calling the tool. Can you please try again?`       | **Data Serialization Error OR Race Condition.** This generic error usually means the platform failed to process the tool's response. The two most common causes are:            | **1. Simplify the Payload:** Ensure the tool returns a simple, flat JSON object serialized into a string. Remove any nested objects or complex data types. <br/> **2. Check for Race Conditions:** Use the "Wait for response" checkbox in the debug panel. If this fixes the issue, a race condition is confirmed. |
+| The agent doesn't use the tool at all, or uses the wrong tool for the job.            | **Prompting Issue.** The instructions in the main agent prompt are likely not clear, direct, or specific enough for the LLM to understand when and how to use the desired tool. | Refine the agent's prompt. Make the instructions more explicit. For example, instead of "You can get the state," use "When asked for your state, you MUST use the `getCurrentState` tool."                             |
 
-### React Query (API Data)
-- **Primary cache** for all API responses
-- **Query keys**: `['autocomplete', query]` and `['aiSuggestions', query]`
-- **Automatic refetching** and caching
-- **Error handling** and loading states
+---
 
-### Zustand Store (UI State)
-- **UI-specific state**: recording status, voice activity, history
-- **Current selection**: selected result and intent
-- **Agent synchronization**: syncs FROM React Query TO ElevenLabs
+## High-Level Architecture
 
-### Memory References (Persistent Cache)
-- **Agent suggestions cache**: Survives conversation state changes
-- **Session management**: Google Places session tokens
-
-## Error Handling & Edge Cases
-
-### Network Failures
-- React Query automatic retries
-- Graceful fallback to empty results
-- User-friendly error messages
-
-### Voice Recognition Issues  
-- Empty transcription handling
-- Conversation state validation
-- Manual fallback always available
-
-### Duplicate Results
-- Source-based deduplication (agentCache > unified > ai > autocomplete)
-- Place ID matching across different sources
-
-### Intent Misclassification
-- Fallback to 'general' intent
-- Multiple API strategy handles edge cases
-
-## Configuration
-
-### Environment Variables
-```bash
-VITE_ELEVENLABS_API_KEY=          # ElevenLabs API key
-VITE_ELEVENLABS_ADDRESS_AGENT_ID= # Agent ID for voice conversations
-CONVEX_DEPLOYMENT=                # Convex deployment URL
-GOOGLE_PLACES_API_KEY=            # Google Places API key (backend)
-```
-
-### Feature Toggles
-- **Smart Validation**: Toggle between Google standard and enhanced validation
-- **Logging**: Enable/disable console logging
-- **Voice Mode**: Can be disabled to use manual-only mode
-
-## Performance Optimizations
-
-### Query Optimization
-- **Debounced input**: 300ms delay for autocomplete
-- **Minimum characters**: 3-character threshold following Google best practices
-- **Session tokens**: Reduces Google API billing
-- **Stale time**: 5-minute cache for autocomplete results
-
-### State Management
-- **Memoized components**: React.memo on child components
-- **Stable callbacks**: useCallback for event handlers
-- **Ref-based caching**: Persistent agent cache surviving state changes
-
-### Network Efficiency
-- **Conditional queries**: Disabled during voice mode
-- **Result deduplication**: Reduces redundant API calls
-- **Parallel tool calls**: Multiple agent tools can run simultaneously
-
-## Troubleshooting
-
-### Common Issues
-1. **Infinite loops**: Caused by unstable dependencies in useEffect
-2. **Missing selections**: Agent cache vs React Query synchronization
-3. **Transcription failures**: ElevenLabs connection issues
-4. **API rate limits**: Google Places API quotas
-
-### Debug Features
-- **Comprehensive logging**: Toggle via UI switch
-- **History panel**: Shows all user/agent/system interactions
-- **State inspection**: Zustand devtools integration
-- **Network monitoring**: React Query devtools
-
-## Future Enhancements
-
-### Planned Features
-- **Address validation**: Enhanced validation for unit/apartment addresses
-- **Geocoding**: Lat/lng coordinates for selected addresses
-- **Favorites**: Save frequently used addresses
-- **Batch processing**: Multiple address lookup
-
-### Technical Improvements
-- **Offline support**: Service worker for cached results
-- **Progressive enhancement**: Graceful degradation without JavaScript
-- **Accessibility**: Screen reader and keyboard navigation improvements
-- **Internationalization**: Support for non-Australian addresses 
-
-## Component Architecture & Responsibilities
-
-### The "Brain" vs "Widget" Pattern
-
-The application follows a clear separation between the "Brain" (global state orchestration) and "Widgets" (self-contained UI components):
-
-**The Brain: `app/routes/address-finder.tsx`**
-- Orchestrates the application by composing and coordinating a suite of specialized hooks.
-- Manages global state using React Query for API data and Zustand for UI state.
-- Integrates the following hooks to delegate responsibilities:
-  - `useConversationManager`: For handling the ElevenLabs conversation lifecycle.
-  - `useAudioManager`: For managing audio recording.
-  - `useAddressFinderClientTools`: To provide the agent with its interactive capabilities.
-  - `useAgentSync`: For synchronizing state with the agent.
-- Renders the UI and wires up event handlers.
-
-**Widget: `ManualSearchForm.tsx`**
-- **Purpose**: Self-contained Google Places autocomplete widget with independent query management
-- **Scope**: Complete autocomplete functionality including API calls, session management, and UX
-- **Interface**: Single `onSelect(suggestion)` callback to the Brain - no other props needed
-- **Internal Features**: 
-  - Independent React Query for autocomplete (`['manualAutocomplete', query]`)
-  - Google Places session token management for billing optimization
-  - Debounced input with 300ms delay and 3-character minimum
-  - Keyboard navigation, error handling, and loading states
-  - Automatic session cleanup on selection
-- **Isolation**: Completely unaware of recording state, agent sync, or global application flow
-
-### When to Use Manual vs Voice
-
-- **User doesn't want to talk** → Use `ManualSearchForm` widget
-- **Agent can't understand/spell a place** → Agent calls `requestManualInput()` to enable hybrid mode
-- **User prefers typing** → Use `ManualSearchForm` widget  
-- **Complex addresses with units/apartments** → Manual input often more precise
-
-### Widget Design Principles
-
-**✅ Widget Should:**
-- Be completely self-contained with own API calls and state management
-- Have excellent internal UX (loading states, error handling, keyboard navigation)
-- Use minimal callback interface with parent (`onSelect` only)
-- Handle all aspects of its functionality (queries, sessions, debouncing, caching)
-- Be testable in isolation without any global state
-- Never know about application modes or agent status
-
-**❌ Widget Should NOT:**
-- Accept complex prop interfaces (multiple callbacks, external state, loading props)
-- Depend on parent for API calls or suggestion data
-- Know about global application state (recording mode, agent status)
-- Handle agent synchronization directly
-- Manage cross-component communication
-- Be coupled to specific parent implementations
-
-### Current Interface (Simplified)
-
-```typescript
-interface ManualSearchFormProps {
-  onSelect: (suggestion: Suggestion) => void;  // ONLY callback needed
-}
-
-// Usage in Brain - minimal and clean:
-<ManualSearchForm 
-  onSelect={handleManualSelection}  // Brain handles global state update
-/>
-```
-
-**Previous Interface (Deprecated):**
-```typescript
-// ❌ OLD COMPLEX INTERFACE - DO NOT USE
-interface ManualSearchFormProps {
-  onSearch: (query: string) => void;           // ❌ Removed - widget handles own queries
-  isLoading: boolean;                          // ❌ Removed - widget manages own loading
-  suggestions?: Suggestion[];                  // ❌ Removed - widget gets own suggestions  
-  onSelect: (suggestion: Suggestion) => void;  // ✅ Kept - only needed callback
-  searchQuery: string;                         // ❌ Removed - widget manages own input
-  onClear: () => void;                         // ❌ Removed - widget handles own clearing
-}
-```
-
-This architecture ensures clear separation of concerns and prevents the infinite loop issues that occur when widgets try to manage global state directly.
+The application is built on a sophisticated state management model designed for real-time, bidirectional communication between the user interface and the ElevenLabs Conversational AI.

@@ -21,6 +21,7 @@ export function useAddressFinderClientTools(
     setSelectedResult,
     setCurrentIntent,
     addHistory,
+    setAgentRequestedManual,
   } = useAddressFinderStore();
 
   // Logging utility - STABLE: No dependencies to prevent infinite loops
@@ -228,6 +229,45 @@ export function useAddressFinderClientTools(
       });
     },
     
+    getCurrentState: async () => {
+      log('🔧 ===== Tool Call: getCurrentState =====');
+      const { 
+        isRecording, 
+        isVoiceActive, 
+        currentIntent, 
+        searchQuery, 
+        selectedResult,
+        apiResults,
+      } = useAddressFinderStore.getState();
+
+      const stateSummary = {
+        ui: {
+          isRecording,
+          isVoiceActive,
+          currentIntent: currentIntent || 'general',
+          searchQuery,
+        },
+        api: {
+          suggestionsCount: apiResults.suggestions.length,
+          isLoading: apiResults.isLoading,
+          error: apiResults.error,
+          source: apiResults.source,
+        },
+        selection: {
+          hasSelection: !!selectedResult,
+          selectedAddress: selectedResult?.description || null,
+          selectedPlaceId: selectedResult?.placeId || null,
+        },
+        meta: {
+          timestamp: Date.now(),
+        }
+      };
+      
+      log('🔧 getCurrentState returning summary:', stateSummary);
+      
+      return JSON.stringify(stateSummary);
+    },
+    
     getConfirmedSelection: async () => {
       log('🔧 ===== Tool Call: getConfirmedSelection =====');
       
@@ -323,84 +363,22 @@ export function useAddressFinderClientTools(
       }
     },
     
-    requestManualInput: async (params: unknown) => {
+    requestManualInput: async (params: { reason?: string }) => {
       log('🔧 ===== Tool Call: requestManualInput =====');
-      log('🔧 AGENT REQUESTING MANUAL INPUT with params:', params);
-      
-      let reason = 'I think manual input might be more accurate for this address.';
-      let context = 'general';
-      
-      // Parse parameters for reason and context
-      if (typeof params === 'string') {
-        reason = params;
-      } else if (params && typeof params === 'object') {
-        const paramObj = params as Record<string, unknown>;
-        if (paramObj.reason && typeof paramObj.reason === 'string') {
-          reason = paramObj.reason;
-        }
-        if (paramObj.context && typeof paramObj.context === 'string') {
-          context = paramObj.context;
-        }
-      }
-      
-      log('🔧 Manual input request details:', { 
-        reason, 
-        context, 
-        isCurrentlyRecording: isRecording
+      log('🔧 Agent is requesting manual input. Reason:', params?.reason);
+
+      addHistory({
+        type: 'agent',
+        text: `🤖 → 📝 ${params?.reason || 'The agent suggested switching to manual input for better accuracy.'}`,
       });
-      
-      // For hybrid mode: ALWAYS enable manual input, even during recording
-      log('🔧 Enabling hybrid mode - conversation continues with manual input available');
-      
-      try {
-        // HYBRID MODE: Return flag to enable ManualSearchForm during conversation
-        // The parent component will handle setAgentRequestedManual(true)
-        
-        // Add helpful explanation to history
-        addHistory({ 
-          type: 'agent', 
-          text: `🤖 → 📝 ${reason}` 
-        });
-        
-        // Add system message explaining hybrid mode
-        if (isRecording) {
-          addHistory({ 
-            type: 'system', 
-            text: 'Hybrid mode activated - You can now type while the conversation continues' 
-          });
-        } else {
-          addHistory({ 
-            type: 'system', 
-            text: 'Manual input ready - Type your address in the form below' 
-          });
-        }
-        
-        log('✅ Successfully enabled hybrid manual input mode');
-        
-        const response = {
-          status: "hybrid_mode_activated",
-          reason,
-          context,
-          timestamp: Date.now(),
-          message: isRecording 
-            ? "I've enabled manual input so you can type while we continue talking. The search form is now available below."
-            : "Manual input is now available. You can type your address in the search form below."
-        };
-        
-        return JSON.stringify(response);
-      } catch (error) {
-        log('❌ Failed to enable manual input:', error);
-        addHistory({ 
-          type: 'system', 
-          text: `Error enabling manual input: ${error instanceof Error ? error.message : String(error)}` 
-        });
-        
-        return JSON.stringify({
-          status: "error",
-          error: error instanceof Error ? error.message : "Failed to enable manual input",
-          message: "I had trouble enabling manual input. Please try the search form below if it's available."
-        });
-      }
+
+      // This directly updates the UI state in address-finder.tsx
+      setAgentRequestedManual(true);
+
+      return JSON.stringify({
+        status: 'hybrid_mode_activated',
+        message: 'Manual input has been enabled. The user can now type while the conversation continues.',
+      });
     },
   }), [
     addHistory, 
@@ -416,6 +394,7 @@ export function useAddressFinderClientTools(
     currentIntent,
     searchQuery,
     isRecording,
+    setAgentRequestedManual,
   ]);
 
   return clientTools;

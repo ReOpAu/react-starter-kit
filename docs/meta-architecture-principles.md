@@ -205,6 +205,20 @@ function ConfusingBrain() {
 - ✅ **Consistent Behavior**: Clear component purposes = predictable interactions
 - ✅ **Reliable Agent**: Agent understands user intent without noise
 - ✅ **Sophisticated Widgets**: Internal complexity provides excellent UX without affecting global state
+- ✅ **Traceability**: When an error occurs, its origin should be immediately obvious from the console logs and component boundaries.
+
+This meta-architecture ensures that as the application grows in complexity, it does not collapse under the weight of its own state. It provides a scalable, maintainable, and highly debuggable foundation for building sophisticated user interfaces.
+
+### 4. Design for External System Constraints
+
+Modern applications rarely exist in isolation. They integrate with numerous third-party services, APIs, and platforms, each with its own unique architecture, limitations, and quirks.
+
+-   **Principle**: The application's architecture MUST account for the specific constraints and behaviors of any external systems it relies on. We cannot assume third-party services will conform to our ideal patterns.
+-   **Implementation**:
+    -   **Anti-Corruption Layer**: Create dedicated hooks or modules (e.g., `useAddressFinderClientTools`) that act as an "anti-corruption layer." This layer is responsible for translating data and commands between our internal models and the external service's requirements.
+    -   **Explicit Configuration Documentation**: The precise configuration required by an external service (e.g., ElevenLabs' dual-configuration for tools) MUST be documented within our own project's documentation. This prevents "tribal knowledge" and ensures that the system as a whole is understood.
+    -   **Defensive Data Exchange**: Assume that data payloads to and from external services may fail. Tools should return simple, robust data types (e.g., flat JSON strings) and the system should be resilient to generic error messages from the external platform.
+-   **Anti-Pattern**: Designing internal data structures and workflows without considering the limitations of the external services they must interact with. This leads to brittle integrations that are difficult to debug, often requiring significant refactoring when external constraints are discovered late in the development process.
 
 ---
 
@@ -464,3 +478,18 @@ This meta-architectural principle transforms component development from reactive
 - **Development velocity increases** through clear architectural patterns
 
 **Remember**: Every component should have a clear purpose, and only information that serves the user's actual intent should flow to the Brain and synchronize with the AI agent. 
+
+### 4. Design for External System Constraints
+
+Modern applications rarely exist in isolation. They integrate with numerous third-party services, APIs, and platforms, each with its own unique architecture, limitations, and quirks.
+
+-   **Principle**: The application's architecture MUST account for the specific constraints and behaviors of any external systems it relies on. We cannot assume third-party services will conform to our ideal patterns.
+-   **Implementation**:
+    -   **Anti-Corruption Layer**: Create dedicated hooks or modules (e.g., `useAddressFinderClientTools`) that act as an "anti-corruption layer." This layer is responsible for translating data and commands between our internal models and the external service's requirements.
+    -   **Explicit Configuration Documentation**: The precise configuration required by an external service (e.g., ElevenLabs' dual-configuration for tools) MUST be documented within our own project's documentation. This prevents "tribal knowledge" and ensures that the system as a whole is understood.
+    -   **Defensive Data Exchange**: Assume that data payloads to and from external services may fail. Tools should return simple, robust data types (e.g., flat JSON strings) and the system should be resilient to generic error messages from the external platform.
+-   **Anti-Pattern**: Designing internal data structures and workflows without considering the limitations of the external services they must interact with. This leads to brittle integrations that are difficult to debug, often requiring significant refactoring when external constraints are discovered late in the development process.
+
+This meta-architecture ensures that as the application grows in complexity, it does not collapse under the weight of its own state. It provides a scalable, maintainable, and highly debuggable foundation for building sophisticated user interfaces.
+
+### 5. **Traceability**: When an error occurs, its origin should be immediately obvious from the console logs and component boundaries. 

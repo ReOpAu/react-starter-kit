@@ -887,4 +887,128 @@ const handleSelectResult = useCallback((result: Suggestion) => {
 // ✅ ALWAYS DO THIS - Mode isolation with different query keys
 // ... existing code ...
 
-</rewritten_file>
+### Interfacing with External Services (ElevenLabs)
+
+While our internal state management is robust, integrating with external platforms like ElevenLabs introduces unique challenges. The following principles are critical for ensuring reliable communication between "The Brain" and the AI Agent.
+
+#### 1. Dual Configuration: The Platform and The Prompt
+
+An agent tool is not active until it is configured in **two** separate locations:
+
+-   **The Platform's Tool Registry:** The tool must be explicitly registered by name in the ElevenLabs admin dashboard. This tells the platform infrastructure that the tool exists and can be invoked. **If this step is missed, the agent will report that the tool does not exist, even if it's mentioned in the prompt.**
+-   **The Agent's Prompt:** The tool must be described in the agent's main prompt. This tells the **LLM** what the tool does, what parameters it takes, and when it should be used.
+
+A failure in either part of this configuration will result in tool-use failures.
+
+#### 2. Data Serialization and Payload Simplicity
+
+External platforms often have strict, sometimes undocumented, requirements for the data they receive from tools.
+
+-   **Principle:** Tool return values MUST be simple, flat JSON objects that can be reliably serialized into a string.
+-   **Anti-Pattern:** Avoid returning complex, nested objects, `Map`s, `Set`s, or other data structures that do not have a standard, universal string representation.
+-   **Symptom of Failure:** A common symptom of a data serialization error is the agent reporting a generic "an error occurred when calling the tool." This often means the platform received the data but could not process it, causing the request to time out or fail before the data could even be passed to the LLM.
+
+#### 3. Asynchronous Race Conditions
+
+-   **Principle:** Never assume an external platform is ready for a response immediately after it initiates a request.
+-   **Scenario:** A tool that executes very quickly (e.g., reading from an in-memory store) can return its result before the platform's internal state machine is ready to receive it. This can lead to the same generic "error when calling the tool" as a data serialization issue.
+-   **Verification:** The "Wait for response" option in the ElevenLabs debug panel can be used to test this hypothesis. If enabling it fixes the issue, a race condition is the likely cause. While not a production solution, it is a critical diagnostic tool.
+
+These principles ensure that our robust internal architecture is not undermined by the unavoidable complexities of integrating with a third-party service.
+
+## State and Prop Definitions
+
+### HYBRID VOICE + MANUAL MODE RULES
+
+### CRITICAL: requestManualInput() Tool Behavior
+When the agent calls `requestManualInput()`, it should **NEVER stop the conversation**. Instead:
+
+#### ✅ CORRECT Hybrid Mode Implementation
+
+**1. Update Zustand Store:** The shared state must include a flag for this mode.
+```typescript
+// app/stores/addressFinderStore.ts
+interface AddressFinderState {
+  // ... other state
+  agentRequestedManual: boolean;
+  setAgentRequestedManual: (requested: boolean) => void;
+}
+
+const initialState = {
+  // ... other initial state
+  agentRequestedManual: false,
+};
+
+// ... in the store implementation
+setAgentRequestedManual: (requested: boolean) => set({ agentRequestedManual: requested }),
+```
+
+**2. Update Client Tool:** The agent's tool manipulates the shared state directly.
+```typescript
+// app/hooks/useAddressFinderClientTools.ts
+requestManualInput: async (params) => {
+  // Get setter from the store, not parameters
+  const { setAgentRequestedManual, addHistory } = useAddressFinderStore.getState();
+
+  // KEEP conversation active - NO stopRecording() or endSession()
+  // ONLY set UI flags to enable widget during conversation
+  setAgentRequestedManual(true);
+  
+  // Add helpful context for user
+  addHistory({ type: 'agent', text: `🤖 → 📝 ${params.reason || 'Manual input enabled.'}` });
+  
+  return JSON.stringify({
+    status: "hybrid_mode_activated",
+    message: "Manual input enabled - conversation continues"
+  });
+}
+```
+
+#### ❌ FORBIDDEN: Do NOT Stop Conversation
+```typescript
+// ❌ NEVER DO THIS - breaks hybrid mode concept
+// ... existing code ...
+### UI Rendering During Hybrid Mode
+The Brain component should render ManualSearchForm when EITHER:
+- `!isRecording` (traditional manual mode), OR  
+- `isRecording && agentRequestedManual` (hybrid mode)
+
+```typescript
+// ✅ CORRECT conditional rendering for hybrid support
+// app/routes/address-finder.tsx
+
+// Get state from the global store
+const { isRecording, agentRequestedManual } = useAddressFinderStore();
+
+// UI logic remains simple and reactive
+const shouldShowManualForm = !isRecording || agentRequestedManual;
+
+return (
+  <>
+    {shouldShowManualForm ? (
+      <ManualSearchForm onSelect={handleSelectResult} />
+    ) : (
+      <div>Voice conversation is active</div>
+    )}
+  </>
+)
+```
+
+### Hybrid Mode State Flow
+```
+Agent calls requestManualInput()
+├─ isRecording stays TRUE (conversation continues)
+├─ agentRequestedManual in Zustand becomes TRUE
+├─ UI reacts to global state change and shows ManualSearchForm
+├─ User types → Widget callbacks → Brain → Agent sync
+└─ Agent continues conversation with new data
+```
+
+### Widget Isolation Maintained
+Even in hybrid mode, `ManualSearchForm`:
+- **Maintains its own internal state** for search queries and session tokens
+- **Communicates with the Brain** via the `onSelect` callback
+- **Does not depend on global state** or awareness of the conversation
+- **Does not manipulate the shared state** directly
+
+This ensures that the widget remains self-contained and testable, even in the complex hybrid mode.

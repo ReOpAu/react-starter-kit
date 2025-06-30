@@ -27,6 +27,7 @@ interface AddressFinderState {
   isVoiceActive: boolean;
   history: HistoryItem[];
   isLoggingEnabled: boolean;
+  agentRequestedManual: boolean;
   // New state for enhanced UI
   currentIntent: LocationIntent;
   isSmartValidationEnabled: boolean;
@@ -46,6 +47,7 @@ interface AddressFinderState {
   setIsVoiceActive: (isVoiceActive: boolean) => void;
   addHistory: (item: HistoryItem) => void;
   setIsLoggingEnabled: (enabled: boolean) => void;
+  setAgentRequestedManual: (requested: boolean) => void;
   clear: () => void;
   // New actions for enhanced UI
   setCurrentIntent: (intent: LocationIntent) => void;
@@ -61,6 +63,7 @@ const initialState = {
     isVoiceActive: false,
     history: [],
     isLoggingEnabled: true,
+    agentRequestedManual: false,
     currentIntent: 'general' as LocationIntent,
     isSmartValidationEnabled: true,
     apiResults: {
@@ -89,6 +92,7 @@ export const useAddressFinderStore = create<AddressFinderState>()(
         return { history: [...state.history, { ...item, timestamp }] };
       }),
       setIsLoggingEnabled: (enabled: boolean) => set({ isLoggingEnabled: enabled }),
+      setAgentRequestedManual: (requested: boolean) => set({ agentRequestedManual: requested }),
       clear: () => set(initialState),
       // New action implementations
       setCurrentIntent: (intent: LocationIntent) => set({ currentIntent: intent }),
