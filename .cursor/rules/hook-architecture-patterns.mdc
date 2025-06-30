@@ -1,0 +1,352 @@
+---
+description: 
+globs: **/hooks/**/*.ts,**/utils/*.ts,**/routes/**/*.tsx,app/components/**/*.tsx
+alwaysApply: false
+---
+# Hook Architecture & Coding Practices
+
+## 🏗️ HOOK STRUCTURE PATTERNS
+
+### ✅ REQUIRED Hook Patterns
+
+#### 1. Stable Logging Utility Pattern
+```typescript
+// ✅ ALWAYS include this pattern in custom hooks
+const log = useCallback((...args: any[]) => {
+  if (useAddressFinderStore.getState().isLoggingEnabled) {
+    console.log('[HookName]', ...args);
+  }
+}, []); // ✅ Empty dependency array makes this completely stable
+```
+
+#### 2. Clean Hook Interface Pattern
+```typescript
+// ✅ REQUIRED: Export clear, focused hook interface
+export function useMyHook(param1: Type1, param2: Type2) {
+  // Internal logic
+  
+  return {
+    // ✅ Return only what's needed
+    primaryFunction,
+    secondaryFunction,
+    status: { isLoading, error }
+  };
+}
+```
+
+#### 3. Dependencies Parameter Pattern
+```typescript
+// ✅ CORRECT: Pass dependencies as parameters, not import global state
+export function useClientTools(
+  getSessionToken: () => string,
+  clearSessionToken: () => void
+) {
+  // Hook logic uses passed functions
+}
+
+// ❌ NEVER DO: Import global state directly in hooks
+// import { useAddressFinderStore } from '~/stores/store';
+```
+
+### ✅ STABLE REFERENCE PATTERNS
+
+#### 1. useCallback Dependencies
+```typescript
+// ✅ CORRECT: Minimal, stable dependencies
+const stableFunction = useCallback((param: string) => {
+  // Use getState() pattern to avoid reactive dependencies
+  const { setting } = useStore.getState();
+  doSomething(param, setting);
+}, []); // ✅ Empty deps - completely stable
+
+// ❌ FORBIDDEN: Reactive dependencies that cause re-renders
+const unstableFunction = useCallback((param: string) => {
+  doSomething(param, reactiveSetting);
+}, [reactiveSetting]); // ❌ Causes unnecessary re-renders
+```
+
+#### 2. Infinite Loop Prevention
+```typescript
+// ✅ REQUIRED: Never include setters in useEffect dependencies
+useEffect(() => {
+  setState(newValue);
+  syncToAgent();
+}, [newValue]); // ✅ Only reactive values, no setters
+
+// ❌ FORBIDDEN: Including setters causes infinite loops
+useEffect(() => {
+  setState(newValue);
+  syncToAgent();
+}, [newValue, setState, syncToAgent]); // ❌ setState/syncToAgent cause loops
+```
+
+## 🎯 FILE ORGANIZATION PATTERNS
+
+### ✅ REQUIRED File Structure
+
+#### 1. Pure Utility Functions
+```typescript
+// 📁 app/utils/[feature]Utils.ts
+// ✅ ONLY pure functions, no hooks, no side effects
+export const classifyResult = (data: Type): ResultType => {
+  // Pure logic only
+  return result;
+};
+
+export const deduplicateItems = <T extends Item>(items: T[]): T[] => {
+  // Pure deduplication logic
+  return deduplicated;
+};
+```
+
+#### 2. Focused Custom Hooks
+```typescript
+// 📁 app/hooks/use[Feature][Concern].ts
+// ✅ Single responsibility hooks
+export function useAudioManager() {
+  // ✅ ONLY audio-related logic
+}
+
+export function useClientTools(deps) {
+  // ✅ ONLY client tools logic
+}
+
+// ❌ NEVER: Multi-concern hooks
+export function useEverything() {
+  // ❌ Audio + API + State + UI logic mixed
+}
+```
+
+#### 3. Hook Dependency Chain
+```typescript
+// ✅ CORRECT: Clear dependency flow
+export default function Component() {
+  // Level 1: Utility functions
+  const getToken = useCallback(() => generateToken(), []);
+  
+  // Level 2: Focused hooks with dependencies
+  const clientTools = useClientTools(getToken, clearToken);
+  const { conversation } = useConversationManager(clientTools);
+  
+  // Level 3: Orchestration hooks
+  const { startRecording } = useAudioManager();
+  
+  // ✅ Clean, readable dependency chain
+}
+```
+
+## 🚫 FORBIDDEN PATTERNS
+
+### ❌ Anti-Patterns to Avoid
+
+#### 1. Complex Hook Interfaces
+```typescript
+// ❌ FORBIDDEN: Too many parameters (>5 indicates poor separation)
+export function useComplexHook(
+  param1: string,
+  param2: boolean,
+  param3: () => void,
+  param4: any[],
+  param5: object,
+  param6: string  // ❌ TOO MANY - redesign needed
+) {
+  // This violates single responsibility
+}
+```
+
+#### 2. State Setter Dependencies
+```typescript
+// ❌ FORBIDDEN: State setters in dependencies
+const { setState, setOtherState } = useStore();
+
+useEffect(() => {
+  setState(value);
+}, [value, setState]); // ❌ setState is stable, don't include
+
+useCallback(() => {
+  doSomething();
+}, [setOtherState]); // ❌ Setters are stable by design
+```
+
+#### 3. Circular Dependencies
+```typescript
+// ❌ FORBIDDEN: Hooks importing each other
+// useAudioManager.ts
+import { useClientTools } from './useClientTools'; // ❌ Circular
+
+// useClientTools.ts  
+import { useAudioManager } from './useAudioManager'; // ❌ Circular
+
+// ✅ CORRECT: Pass dependencies as parameters
+export function useAudioManager(clientTools: ClientTools) {
+  // No direct import, use passed dependency
+}
+```
+
+## 🧠 COMPONENT PATTERNS
+
+### ✅ Brain Component Rules
+
+#### 1. Hook Orchestration
+```typescript
+// ✅ CORRECT: Brain orchestrates with minimal interfaces
+export default function BrainComponent() {
+  // ✅ Initialize hooks with clear dependencies
+  const clientTools = useClientTools(getToken, clearToken);
+  const { conversation } = useConversationManager(clientTools);
+  const { startRecording } = useAudioManager();
+  
+  // ✅ Simple event handlers
+  const handleSelection = useCallback((data: SelectionType) => {
+    updateGlobalState(data);
+    syncToAgent();
+  }, [updateGlobalState, syncToAgent]);
+  
+  return (
+    <SelfContainedWidget onSelect={handleSelection} />
+  );
+}
+```
+
+#### 2. Widget Integration
+```typescript
+// ✅ CORRECT: Minimal widget interfaces (max 3 callbacks)
+<Widget 
+  onSelect={handleSelect}
+  onError={handleError}
+  onComplete={handleComplete}
+/>
+
+// ❌ FORBIDDEN: Complex widget interfaces
+<Widget
+  data={data}              // ❌ Parent managing widget data
+  isLoading={isLoading}    // ❌ Parent managing widget state
+  onSearch={handleSearch}  // ❌ Parent managing widget queries
+  sessionToken={token}     // ❌ Parent managing widget sessions
+  error={error}           // ❌ Parent managing widget errors
+/>
+```
+
+## 🔧 PERFORMANCE PATTERNS
+
+### ✅ REQUIRED Optimization Patterns
+
+#### 1. Stable References
+```typescript
+// ✅ CORRECT: Minimize dependencies for stability
+const stableHandler = useCallback((data: Data) => {
+  // Use getState() for non-reactive values
+  const { config } = useStore.getState();
+  processData(data, config);
+}, []); // ✅ Empty deps = maximum stability
+
+const memoizedValue = useMemo(() => {
+  return expensiveComputation(props.data);
+}, [props.data]); // ✅ Only include values that should trigger recomputation
+```
+
+#### 2. Cleanup Patterns
+```typescript
+// ✅ REQUIRED: Proper cleanup in hooks
+export function useAudioManager() {
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  
+  const cleanup = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
+  
+  useEffect(() => {
+    return cleanup; // ✅ Cleanup on unmount
+  }, [cleanup]);
+  
+  return { cleanup };
+}
+```
+
+## 📝 ERROR HANDLING PATTERNS
+
+### ✅ REQUIRED Error Patterns
+
+#### 1. Graceful Degradation
+```typescript
+// ✅ CORRECT: Graceful error handling
+export function useApiHook() {
+  const [error, setError] = useState<Error | null>(null);
+  
+  const apiCall = useCallback(async (params: Params) => {
+    try {
+      const result = await api.call(params);
+      setError(null); // ✅ Clear previous errors
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+      log('❌ API call failed:', err);
+      return null; // ✅ Graceful fallback
+    }
+  }, []);
+  
+  return { apiCall, error };
+}
+```
+
+#### 2. Error Boundaries
+```typescript
+// ✅ REQUIRED: Validate parameters in tools/hooks
+export function useClientTools() {
+  const searchAddress = useCallback(async (params: unknown) => {
+    // ✅ Always validate inputs
+    if (typeof params !== 'object' || !params || !('query' in params)) {
+      const errorMessage = "Invalid parameters for searchAddress";
+      log('❌ Tool validation failed:', { params });
+      return JSON.stringify({ status: "error", error: errorMessage });
+    }
+    
+    // Continue with validated params
+  }, []);
+}
+```
+
+## 🎯 TESTING CONSIDERATIONS
+
+### ✅ Design for Testability
+
+#### 1. Pure Functions First
+```typescript
+// ✅ TESTABLE: Pure utilities are easily testable
+// app/utils/helpers.ts
+export const classifyResult = (data: Data): ResultType => {
+  // Pure function - easy to unit test
+  return classification;
+};
+```
+
+#### 2. Injectable Dependencies
+```typescript
+// ✅ TESTABLE: Dependencies can be mocked
+export function useClientTools(
+  getToken: () => string,    // ✅ Can be mocked
+  clearToken: () => void     // ✅ Can be mocked
+) {
+  // Hook logic using injected dependencies
+}
+```
+
+## 🚀 MIGRATION CHECKLIST
+
+When creating new hooks or refactoring existing code:
+
+- [ ] ✅ Is the hook focused on a single concern?
+- [ ] ✅ Are dependencies passed as parameters, not imported?
+- [ ] ✅ Does it use the stable logging pattern?
+- [ ] ✅ Are useCallback dependencies minimal and stable?
+- [ ] ✅ Does it avoid including setters in useEffect dependencies?
+- [ ] ✅ Does it properly clean up resources?
+- [ ] ✅ Are error cases handled gracefully?
+- [ ] ✅ Is the interface minimal (≤5 parameters/returns)?
+- [ ] ✅ Can it be tested in isolation?
+- [ ] ✅ Does it follow the established naming patterns?
+
+Follow these patterns to maintain consistency with the established architecture and prevent common issues like infinite loops, performance problems, and tight coupling.

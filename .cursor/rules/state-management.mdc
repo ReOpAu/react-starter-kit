@@ -1,7 +1,7 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: app/hooks/**/*.ts,app/utils/**/*.ts,app/routes/**/*.tsx,app/components/**/*.tsx
+alwaysApply: false
 ---
 ---
 description: State manipulation strategy for React Query + Zustand + ElevenLabs agent sync. Enforces shared state manipulation as the synchronization mechanism between UI interactions and conversational AI agent.

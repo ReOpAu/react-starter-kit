@@ -15,36 +15,44 @@ The Intelligent Address Finder v3 is a sophisticated address lookup application 
 
 ### Data Flow
 ```
-User Input (Manual/Voice) → React Query → Convex Location API → Google Places API → UI Display
-                                    ↓
-                           Zustand Store ← ElevenLabs Agent Sync
+User Input (Voice/Manual)
+        ↓
+Zustand (Search Query Update)
+        ↓
+React Query (Fetches data using query from Zustand)
+        ↓
+Zustand (Receives API results from React Query via setApiResults)
+        ↓
+ElevenLabs Agent (Receives state from Zustand via useAgentSync)
 ```
 
 ## File Structure & Dependencies
 
 ### Main Application File
-- **`app/routes/address-finder.tsx`** - Main component orchestrating the entire application
+- **`app/routes/address-finder.tsx`** - Main component orchestrating the application by integrating a suite of specialized hooks. Its primary role is UI rendering and event handling.
+
+### Architectural Hooks
+- **`app/hooks/useConversationManager.ts`** - Manages the connection and event handling for the ElevenLabs conversation service.
+- **`app/hooks/useAudioManager.ts`** - Encapsulates all audio-related logic, including recording and voice activity detection.
+- **`app/hooks/useAddressFinderClientTools.ts`** - Implements all `clientTools` for the ElevenLabs agent, isolating complex agent interaction logic.
+- **`app/hooks/useReliableSync.ts`** - Provides enhanced state synchronization with multi-step validation to ensure reliability.
+- **`app/hooks/useAgentSync.ts`** - The core hook responsible for synchronizing Zustand state with the ElevenLabs agent's state.
+
+### Utility Files
+- **`app/utils/addressFinderUtils.ts`** - Contains pure, testable utility functions like `classifySelectedResult` and `deduplicateSuggestions`.
 
 ### Convex Backend Files Used
-- **`convex/location.ts`** - Primary backend function (`getPlaceSuggestions` action)
-  - Handles Google Places API integration
-  - Intent classification (suburb, street, address, general)
-  - Address validation using Google's Address Validation API
-  - Smart fallback mechanisms
+- **`convex/location.ts`** - Primary backend function (`getPlaceSuggestions` action) for Google Places API integration, intent classification, and address validation.
 
 ### Child Components
-- **`app/components/address-finder/VoiceInputController.tsx`** - Voice recording controls
-- **`app/components/address-finder/ManualSearchForm.tsx`** - Self-contained Google Places autocomplete widget
-  - Internal state management for UX (input, dropdown, keyboard navigation, debouncing)
-  - Single responsibility: calls `onSelect(suggestion)` to feed selections to the Brain
-  - Isolated from global state, agent sync, and recording mode awareness
-- **`app/components/address-finder/AddressInput.tsx`** - Styled input component
-- **`app/components/address-finder/SuggestionsDisplay.tsx`** - AI-generated suggestions display
-- **`app/components/address-finder/SelectedResultCard.tsx`** - Shows confirmed selection
-- **`app/components/address-finder/HistoryPanel.tsx`** - Interaction history
+- **`app/components/address-finder/VoiceInputController.tsx`** - Voice recording controls.
+- **`app/components/address-finder/ManualSearchForm.tsx`** - Self-contained Google Places autocomplete widget.
+- **`app/components/address-finder/SuggestionsDisplay.tsx`** - Displays AI-generated suggestions.
+- **`app/components/address-finder/SelectedResultCard.tsx`** - Shows the confirmed address selection.
+- **`app/components/address-finder/HistoryPanel.tsx`** - Displays the history of interactions.
 
 ### State Management
-- **`app/stores/addressFinderStore.ts`** - Zustand store for global state
+- **`app/stores/addressFinderStore.ts`** - Zustand store for global UI state. This file is the source for key shared types like `Suggestion` and `LocationIntent`.
 - **`app/hooks/useAgentSync.ts`** - Synchronizes state with ElevenLabs agent
 
 ## Key Features
@@ -96,18 +104,18 @@ This ensures clean separation between manual autocomplete (widget-managed) and A
 4. Parent component (`address-finder.tsx`) updates Zustand store and syncs to agent
 
 ### Voice Conversation Flow
-1. User starts recording via `VoiceInputController`
-2. ElevenLabs agent receives audio and processes natural language
-3. Agent uses `clientTools` to call backend functions:
-   - `searchAddress()` - Search for places
-   - `getSuggestions()` - Get current suggestions
-   - `selectSuggestion()` - Make a selection
-   - `getConfirmedSelection()` - Check current selection
-4. Results display in `SuggestionsDisplay` component
-5. User can click suggestions or let agent auto-select
+1. User starts recording via `VoiceInputController`.
+2. ElevenLabs agent receives audio and processes natural language.
+3. Agent uses the `searchAddress` client tool to find places based on the user's speech.
+4. Results are displayed in the `SuggestionsDisplay` component.
+5. From here, a selection can be made in two ways:
+    - **Agent-driven selection**: The user can ask the agent to select an option, and the agent will use the `selectSuggestion` tool.
+    - **User-driven selection**: The user can manually click on a suggestion at any time.
+6. **Critical Interaction Pattern**: If the user manually clicks a suggestion while the conversation is active, the application sends a clarifying text message to the agent (e.g., "I have selected '123 Example Street'..."). This is a crucial step that prevents the agent from redundantly trying to perform a selection that the user has already made, ensuring the agent acts as a true conversational partner that is aware of the user's actions.
+7. The `getConfirmedSelection` tool allows the agent to verify the final selection at any point.
 
 ### Client Tools (Agent Integration)
-The application provides these tools to the ElevenLabs agent:
+The application provides these tools to the ElevenLabs agent, all of which are implemented and managed within the **`app/hooks/useAddressFinderClientTools.ts`** hook. This isolates the agent's interaction capabilities from the main component.
 
 - **`searchAddress(query)`** - Searches for places using the query
 - **`getSuggestions()`** - Returns current available suggestions  
@@ -285,11 +293,14 @@ GOOGLE_PLACES_API_KEY=            # Google Places API key (backend)
 The application follows a clear separation between the "Brain" (global state orchestration) and "Widgets" (self-contained UI components):
 
 **The Brain: `app/routes/address-finder.tsx`**
-- Orchestrates all global state (React Query + Zustand)
-- Manages agent synchronization via `useAgentSync`
-- Handles mode switching (voice vs manual)
-- Coordinates between components
-- Contains all `clientTools` for agent interaction
+- Orchestrates the application by composing and coordinating a suite of specialized hooks.
+- Manages global state using React Query for API data and Zustand for UI state.
+- Integrates the following hooks to delegate responsibilities:
+  - `useConversationManager`: For handling the ElevenLabs conversation lifecycle.
+  - `useAudioManager`: For managing audio recording.
+  - `useAddressFinderClientTools`: To provide the agent with its interactive capabilities.
+  - `useAgentSync`: For synchronizing state with the agent.
+- Renders the UI and wires up event handlers.
 
 **Widget: `ManualSearchForm.tsx`**
 - **Purpose**: Self-contained Google Places autocomplete widget with independent query management
