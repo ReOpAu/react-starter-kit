@@ -11,6 +11,7 @@ export function useAudioManager() {
     setIsVoiceActive,
     setIsRecording,
     addHistory,
+    setAgentRequestedManual,
   } = useAddressFinderStore();
 
   // Logging utility - STABLE: No dependencies to prevent infinite loops
@@ -31,11 +32,11 @@ export function useAudioManager() {
     }
   }, []);
 
-  const startRecording = useCallback(async (conversation: any, setAgentRequestedManual?: (value: boolean) => void) => {
+  const startRecording = useCallback(async (conversation: any) => {
     log('🎤 === STARTING RECORDING ===');
     log('📊 PRE-RECORDING STATE:', {
-      isRecording,
-      isVoiceActive,
+      isRecording: useAddressFinderStore.getState().isRecording,
+      isVoiceActive: useAddressFinderStore.getState().isVoiceActive,
       conversationStatus: conversation.status,
     });
     
@@ -53,6 +54,7 @@ export function useAudioManager() {
 
       let lastUpdate = 0;
       const checkAudio = () => {
+        if (!mediaStreamRef.current) return; // Exit if cleaned up
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
@@ -68,7 +70,7 @@ export function useAudioManager() {
 
       await conversation.startSession();
       setIsRecording(true);
-      setAgentRequestedManual?.(false); // Reset manual request flag when starting voice
+      setAgentRequestedManual(false); // Reset manual request flag when starting voice
       addHistory({ type: 'system', text: 'Recording started - Autocomplete disabled' });
       
       log('✅ RECORDING STARTED SUCCESSFULLY');
@@ -78,20 +80,18 @@ export function useAudioManager() {
       addHistory({ type: 'system', text: `Error starting recording: ${err instanceof Error ? err.message : String(err)}`});
     }
   }, [
-    isRecording,
-    isVoiceActive,
-    setIsRecording,
-    setIsVoiceActive,
     addHistory,
     cleanupAudio,
     log,
+    setIsRecording,
+    setAgentRequestedManual,
   ]);
 
   const stopRecording = useCallback(async (conversation: any) => {
     log('🎤 === STOPPING RECORDING ===');
     log('📊 PRE-STOP STATE:', {
-      isRecording,
-      isVoiceActive,
+      isRecording: useAddressFinderStore.getState().isRecording,
+      isVoiceActive: useAddressFinderStore.getState().isVoiceActive,
       conversationStatus: conversation.status,
     });
     
@@ -108,8 +108,6 @@ export function useAudioManager() {
     setIsVoiceActive,
     cleanupAudio,
     log,
-    isRecording,
-    isVoiceActive,
   ]);
 
   // Cleanup on unmount

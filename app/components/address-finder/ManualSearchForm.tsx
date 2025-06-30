@@ -27,10 +27,12 @@ const renderHighlightedText = (text: string, searchTerm: string): React.ReactNod
 
 interface ManualSearchFormProps {
   onSelect: (suggestion: Suggestion) => void;
+  disabled?: boolean;
 }
 
 const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({ 
   onSelect,
+  disabled = false,
  }) => {
     const [inputValue, setInputValue] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -221,6 +223,7 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
                 onSubmit={handleSubmit}
                 onClear={handleClearInput}
                 isLoading={isLoading}
+                disabled={disabled}
                 aria-expanded={showSuggestions}
                 aria-haspopup="listbox"
                 aria-autocomplete="list"

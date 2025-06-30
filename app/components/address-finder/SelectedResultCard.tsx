@@ -16,7 +16,7 @@ const SelectedResultCard: React.FC<SelectedResultCardProps> = ({ result, onClear
           <span>🎯</span>
           <span>Confirmed Selection</span>
         </CardTitle>
-        <Button variant="ghost" size="sm" onClick={onClear}>Clear</Button>
+        <Button variant="ghost" size="sm" onClick={() => onClear()}>Clear</Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">

@@ -7,6 +7,7 @@ import { useAudioManager } from '~/hooks/useAudioManager';
 import { useReliableSync } from '~/hooks/useReliableSync';
 import { useAddressFinderClientTools } from '~/hooks/useAddressFinderClientTools';
 import { useConversationManager } from '~/hooks/useConversationManager';
+import { useActionHandler } from '~/hooks/useActionHandler';
 import { classifySelectedResult } from '~/utils/addressFinderUtils';
 import {
   VoiceInputController,
@@ -76,9 +77,40 @@ export default function AddressFinder() {
     }
   }, [log]);
 
-  // Initialize hooks
-  const clientTools = useAddressFinderClientTools(getSessionToken, clearSessionToken);
+  // ARCHITECTURAL FIX: Use a ref to break the dependency cycle
+  const conversationRef = useRef<ReturnType<typeof useConversationManager>['conversation'] | null>(null);
+
+  const { 
+    handleSelect, 
+    isValidating, 
+    validationError,
+    handleClear,
+  } = useActionHandler({
+    log,
+    setCurrentIntent,
+    setSelectedResult,
+    setSearchQuery,
+    setAgentRequestedManual,
+    addHistory,
+    getSessionToken,
+    clearSessionToken,
+    isRecording,
+    conversationRef,
+    queryClient,
+    clearStore: clear,
+  });
+
+  const clientTools = useAddressFinderClientTools(
+    getSessionToken, 
+    clearSessionToken
+  );
   const { conversation } = useConversationManager(clientTools);
+  
+  // Keep the ref updated with the latest conversation object.
+  useEffect(() => {
+    conversationRef.current = conversation;
+  }, [conversation]);
+
   const { startRecording, stopRecording } = useAudioManager();
 
   // API Action
@@ -225,76 +257,8 @@ export default function AddressFinder() {
 
   // Event handlers
   const handleSelectResult = useCallback((result: Suggestion) => {
-    log('🎯 === SELECTION FLOW START ===');
-    log('🎯 User clicked suggestion:', { 
-      description: result.description, 
-      placeId: result.placeId,
-      types: result.types 
-    });
-    
-    const intent = classifySelectedResult(result);
-    log(`🎯 Selected result classified as: ${intent}`);
-    
-    // Update state
-    setCurrentIntent(intent);
-    setSelectedResult(result);
-    setSearchQuery(result.description);
-    setAgentRequestedManual(false);
-    addHistory({ type: 'user', text: `Selected: "${result.description}"`});
-    
-    // Clear session token
-    clearSessionToken();
-    
-    // Notify agent during conversation
-    if (isRecording && conversation.status === 'connected') {
-      const selectionMessage = `I have selected "${result.description}" from the available options. Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed.`;
-      log('🗨️ SENDING MESSAGE TO AGENT:', selectionMessage);
-      
-      try {
-        conversation.sendUserMessage?.(selectionMessage);
-        log('✅ Message sent to agent successfully');
-        addHistory({ type: 'system', text: 'Notified agent about selection' });
-      } catch (error) {
-        log('❌ Failed to send message to agent:', error);
-        addHistory({ type: 'system', text: `Failed to notify agent: ${error}` });
-      }
-    }
-    
-    log('🎯 === SELECTION FLOW END ===');
-  }, [
-    setCurrentIntent, 
-    setSelectedResult, 
-    setSearchQuery, 
-    setAgentRequestedManual, 
-    addHistory, 
-    clearSessionToken, 
-    isRecording, 
-    conversation,
-    log
-  ]);
-
-  const handleClear = useCallback(() => {
-    log('🗑️ === CLEARING ALL STATE ===');
-    
-    if (searchQuery) {
-      queryClient.removeQueries({ queryKey: ['addressSearch', searchQuery] });
-      log('🔧 Cleared React Query cache for:', searchQuery);
-    }
-    if (debouncedSearchQuery) {
-      queryClient.removeQueries({ queryKey: ['addressSearch', debouncedSearchQuery] });
-      log('🔧 Cleared React Query cache for:', debouncedSearchQuery);
-    }
-    
-    clear();
-    log('✅ ALL STATE CLEARED');
-  }, [searchQuery, debouncedSearchQuery, queryClient, clear, log]);
-
-  const handleClearSelection = useCallback(() => {
-    log('🗑️ CLEARING SELECTION');
-    setSelectedResult(null);
-    addHistory({ type: 'user', text: 'Selection cleared' });
-    log('✅ SELECTION CLEARED');
-  }, [setSelectedResult, addHistory, log]);
+    handleSelect(result);
+  }, [handleSelect]);
 
   const handleRequestAgentState = useCallback(() => {
     if (conversation.status === 'connected') {
@@ -317,8 +281,11 @@ export default function AddressFinder() {
     }
   };
 
-  // Determine when to show ManualSearchForm
+  // Dynamic UI visibility
+  const shouldShowSuggestions = suggestions.length > 0 && !selectedResult && !isLoading;
   const shouldShowManualForm = !isRecording || agentRequestedManual;
+  const shouldShowSelectedResult = selectedResult && !isValidating;
+  const shouldShowValidationStatus = isValidating || validationError;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -374,7 +341,10 @@ export default function AddressFinder() {
                   </div>
                 )}
                 
-                <ManualSearchForm onSelect={handleSelectResult} />
+                <ManualSearchForm 
+                  onSelect={handleSelectResult} 
+                  disabled={isValidating}
+                />
               </div>
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
@@ -382,11 +352,27 @@ export default function AddressFinder() {
                 <p className="text-xs text-gray-500">The AI will manage place suggestions through conversation. It can enable manual input if needed.</p>
               </div>
             )}
+
+            {shouldShowValidationStatus && (
+              <Card className="border-yellow-200 bg-yellow-50/50">
+                <CardContent className="p-4">
+                  {isValidating && <p className="font-semibold animate-pulse">Validating selected address...</p>}
+                  {validationError && <p className="text-red-600 font-semibold">Validation Error: {validationError}</p>}
+                </CardContent>
+              </Card>
+            )}
+
+            {shouldShowSelectedResult && (
+              <SelectedResultCard 
+                result={selectedResult} 
+                onClear={handleClear} 
+              />
+            )}
           </CardContent>
         </Card>
 
         {/* AI-Generated Suggestions Display */}
-        {suggestions.length > 0 && isRecording && !selectedResult && !agentRequestedManual && (
+        {shouldShowSuggestions && (
           <Card className="border-blue-200 bg-blue-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -407,13 +393,6 @@ export default function AddressFinder() {
               />
             </CardContent>
           </Card>
-        )}
-
-        {selectedResult && (
-          <SelectedResultCard
-            result={selectedResult}
-            onClear={handleClearSelection}
-          />
         )}
         
         <HistoryPanel history={history} />
@@ -443,7 +422,7 @@ export default function AddressFinder() {
 
         <div className="text-center space-x-4">
           <Button onClick={handleRequestAgentState} variant="secondary">Get Agent State</Button>
-          <Button onClick={handleClear} variant="outline">Clear All State</Button>
+          <Button onClick={() => handleClear('user')} variant="outline">Clear All State</Button>
         </div>
       </div>
     </div>
