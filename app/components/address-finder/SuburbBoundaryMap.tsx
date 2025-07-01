@@ -54,9 +54,11 @@ export const SuburbBoundaryMap: React.FC<SuburbBoundaryMapProps> = ({ suburbName
   };
 
   useEffect(() => {
+    let script: HTMLScriptElement | null = null;
+    let scriptAddedByThisComponent = false;
     // Only add the script if it doesn't already exist in the DOM
     if (!document.querySelector('script[data-google-maps-api]')) {
-      const script = document.createElement('script');
+      script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.setAttribute('data-google-maps-api', 'true');
@@ -64,10 +66,25 @@ export const SuburbBoundaryMap: React.FC<SuburbBoundaryMapProps> = ({ suburbName
         renderMap();
       };
       document.body.appendChild(script);
+      scriptAddedByThisComponent = true;
     } else if ((window as any).google) {
       renderMap();
     }
     // eslint-disable-next-line
+    return () => {
+      // Cleanup: remove script if we added it
+      if (script && scriptAddedByThisComponent) {
+        script.remove();
+      }
+      // Cleanup: dispose of map instance
+      if (mapInstance.current) {
+        // Google Maps API does not provide a direct destroy method, but we can clear the reference
+        mapInstance.current = null;
+      }
+      // Cleanup: clear featureLayerRef
+      featureLayerRef.current = null;
+      // If you add event listeners in the future, remove them here
+    };
   }, [suburbName, placeId, mapId]);
 
   const renderMap = () => {
@@ -106,7 +123,7 @@ export const SuburbBoundaryMap: React.FC<SuburbBoundaryMapProps> = ({ suburbName
     } else {
       // Fallback: show message if FeatureLayer is not available
       if (mapRef.current) {
-        mapRef.current.innerHTML = '<div style="color:red;padding:1em;">Google Maps FeatureLayer API is not available. Please check your API key, Map ID, and ensure DDS Boundaries are enabled.</div>';
+        mapRef.current.innerHTML = '<div class="text-red-600 bg-red-50 p-4 rounded text-sm" role="alert">Google Maps FeatureLayer API is not available. Please check your API key, Map ID, and ensure DDS Boundaries are enabled.</div>';
       }
     }
   };

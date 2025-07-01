@@ -1,0 +1,58 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+## 🧹 MEMORY SAFETY & RESOURCE MANAGEMENT
+
+### Why It Matters
+- Prevents memory leaks and performance issues in long-lived or frequently mounted/unmounted components.
+- Ensures third-party resources (scripts, listeners, map/chart objects) are properly cleaned up.
+- Critical for single-page apps and complex UIs with dynamic integrations (e.g., Google Maps, Chart.js).
+
+### Best Practices
+1. **Always clean up dynamically added DOM elements** (e.g., scripts, styles) in `useEffect` cleanup functions.
+2. **Dispose of third-party instances** (e.g., map objects, chart instances) by nullifying references and calling destroy/dispose methods if available.
+3. **Remove event listeners** added to global objects or DOM nodes in cleanup.
+4. **Never assume the browser will garbage collect everything automatically**—explicitly release resources.
+5. **Document cleanup logic in code comments** for future maintainers.
+
+### Example: Google Maps Integration
+```typescript
+useEffect(() => {
+  let script: HTMLScriptElement | null = null;
+  let scriptAddedByThisComponent = false;
+  if (!document.querySelector('script[data-google-maps-api]')) {
+    script = document.createElement('script');
+    script.src = '...';
+    script.async = true;
+    script.setAttribute('data-google-maps-api', 'true');
+    document.body.appendChild(script);
+    scriptAddedByThisComponent = true;
+  }
+  // ...initialize map instance...
+  return () => {
+    if (script && scriptAddedByThisComponent) script.remove();
+    if (mapInstance.current) mapInstance.current = null;
+    featureLayerRef.current = null;
+    // Remove event listeners if any were added
+  };
+}, [/* deps */]);
+```
+
+### PR Review Checklist
+- [ ] Are all dynamic resources cleaned up in `useEffect`?
+- [ ] Are event listeners removed?
+- [ ] Are third-party instances disposed of?
+- [ ] Are cleanup steps documented in comments?
+
+### Real-World Example
+- See `SuburbBoundaryMap.tsx` for a robust implementation of Google Maps resource management.
+
+## 🔒 Google Maps API Key Security
+
+- Always restrict your Google Maps API key in the Google Cloud Console to only allow requests from your authorized domains (HTTP referrer restrictions).
+- Set the `VITE_GOOGLE_MAPS_API_KEY` environment variable to this restricted key.
+- Never use unrestricted or admin-level keys in frontend code.
+- For sensitive or quota-limited operations (e.g., geocoding, data enrichment), move the logic to a server-side proxy or backend function to keep the key secret and protected from abuse.
+- Regularly audit your API key usage and rotate keys if you suspect exposure or abuse.

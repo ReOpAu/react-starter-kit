@@ -1,13 +1,46 @@
 ---
-description: 
-globs: 
+description: "Rules for map display based on validated address selections"
+globs: ["**/*.tsx", "**/*.ts"]
 alwaysApply: false
 ---
----
+
 
 ## Map Display for Validated Selections (Rule)
-- Only display maps for confirmed selections with validated coordinates (`lat`/`lng`).
-- After validation, always enrich the confirmed selection with these fields if available.
+- Only display maps for confirmed selections with validated coordinates (`lat`/`lng`) or a valid Place ID for a suburb/locality.
+- **For point-based selections (e.g., street addresses):**
+  - Use the `lat`/`lng` fields from the validated selection to center the map.
+- **For suburb/locality boundaries:**
+  - Use the Place ID to fetch the boundary viewport via Google Maps PlacesService and fit the map to it using `map.fitBounds(viewport)`.
+  - Render the boundary using the Google Maps FeatureLayer with the appropriate filter and style.
+  - If the viewport cannot be fetched, fallback to a default center/zoom (e.g., Sydney).
 - Never display a map for partial or unvalidated suggestions.
 - The `Suggestion` type includes optional `lat` and `lng` fields for this purpose.
-- Example: See SelectedResultCard and useActionHandler for implementation.
+
+### Example: SuburbBoundaryMap Implementation
+```typescript
+const fitMapToPlaceId = (map: any, placeId: string) => {
+  const google = (window as any).google;
+  if (!google || !google.maps || !google.maps.places) return; // Guard: Google Maps script not loaded
+  const placesService = new google.maps.places.PlacesService(map);
+  const request = {
+    placeId,
+    fields: ['geometry.viewport'],
+  };
+  placesService.getDetails(request, (place: any, status: any) => {
+    // Guard: Ensure google object and map reference are valid and mounted
+    if (!google || !google.maps || !map || typeof map.getDiv !== 'function' || !map.getDiv()) return;
+    if (
+      status === google.maps.places.PlacesServiceStatus.OK &&
+      place &&
+      place.geometry &&
+      place.geometry.viewport
+    ) {
+      map.fitBounds(place.geometry.viewport);
+    } else {
+      // Fallback: Sydney
+      map.setCenter({ lat: -33.8688, lng: 151.2093 });
+      map.setZoom(14);
+    }
+  });
+};
+```
