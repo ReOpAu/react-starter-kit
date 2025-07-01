@@ -23,6 +23,7 @@ import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { Badge } from '~/components/ui/badge';
 import AgentStatePanel from '~/components/address-finder/AgentStatePanel';
 import AgentDebugCopyPanel from '~/components/address-finder/AgentDebugCopyPanel';
+import SuburbBoundaryMap from '~/components/address-finder/SuburbBoundaryMap';
 
 // New Pillar-Aligned Store Imports
 import type { Suggestion } from '~/stores/types';
@@ -383,12 +384,32 @@ export default function AddressFinder() {
             )}
 
             {shouldShowSelectedResult && (
-              <SelectedResultCard 
-                result={selectedResult} 
-                onClear={handleClear} 
-                lat={(selectedResult as any)?.lat}
-                lng={(selectedResult as any)?.lng}
-              />
+              <>
+                <SelectedResultCard 
+                  result={selectedResult} 
+                  onClear={handleClear} 
+                  lat={selectedResult?.lat}
+                  lng={selectedResult?.lng}
+                />
+                {/* Suburb boundary map for suburb/locality results */}
+                {selectedResult &&
+                  Array.isArray(selectedResult.types) &&
+                  (selectedResult.types.includes('locality') || selectedResult.types.includes('suburb')) &&
+                  selectedResult.placeId && (
+                    <div className="mt-4">
+                      <SuburbBoundaryMap
+                        suburbName={selectedResult.description}
+                        placeId={selectedResult.placeId}
+                        center={
+                          typeof selectedResult.lat === 'number' && typeof selectedResult.lng === 'number'
+                            ? { lat: selectedResult.lat, lng: selectedResult.lng }
+                            : { lat: -33.8688, lng: 151.2093 } // Fallback: Sydney
+                        }
+                        mapId="a26a63faa4c27b9388a5618d"
+                      />
+                    </div>
+                  )}
+              </>
             )}
           </CardContent>
         </Card>

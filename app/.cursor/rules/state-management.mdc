@@ -1,5 +1,13 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+---
+
+## Map Display for Validated Selections (Rule)
+- Only display maps for confirmed selections with validated coordinates (`lat`/`lng`).
+- After validation, always enrich the confirmed selection with these fields if available.
+- Never display a map for partial or unvalidated suggestions.
+- The `Suggestion` type includes optional `lat` and `lng` fields for this purpose.
+- Example: See SelectedResultCard and useActionHandler for implementation.
