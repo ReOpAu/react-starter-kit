@@ -61,10 +61,15 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
 
     try {
       const classifiedIntent = classifyIntent(query.trim());
+      const allowedIntents = ["address", "suburb", "street", "general"] as const;
+      const safeIntent: "address" | "suburb" | "street" | "general" | undefined =
+        allowedIntents.includes(classifiedIntent as any)
+          ? (classifiedIntent as typeof allowedIntents[number])
+          : undefined;
 
       const result = await getPlaceSuggestionsAction({
         query: query.trim(),
-        intent: classifiedIntent,
+        intent: safeIntent,
         maxResults: options.maxResults || 8,
         location: options.location,
         radius: options.radius

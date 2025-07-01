@@ -79,13 +79,7 @@ export function useAddressFinderClientTools(
               placeId: validation.result.geocode.placeId,
               description: validation.result.address.formattedAddress,
               types: ['street_address', 'validated_address'],
-              matchedSubstrings: [],
-              structuredFormatting: {
-                mainText: validation.result.address.addressComponents.find(c => c.componentType === 'street_number')?.componentName.text || '',
-                secondaryText: validation.result.address.formattedAddress,
-              },
               resultType: 'address',
-              confidence: 1.0,
             };
             
             queryClient.setQueryData(['addressSearch', query], [validatedSuggestion]);

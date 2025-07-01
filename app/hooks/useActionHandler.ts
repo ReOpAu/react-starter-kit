@@ -39,6 +39,7 @@ export function useActionHandler({
 }: UseActionHandlerDependencies) {
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [pendingRuralConfirmation, setPendingRuralConfirmation] = useState<null | { result: Suggestion, validation: any }>(null);
   const validateAddressAction = useAction(api.location.validateAddress);
   const { performReliableSync } = useReliableSync();
 
@@ -97,6 +98,11 @@ export function useActionHandler({
               addHistory({ type: 'system', text: `Failed to notify agent: ${error}` });
             }
           }
+        } else if (validation.success && 'isRuralException' in validation && validation.isRuralException) {
+          // Rural exception: prompt user for confirmation
+          setPendingRuralConfirmation({ result, validation });
+          setValidationError(null);
+          addHistory({ type: 'system', text: `Rural address exception: ${validation.error}` });
         } else {
           const errorMessage = validation.error || "The selected address could not be validated.";
           log(`❌ VALIDATION FAILED: ${errorMessage}`);
@@ -182,10 +188,44 @@ export function useActionHandler({
     log('🗑️ === UNIFIED CLEAR FLOW END ===');
   }, [log, queryClient, clearSelectionAndSearch, addHistory, performReliableSync, isRecording, conversationRef]);
 
+  // Handler to accept rural address after user confirmation
+  const handleAcceptRuralAddress = useCallback(() => {
+    if (pendingRuralConfirmation) {
+      const { result, validation } = pendingRuralConfirmation;
+      const enrichedResult: Suggestion = {
+        ...result,
+        description: validation.formattedAddress || result.description,
+        placeId: validation.placeId || result.placeId,
+        types: [...(result.types || []), 'user_confirmed_rural'],
+      };
+      setSelectedResult(enrichedResult);
+      setActiveSearch({ query: enrichedResult.description, source: 'manual' });
+      setAgentRequestedManual(false);
+      addHistory({ type: 'user', text: `User confirmed rural address: "${enrichedResult.description}"` });
+      clearSessionToken();
+      setPendingRuralConfirmation(null);
+      // Optionally: notify agent as with normal selection
+      if (isRecording && conversationRef.current?.status === 'connected') {
+        const selectionMessage = `I have confirmed the rural address "${enrichedResult.description}". Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed.`;
+        log('🗨️ SENDING MESSAGE TO AGENT:', selectionMessage);
+        try {
+          conversationRef.current?.sendUserMessage?.(selectionMessage);
+          log('✅ Message sent to agent successfully');
+          addHistory({ type: 'system', text: 'Notified agent about rural address selection' });
+        } catch (error) {
+          log('❌ Failed to send message to agent:', error);
+          addHistory({ type: 'system', text: `Failed to notify agent: ${error}` });
+        }
+      }
+    }
+  }, [pendingRuralConfirmation, setSelectedResult, setActiveSearch, setAgentRequestedManual, addHistory, clearSessionToken, isRecording, conversationRef, log]);
+
   return {
     handleSelect,
     isValidating,
     validationError,
     handleClear,
+    pendingRuralConfirmation,
+    handleAcceptRuralAddress,
   };
 }

@@ -16,6 +16,7 @@ import { VoiceIndicator } from "~/components/conversation/VoiceIndicator";
 import { ShinyButton } from "~/components/ui/magicui/shiny-button";
 import { RainbowButton } from "~/components/ui/magicui/rainbow-button";
 import { DebugTools } from "~/components/conversation/DebugTools";
+import { useQueryClient } from '@tanstack/react-query';
 
 // === CONSOLIDATED STATE MANAGEMENT ===
 
@@ -285,31 +286,34 @@ interface AddressMatch {
 // === TYPE GUARD HELPERS ===
 
 function isAddressSearchParams(params: unknown): params is { address: string } {
-  return (
-    typeof params === 'object' &&
-    params !== null &&
-    'address' in params &&
-    typeof (params as any).address === 'string'
-  );
+  if (typeof params !== 'object' || params === null) return false;
+  if (!('address' in params)) return false;
+  // Now params is an object with 'address' property
+  const maybeObj = params as Record<string, unknown>;
+  return typeof maybeObj.address === 'string';
 }
 
 function isConfirmPlaceParams(
   params: unknown
 ): params is { results: Array<{ type: string; place_id: string; label: string }> } {
-  return (
-    typeof params === 'object' &&
-    params !== null &&
-    'results' in params &&
-    Array.isArray((params as any).results) &&
-    (params as any).results.every(
-      (r: any) =>
-        r &&
-        typeof r === 'object' &&
-        typeof r.type === 'string' &&
-        typeof r.place_id === 'string' &&
-        typeof r.label === 'string'
-    )
-  );
+  if (typeof params !== 'object' || params === null) return false;
+
+  // Check if 'results' property exists and is an array
+  const maybeObj = params as Record<string, unknown>;
+  if (!('results' in maybeObj)) return false;
+  const results = maybeObj.results;
+  if (!Array.isArray(results)) return false;
+
+  // Check that every element in the array has the required properties and types
+  return results.every((r) => {
+    if (typeof r !== 'object' || r === null) return false;
+    const obj = r as Record<string, unknown>;
+    return (
+      typeof obj.type === 'string' &&
+      typeof obj.place_id === 'string' &&
+      typeof obj.label === 'string'
+    );
+  });
 }
 
 export default function ConvAddress() {
@@ -370,21 +374,20 @@ export default function ConvAddress() {
   // UI State Synchronization with extracted hook
   const { syncToElevenLabs } = useUIStateSync(coreState, { suggestions, canonicalSuburb });
 
+  const queryClient = useQueryClient();
+
   // Optimized state update functions using dispatch
   const updateRecording = useCallback((recording: boolean) => {
     dispatch({ type: 'SET_RECORDING', payload: recording });
-    syncToElevenLabs();
-  }, [syncToElevenLabs]);
+  }, []);
 
   const updateMultipleResults = useCallback((results: SuburbResult[]) => {
     dispatch({ type: 'SET_MULTIPLE_RESULTS', payload: results });
-    syncToElevenLabs();
-  }, [syncToElevenLabs]);
+  }, []);
 
   const updateSelectedResult = useCallback((result: SuburbResult | null) => {
     dispatch({ type: 'SET_SELECTED_RESULT', payload: result });
-    syncToElevenLabs();
-  }, [syncToElevenLabs]);
+  }, []);
 
   const addSearchHistory = useCallback((item: SearchHistoryItem) => {
     dispatch({ type: 'ADD_SEARCH_HISTORY', payload: item });
@@ -942,8 +945,8 @@ export default function ConvAddress() {
                       resultType: suggestion.resultType,
                       confidence: confidence,
                       types: fullPlaceData.types,
-                      lat: fullPlaceData.geocode.lat,
-                      lng: fullPlaceData.geocode.lng
+                      lat: (fullPlaceData.geocode as { lat: number; lng: number } | undefined)?.lat ?? 0,
+                      lng: (fullPlaceData.geocode as { lat: number; lng: number } | undefined)?.lng ?? 0
                     };
 
                     console.log('[AddressSearch] Creating structured place data with coordinates:', structuredPlaceData);
@@ -967,10 +970,12 @@ export default function ConvAddress() {
                     }
 
                     // Create intent-aware response message
+                    const geocode = fullPlaceData.geocode as { lat: number; lng: number } | undefined;
+                    const coords = geocode && typeof geocode.lat === 'number' && typeof geocode.lng === 'number' ? `${geocode.lat.toFixed(6)}, ${geocode.lng.toFixed(6)}` : 'N/A';
                     responseMessage = `Perfect! I found the ${suggestion.resultType} you're looking for: ${suggestion.structuredFormatting.mainText}. ` +
                       `${intentEmoji} I detected you were searching for a ${intentLabel}, and this result matches with ${confidence}% confidence. ` +
                       `The full address is: ${fullPlaceData.canonicalSuburb}. ` +
-                      `📍 Coordinates: ${fullPlaceData.geocode.lat.toFixed(6)}, ${fullPlaceData.geocode.lng.toFixed(6)}`;
+                      `📍 Coordinates: ${coords}`;
                     
                     console.log('[AddressSearch] Response message:', responseMessage);
                     
@@ -1660,13 +1665,21 @@ export default function ConvAddress() {
   const handleManualSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (coreState.manualInput.trim()) {
-      // Use enhanced place suggestions for manual input
       try {
-        await searchPlaces(coreState.manualInput.trim());
+        // Use enhanced place suggestions for manual input
+        const result = await searchPlaces(coreState.manualInput.trim());
+        // Update React Query cache for agent tools
+        if (result && result.suggestions) {
+          queryClient.setQueryData([
+            'addressSearch',
+            coreState.manualInput.trim()
+          ], result.suggestions);
+          // Trigger state sync for agent
+          syncToElevenLabs();
+        }
         dispatch({ type: 'SET_MANUAL_INPUT', payload: '' });
       } catch (error) {
         console.error('Failed to search places:', error);
-        
         // Fallback to sending to AI agent if connected
         if (conversation.status === 'connected') {
           try {
@@ -1678,7 +1691,7 @@ export default function ConvAddress() {
         }
       }
     }
-  }, [coreState.manualInput, searchPlaces, conversation, dispatch]);
+  }, [coreState.manualInput, searchPlaces, queryClient, syncToElevenLabs, conversation, dispatch]);
 
   // Test multiple results lookup
   const testMultipleResults = async (testInput: string) => {
@@ -1763,7 +1776,7 @@ export default function ConvAddress() {
       const selectionSummary = `User has selected: "${result.canonicalSuburb}" from multiple options. ` +
         `This location has Place ID: ${result.placeId}, ` +
         `Place Types: ${result.types.join(', ')}, ` +
-        `Coordinates: ${result.geocode.lat === 0 && result.geocode.lng === 0 ? 'Available via Place ID lookup' : `${result.geocode.lat.toFixed(6)}, ${result.geocode.lng.toFixed(6)}`}. ` +
+        `Coordinates: ${result.geocode && typeof result.geocode.lat === 'number' && typeof result.geocode.lng === 'number' ? `${result.geocode.lat.toFixed(6)}, ${result.geocode.lng.toFixed(6)}` : 'N/A'}. ` +
         `Selection is now confirmed and active in the UI.`;
       
       try {
@@ -1855,6 +1868,10 @@ export default function ConvAddress() {
     canonicalSuburb,
     syncToElevenLabs
   ]);
+
+  // For enhancedResult.geocode display (insert before the JSX block that renders coordinates):
+  const enhancedGeocode = enhancedResult && enhancedResult.geocode as { lat: number; lng: number } | undefined;
+  const enhancedCoords = enhancedGeocode && typeof enhancedGeocode.lat === 'number' && typeof enhancedGeocode.lng === 'number' ? `${enhancedGeocode.lat.toFixed(6)}, ${enhancedGeocode.lng.toFixed(6)}` : 'N/A';
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -1986,12 +2003,7 @@ export default function ConvAddress() {
                             </div>
                             <div className="bg-white p-2 rounded border">
                               <p className="font-medium text-green-800">Coordinates:</p>
-                              <p className="text-green-600 font-mono">
-                                {enhancedResult.geocode.lat === 0 && enhancedResult.geocode.lng === 0 
-                                  ? 'Available via Place ID lookup' 
-                                  : `${enhancedResult.geocode.lat.toFixed(6)}, ${enhancedResult.geocode.lng.toFixed(6)}`
-                                }
-                              </p>
+                              <p className="text-green-600 font-mono">{enhancedCoords}</p>
                             </div>
                           </div>
                           
@@ -2068,39 +2080,38 @@ export default function ConvAddress() {
                 Found multiple places with similar names. Select the one you're looking for:
               </p>
               <div className="space-y-2">
-                {coreState.multipleResults.map((result: SuburbResult, index: number) => (
-                  <Button
-                    key={`${result.placeId}-${index}`}
-                    variant="outline"
-                    className="w-full justify-start p-4 h-auto bg-white hover:bg-blue-50 border-blue-200"
-                    onClick={() => handleResultSelection(result)}
-                  >
-                    <div className="text-left flex-1">
-                      <p className="font-medium text-blue-900">{result.canonicalSuburb}</p>
-                      <div className="mt-2 space-y-1">
-                        <p className="text-xs text-blue-600 font-mono">
-                          📍 {result.geocode.lat === 0 && result.geocode.lng === 0 
-                              ? `Place ID: ${result.placeId.substring(0, 12)}...` 
-                              : `${result.geocode.lat.toFixed(4)}, ${result.geocode.lng.toFixed(4)}`
-                            }
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {result.types.slice(0, 3).map((type: string) => (
-                            <Badge key={type} variant="outline" className="text-xs bg-blue-100 text-blue-600">
-                              {type}
-                            </Badge>
-                          ))}
-                          {result.types.length > 3 && (
-                            <Badge variant="outline" className="text-xs bg-blue-100 text-blue-600">
-                              +{result.types.length - 3} more
-                            </Badge>
-                          )}
+                {coreState.multipleResults.map((result: SuburbResult, index: number) => {
+                  const resultGeocode = result.geocode as { lat: number; lng: number } | undefined;
+                  const resultCoords = resultGeocode && typeof resultGeocode.lat === 'number' && typeof resultGeocode.lng === 'number' ? `${resultGeocode.lat.toFixed(4)}, ${resultGeocode.lng.toFixed(4)}` : 'N/A';
+                  return (
+                    <Button
+                      key={`${result.placeId}-${index}`}
+                      variant="outline"
+                      className="w-full justify-start p-4 h-auto bg-white hover:bg-blue-50 border-blue-200"
+                      onClick={() => handleResultSelection(result)}
+                    >
+                      <div className="text-left flex-1">
+                        <p className="font-medium text-blue-900">{result.canonicalSuburb}</p>
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-blue-600 font-mono">{resultCoords}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {result.types.slice(0, 3).map((type: string) => (
+                              <Badge key={type} variant="outline" className="text-xs bg-blue-100 text-blue-600">
+                                {type}
+                              </Badge>
+                            ))}
+                            {result.types.length > 3 && (
+                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-600">
+                                +{result.types.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <span className="text-blue-600">→</span>
-                  </Button>
-                ))}
+                      <span className="text-blue-600">→</span>
+                    </Button>
+                  );
+                })}
               </div>
               <Button 
                 variant="outline" 

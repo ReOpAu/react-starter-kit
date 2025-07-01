@@ -6,6 +6,7 @@ import { type Suggestion } from '~/stores/types';
 import { Badge } from '~/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import AddressInput from './AddressInput';
+import { classifyIntent } from '~/utils/addressFinderUtils';
 
 // Google Maps best practice: Highlight matching text in suggestions
 const renderHighlightedText = (text: string, searchTerm: string): React.ReactNode => {
@@ -80,9 +81,15 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(({
           return [];
         }
         
+        const classifiedIntent = classifyIntent(internalQuery);
+        const allowedIntents = ["address", "suburb", "street", "general"] as const;
+        const safeIntent: "address" | "suburb" | "street" | "general" | undefined =
+          allowedIntents.includes(classifiedIntent as any)
+            ? (classifiedIntent as typeof allowedIntents[number])
+            : 'general';
         const result = await getPlaceSuggestionsAction({ 
           query: internalQuery,
-          intent: 'general',
+          intent: safeIntent,
           isAutocomplete: true, // This is autocomplete mode
           sessionToken: getSessionToken(),
         });

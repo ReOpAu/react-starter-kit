@@ -198,7 +198,26 @@ When the agent fails to use a tool correctly, the errors can be cryptic. Here is
 | `I am sorry, an error occurred when calling the tool. Can you please try again?`       | **Data Serialization Error OR Race Condition.** This generic error usually means the platform failed to process the tool's response. The two most common causes are:            | **1. Simplify the Payload:** Ensure the tool returns a simple, flat JSON object serialized into a string. Remove any nested objects or complex data types. <br/> **2. Check for Race Conditions:** Use the "Wait for response" checkbox in the debug panel. If this fixes the issue, a race condition is confirmed. |
 | The agent doesn't use the tool at all, or uses the wrong tool for the job.            | **Prompting Issue.** The instructions in the main agent prompt are likely not clear, direct, or specific enough for the LLM to understand when and how to use the desired tool. | Refine the agent's prompt. Make the instructions more explicit. For example, instead of "You can get the state," use "When asked for your state, you MUST use the `getCurrentState` tool."                             |
 
----
+## Rural Address Exception
+
+In rare cases, valid rural addresses cannot be confirmed at the property ("PREMISE") level by Google, but are real and deliverable. To maintain strict validation for urban/suburban addresses while supporting rural users, the system implements a **Rural Address Exception**:
+
+- If an address with a house number fails validation **only** due to `validationGranularity` being `"ROUTE"` or `"LOCALITY"`, and the address appears rural (e.g., contains keywords like "Highway", "Road", "Lane", or known rural localities), the backend returns a special flag (`isRuralException`).
+- The UI then prompts the user: "This address could not be confirmed at the property level, but appears to be a rural address. If you are sure this is correct, you may accept it anyway."
+- If the user confirms, the address is accepted and marked as `user_confirmed_rural` in the system for downstream tracking.
+- This ensures that only users with local knowledge can override the strict validation, and all such exceptions are auditable.
+
+**User Flow:**
+1. User enters a rural address (e.g., `2220 Midland Hwy, Springmount VIC 3364`).
+2. Validation fails with `isRuralException`.
+3. UI displays a confirmation prompt.
+4. User clicks "Accept Anyway" to confirm.
+5. Address is accepted, marked as `user_confirmed_rural`, and synced to the agent and backend.
+
+**Rationale:**
+- Maintains high data quality for most users.
+- Supports real rural addresses that are not in Google's database.
+- All exceptions are explicit and user-driven.
 
 ## High-Level Architecture
 

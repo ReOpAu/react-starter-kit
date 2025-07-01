@@ -2,15 +2,14 @@ import { useState, useCallback } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { AddressValidationResult, PlaceSuggestion } from "../../convex/location";
-
-// Types
-export type LocationIntent = "suburb" | "street" | "address" | "general";
+import { classifyIntent } from "../utils/addressFinderUtils";
+import type { LocationIntent } from "../stores/types";
 
 // Legacy interfaces needed by conversation interface
 export interface SuburbResult {
   canonicalSuburb: string;
   placeId: string;
-  geocode: {
+  geocode?: {
     lat: number;
     lng: number;
   };
@@ -34,7 +33,7 @@ export function useSuburbAutocomplete() {
   
   // Enhanced state for new system
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [detectedIntent, setDetectedIntent] = useState<LocationIntent | null>(null);
+  const [detectedIntent, setDetectedIntent] = useState<LocationIntent | undefined>(undefined);
   
   // Legacy state needed by conversation interface
   const [canonicalSuburb, setCanonicalSuburb] = useState<string | null>(null);
@@ -157,15 +156,13 @@ export function useSuburbAutocomplete() {
   };
 
   // New enhanced place suggestions method
-  const validateFullAddress = async (address: string, enableUspsCass = false) => {
+  const validateFullAddress = async (address: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
       const result = await validateAddress({ 
-        address, 
-        enableUspsCass,
-        regionCode: "AU" 
+        address
       });
       
       return result;
@@ -191,7 +188,7 @@ export function useSuburbAutocomplete() {
     setIsLoading(true);
     setError(null);
     setSuggestions([]);
-    setDetectedIntent(null);
+    setDetectedIntent(undefined);
 
     try {
       const result = await getPlaceSuggestions({
@@ -224,7 +221,7 @@ export function useSuburbAutocomplete() {
     setIsLoading(false);
     setError(null);
     setSuggestions([]);
-    setDetectedIntent(null);
+    setDetectedIntent(undefined);
     setCanonicalSuburb(null);
     setEnhancedResult(null);
   }, []);
@@ -240,69 +237,6 @@ export function useSuburbAutocomplete() {
     });
   }, []);
 
-  // Helper function to classify user intent from raw input
-  const classifyIntent = useCallback((query: string): LocationIntent => {
-    const lowerQuery = query.toLowerCase().trim();
-    
-    // Street indicators
-    const streetKeywords = [
-      'street', 'st', 'road', 'rd', 'avenue', 'ave', 'lane', 'ln', 'drive', 'dr', 
-      'way', 'crescent', 'cres', 'court', 'ct', 'place', 'pl', 'terrace', 'tce',
-      'grove', 'close', 'boulevard', 'blvd', 'parade', 'pde', 'circuit', 'cct',
-      'walk', 'mews', 'row', 'square', 'sq', 'esplanade', 'esp'
-    ];
-    
-    // Check if query has street type indicator
-    const hasStreetType = streetKeywords.some(keyword => {
-      // Use word boundaries to avoid false matches like "st" in "west"
-      const wordBoundaryRegex = new RegExp(`\\b${keyword}\\b`, 'i');
-      return wordBoundaryRegex.test(lowerQuery);
-    });
-    
-    // Check for house number at the beginning (true address)
-    const hasHouseNumber = /^\d+[a-z]?\s+/.test(lowerQuery);
-    
-    // Check for unit/apartment patterns at the beginning
-    const hasUnitNumber = /^(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery);
-    
-    // Full address pattern (house number + street type)
-    if ((hasHouseNumber || hasUnitNumber) && hasStreetType) {
-      return "address";
-    }
-    
-    // Street name pattern (street type but no house number at start)
-    // Examples: "Clive street", "Smith Road, Richmond", "Collins St, Melbourne"
-    if (hasStreetType && !hasHouseNumber && !hasUnitNumber) {
-      return "street";
-    }
-    
-    // Unit/apartment patterns anywhere in the query (fallback)
-    if (/\b(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery)) {
-      return "address";
-    }
-    
-    // Check for postcode patterns (4 digits) - these are usually suburbs
-    const hasPostcode = /\b\d{4}\b/.test(lowerQuery);
-    
-    // Check for Australian state abbreviations
-    const hasAustralianState = /\b(vic|nsw|qld|wa|sa|tas|nt|act|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(lowerQuery);
-    
-    // If it has postcode or state but no street indicators, likely a suburb
-    if ((hasPostcode || hasAustralianState) && !hasStreetType) {
-      return "suburb";
-    }
-    
-    // Suburb patterns (simple text without numbers or street types)
-    const isSimpleText = /^[a-z\s\-']+$/i.test(lowerQuery);
-    
-    // If it's just simple text without street indicators, assume suburb
-    if (isSimpleText && !hasStreetType) {
-      return "suburb";
-    }
-    
-    return "general";
-  }, []);
-
   return {
     // Legacy methods for conversation interface
     lookupSuburb,
@@ -312,7 +246,6 @@ export function useSuburbAutocomplete() {
     // New enhanced methods
     getPlaceSuggestions: getPlaceSuggestionsWithIntent,
     validateFullAddress,
-    classifyIntent,
     
     // Legacy state for conversation interface
     canonicalSuburb,
@@ -328,4 +261,7 @@ export function useSuburbAutocomplete() {
     reset,
     setResult
   };
-} 
+}
+
+export type { LocationIntent };
+export { classifyIntent }; 

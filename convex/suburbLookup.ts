@@ -100,7 +100,23 @@ function extractSuburbFromPlacesSuggestion(suggestion: PlaceSuggestion): string 
   return undefined;
 }
 
-
+// Module-level constant for excluded place types
+export const EXCLUDED_PLACE_TYPES = [
+  'establishment', 'point_of_interest', 'store', 'food', 'restaurant',
+  'gas_station', 'hospital', 'school', 'street_address', 'route', 'premise',
+  'subpremise', 'shopping_mall', 'park', 'tourist_attraction', 'transit_station',
+  'train_station', 'bus_station', 'subway_station', 'airport', 'university',
+  'hotel', 'club', 'golf_course', 'stadium', 'casino', 'museum', 'art_gallery',
+  'aquarium', 'zoo', 'marina', 'beach', 'mountain', 'lake', 'river', 'waterfall',
+  'theme_park', 'amusement_park', 'bowling_alley', 'night_club', 'bar',
+  'movie_theater', 'beauty_salon', 'car_dealer', 'real_estate_agency', 'lawyer',
+  'dentist', 'doctor', 'pharmacy', 'bank', 'gym', 'campground', 'camping_cabin',
+  'hiking_area', 'natural_feature', 'walking_track', 'hiking_trail', 'nature_trail',
+  'walking_path', 'pedestrian_path', 'bike_path', 'cycling_path', 'trail_head',
+  'playground', 'picnic_ground', 'observation_deck', 'lookout', 'scenic_lookout',
+  'visitor_center', 'information_center', 'plaza', 'square', 'gardens', 'depot',
+  'terminal', 'junction',
+] as const;
 
 // Intent classification helper
 function classifyLocationIntent(query: string): LocationIntent {
@@ -239,15 +255,18 @@ export const getPlaceSuggestions = action({
       // Use baseSuburbLookup for all intents
       const baseResult = await baseSuburbLookup(query, apiKey, { includeDetails: true, maxResults });
       if (baseResult.success) {
-        // Map to PlaceSuggestion[] format (with dummy fields for compatibility)
+        // Map to PlaceSuggestion[] format using preserved fields
         const suggestions = baseResult.results.map(r => ({
           placeId: r.placeId || '',
           description: r.canonicalSuburb,
           types: r.types || [],
-          matchedSubstrings: [],
+          matchedSubstrings: r.matchedSubstrings || [],
           structuredFormatting: {
-            mainText: r.canonicalSuburb.split(',')[0] || r.canonicalSuburb,
-            secondaryText: r.canonicalSuburb.split(',').slice(1).join(',').trim() || '',
+            mainText: r.structuredFormatting?.main_text || r.canonicalSuburb.split(',')[0] || r.canonicalSuburb,
+            secondaryText: r.structuredFormatting?.secondary_text || r.canonicalSuburb.split(',').slice(1).join(',').trim() || '',
+            main_text: r.structuredFormatting?.main_text,
+            secondary_text: r.structuredFormatting?.secondary_text,
+            main_text_matched_substrings: r.structuredFormatting?.main_text_matched_substrings
           },
           resultType: detectedIntent,
           confidence: 1,
@@ -396,7 +415,7 @@ function shouldIncludeResult(prediction: GooglePlacePrediction, intent: Location
     'scenic_lookout', 'visitor_center', 'information_center'
   ];
   
-  const hasUnwantedType = types.some((type: string) => unwantedTypes.includes(type));
+  const hasUnwantedType = types.some((type: string) => unwantedTypes.includes(type as typeof EXCLUDED_PLACE_TYPES[number]));
   
   // Exclude unwanted keywords - comprehensive list
   const unwantedKeywords = [
@@ -418,8 +437,7 @@ function shouldIncludeResult(prediction: GooglePlacePrediction, intent: Location
     // For suburbs, only allow genuine locality types
     if (intent === "suburb") {
       const isGenuineSuburb = types.some((type: string) => 
-        ['locality', 'sublocality', 'administrative_area_level_2'].includes(type)
-      );
+        ['locality', 'sublocality', 'administrative_area_level_2'].includes(type));
       return isGenuineSuburb && !hasUnwantedType && !hasUnwantedKeyword;
     }
   }
@@ -439,6 +457,12 @@ interface SuburbLookupResult {
   placeId?: string;
   geocode?: { lat: number; lng: number };
   types?: string[];
+  structuredFormatting?: {
+    main_text?: string;
+    secondary_text?: string;
+    main_text_matched_substrings?: Array<{ length: number; offset: number }>;
+  };
+  matchedSubstrings?: Array<{ length: number; offset: number }>;
 }
 
 async function baseSuburbLookup(
@@ -490,84 +514,7 @@ async function baseSuburbLookup(
           'political'
         ].includes(type));
         // Exclude specific addresses, businesses, and establishments
-        const isSpecificPlace = prediction.types.some((type: string) => [
-          'establishment',
-          'point_of_interest',
-          'store',
-          'food',
-          'restaurant',
-          'gas_station',
-          'hospital',
-          'school',
-          'street_address',
-          'route',
-          'premise',
-          'subpremise',
-          'shopping_mall',
-          'park',
-          'tourist_attraction',
-          'transit_station',
-          'train_station',
-          'bus_station',
-          'subway_station',
-          'airport',
-          'university',
-          'hotel',
-          'club',
-          'golf_course',
-          'stadium',
-          'casino',
-          'museum',
-          'art_gallery',
-          'aquarium',
-          'zoo',
-          'marina',
-          'beach',
-          'mountain',
-          'lake',
-          'river',
-          'waterfall',
-          'theme_park',
-          'amusement_park',
-          'bowling_alley',
-          'night_club',
-          'bar',
-          'movie_theater',
-          'beauty_salon',
-          'car_dealer',
-          'real_estate_agency',
-          'lawyer',
-          'dentist',
-          'doctor',
-          'pharmacy',
-          'bank',
-          'gym',
-          'campground',
-          'camping_cabin',
-          'hiking_area',
-          'natural_feature',
-          'walking_track',
-          'hiking_trail',
-          'nature_trail',
-          'walking_path',
-          'pedestrian_path',
-          'bike_path',
-          'cycling_path',
-          'trail_head',
-          'playground',
-          'picnic_ground',
-          'observation_deck',
-          'lookout',
-          'scenic_lookout',
-          'visitor_center',
-          'information_center',
-          'plaza',
-          'square',
-          'gardens',
-          'depot',
-          'terminal',
-          'junction',
-        ].includes(type));
+        const isSpecificPlace = prediction.types.some((type: string) => EXCLUDED_PLACE_TYPES.includes(type as typeof EXCLUDED_PLACE_TYPES[number]));
         // Must contain Australian state
         const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
         // Must NOT contain specific place names (tunnels, bridges, etc.)
@@ -591,11 +538,16 @@ async function baseSuburbLookup(
               placeId: prediction.place_id,
               geocode: { lat: placeDetails.lat, lng: placeDetails.lng },
               types: placeDetails.types,
+              structuredFormatting: prediction.structured_formatting,
+              matchedSubstrings: prediction.matched_substrings,
             });
           }
         } else {
           allResults.push({
             canonicalSuburb: prediction.description,
+            placeId: prediction.place_id,
+            structuredFormatting: prediction.structured_formatting,
+            matchedSubstrings: prediction.matched_substrings,
           });
         }
       }

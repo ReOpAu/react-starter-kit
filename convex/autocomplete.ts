@@ -43,6 +43,17 @@ interface AddressMatch {
   sessionToken?: string;
 }
 
+// Debug logging helper
+function debugLog(message: any, ...optionalParams: any[]) {
+  if (process.env.ADDRESS_AUTOCOMPLETE_DEBUG === 'true') {
+    if (optionalParams[0] === 'error') {
+      console.error(message, ...optionalParams.slice(1));
+    } else {
+      console.log(message, ...optionalParams);
+    }
+  }
+}
+
 // Helper function to sanitize and validate user input for address queries
 function sanitizeAddressInput(input: string): string {
   // Allow only alphanumeric, spaces, comma, period, hyphen, apostrophe, and remove other characters
@@ -63,7 +74,7 @@ function generateSessionToken(): string {
 
 // Helper function to validate full residential address using Google Address Validation API
 async function validateFullAddress(input: string, apiKey: string): Promise<AddressMatch[]> {
-  console.log(`[Address Validation] Validating full address: "${input}"`);
+  debugLog(`[Address Validation] Validating full address: "${input}"`);
   
   try {
     const validationUrl = `https://addressvalidation.googleapis.com/v1:validateAddress?key=${apiKey}`;
@@ -85,15 +96,15 @@ async function validateFullAddress(input: string, apiKey: string): Promise<Addre
     });
 
     const data = await response.json();
-    console.log('[Address Validation] Google API Response:', JSON.stringify(data, null, 2));
+    debugLog('[Address Validation] Google API Response:', JSON.stringify(data, null, 2));
 
     if (!data.result) {
-      console.log('[Address Validation] No result returned from API');
+      debugLog('[Address Validation] No result returned from API');
       return [];
     }
     
     if (!data.result.address) {
-      console.log('[Address Validation] No address in result, likely invalid input');
+      debugLog('[Address Validation] No address in result, likely invalid input');
       return [];
     }
 
@@ -112,7 +123,7 @@ async function validateFullAddress(input: string, apiKey: string): Promise<Addre
     const validationGranularity = verdict.validationGranularity || '';
     const geocodeGranularity = verdict.geocodeGranularity || '';
     
-    console.log('[Address Validation] Verdict details:', {
+    debugLog('[Address Validation] Verdict details:', {
       addressComplete,
       hasUnconfirmedComponents,
       hasInferredComponents,
@@ -124,26 +135,26 @@ async function validateFullAddress(input: string, apiKey: string): Promise<Addre
     // Strict validation: reject addresses that are likely invalid
     // 1. Must have complete address information
     if (!addressComplete) {
-      console.log('[Address Validation] Rejecting: Address is not complete');
+      debugLog('[Address Validation] Rejecting: Address is not complete');
       return [];
     }
     
     // 2. Should not have unconfirmed components (Google couldn't verify parts)
     if (hasUnconfirmedComponents) {
-      console.log('[Address Validation] Rejecting: Has unconfirmed components');
+      debugLog('[Address Validation] Rejecting: Has unconfirmed components');
       return [];
     }
     
     // 3. Check for excessive inference (Google had to guess too much)
     if (hasInferredComponents) {
-      console.log('[Address Validation] Warning: Has inferred components, checking granularity...');
+      debugLog('[Address Validation] Warning: Has inferred components, checking granularity...');
       
       // If Google had to infer components AND the validation granularity is lower than premise level,
       // it's likely the address doesn't exist
       const lowGranularityLevels = ['LOCALITY', 'ADMINISTRATIVE_AREA', 'COUNTRY'];
       if (lowGranularityLevels.includes(validationGranularity) || 
           lowGranularityLevels.includes(geocodeGranularity)) {
-        console.log('[Address Validation] Rejecting: Low granularity with inferred components suggests invalid address');
+        debugLog('[Address Validation] Rejecting: Low granularity with inferred components suggests invalid address');
         return [];
       }
     }
@@ -151,7 +162,7 @@ async function validateFullAddress(input: string, apiKey: string): Promise<Addre
     // 4. Ensure we have premise-level granularity for house numbers
     const acceptableGranularities = ['PREMISE', 'SUB_PREMISE'];
     if (!acceptableGranularities.includes(validationGranularity)) {
-      console.log('[Address Validation] Rejecting: Validation granularity too low:', validationGranularity);
+      debugLog('[Address Validation] Rejecting: Validation granularity too low:', validationGranularity);
       return [];
     }
     
@@ -175,11 +186,11 @@ async function validateFullAddress(input: string, apiKey: string): Promise<Addre
       googleRank: 0
     };
 
-    console.log(`[Address Validation] Validated address:`, match);
+    debugLog(`[Address Validation] Validated address:`, match);
     return [match];
 
   } catch (error) {
-    console.error('[Address Validation] Error:', error);
+    debugLog('[Address Validation] Error:', 'error', error);
     return [];
   }
 }
@@ -191,10 +202,10 @@ async function searchFullAddress(input: string, apiKey: string, sessionToken?: s
   try {
     safeInput = sanitizeAddressInput(input);
   } catch (e) {
-    console.error('[Address Text Search] Input sanitization failed:', e);
+    debugLog('[Address Text Search] Input sanitization failed:', 'error', e);
     return [];
   }
-  console.log(`[Address Text Search] Searching for full address: "${safeInput}"`);
+  debugLog(`[Address Text Search] Searching for full address: "${safeInput}"`);
   
   try {
     // For Text Search, we don't use session tokens as they're primarily for Autocomplete + Place Details workflows
@@ -205,10 +216,10 @@ async function searchFullAddress(input: string, apiKey: string, sessionToken?: s
     const response = await fetch(textSearchUrl);
     const data = await response.json() as GoogleTextSearchResponse;
 
-    console.log('[Address Text Search] Google API Response:', JSON.stringify(data, null, 2));
+    debugLog('[Address Text Search] Google API Response:', JSON.stringify(data, null, 2));
 
     if (data.status !== "OK" || !data.results || data.results.length === 0) {
-      console.log(`[Address Text Search] No results: ${data.status}`);
+      debugLog(`[Address Text Search] No results: ${data.status}`);
       return [];
     }
 
@@ -245,11 +256,11 @@ async function searchFullAddress(input: string, apiKey: string, sessionToken?: s
         };
       });
 
-    console.log(`[Address Text Search] Found ${matches.length} addresses:`, matches);
+    debugLog(`[Address Text Search] Found ${matches.length} addresses:`, matches);
     return matches;
 
   } catch (error) {
-    console.error('[Address Text Search] Error:', error);
+    debugLog('[Address Text Search] Error:', 'error', error);
     return [];
   }
 }
@@ -269,6 +280,9 @@ export const autocompleteAddresses = action({
     try {
       // Get Google Places API key from environment
       const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+      if (!apiKey || apiKey.trim() === '') {
+        throw new Error("Google Places API key not configured");
+      }
       if (!apiKey) {
         throw new Error("Google Places API key not configured");
       }
@@ -278,7 +292,7 @@ export const autocompleteAddresses = action({
       try {
         safeInput = sanitizeAddressInput(partialInput);
       } catch (e) {
-        console.error("[Autocomplete] Input sanitization failed:", e);
+        debugLog("[Autocomplete] Input sanitization failed:", 'error', e);
         throw new Error('Invalid input: address must contain at least two characters and a letter.');
       }
 
@@ -309,7 +323,7 @@ export const autocompleteAddresses = action({
       const data = await response.json();
 
       if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-        console.error("Google Places API error:", data);
+        debugLog("Google Places API error:", 'error', data);
         throw new Error(`Google Places API error: ${data.status} - ${data.error_message || 'Unknown error'}`);
       }
 
@@ -325,7 +339,7 @@ export const autocompleteAddresses = action({
 
       return suggestions;
     } catch (error) {
-      console.error("Address autocomplete error:", error);
+      debugLog("Address autocomplete error:", 'error', error);
       throw new Error(`Failed to get address suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

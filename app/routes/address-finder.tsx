@@ -39,7 +39,7 @@ export default function AddressFinder() {
   
   // State from new pillar-aligned stores
   const { isRecording, isVoiceActive, agentRequestedManual, isLoggingEnabled, setAgentRequestedManual } = useUIStore();
-  const { searchQuery, selectedResult, currentIntent, activeSearchSource, setActiveSearch, setSelectedResult, setCurrentIntent } = useIntentStore();
+  const { searchQuery, selectedResult, currentIntent, activeSearchSource, setActiveSearch, setSelectedResult, setCurrentIntent, setAgentLastSearchQuery, agentLastSearchQuery } = useIntentStore();
   const { setApiResults } = useApiStore();
   const { history, addHistory } = useHistoryStore();
   const { clearSelectionAndSearch } = useAddressFinderActions();
@@ -82,6 +82,8 @@ export default function AddressFinder() {
     isValidating, 
     validationError,
     handleClear,
+    pendingRuralConfirmation,
+    handleAcceptRuralAddress,
   } = useActionHandler({
     log,
     setCurrentIntent,
@@ -232,7 +234,12 @@ export default function AddressFinder() {
   // Event handlers
   const handleSelectResult = useCallback((result: Suggestion) => {
     handleSelect(result);
-  }, [handleSelect]);
+    // Clear context after selection
+    setAgentLastSearchQuery(null);
+    if (result && result.description) {
+      queryClient.removeQueries({ queryKey: ['addressSearch', result.description], exact: true });
+    }
+  }, [handleSelect, setAgentLastSearchQuery, queryClient]);
 
   const handleRequestAgentState = useCallback(() => {
     if (conversation.status === 'connected') {
@@ -252,6 +259,28 @@ export default function AddressFinder() {
   const shouldShowSelectedResult = selectedResult && !isValidating;
   const shouldShowValidationStatus = isValidating || validationError;
 
+  // After every successful search or autocomplete, update the agentLastSearchQuery
+  const handleManualSearch = useCallback(async (query: string) => {
+    // 1. Fetch suggestions from API
+    const result = await getPlaceSuggestionsAction({ query });
+    if (result.success) {
+      // 2. Update agent context and cache
+      setAgentLastSearchQuery(query);
+      queryClient.setQueryData(['addressSearch', query], result.suggestions);
+      // ...rest of logic (e.g., sync, UI updates)...
+    } else {
+      // Optionally handle error (e.g., show error to user)
+      // log('Manual search failed:', result.error);
+    }
+  }, [setAgentLastSearchQuery, queryClient, getPlaceSuggestionsAction]);
+
+  // Defensive checks: if agentLastSearchQuery is null or the cache is empty, do not attempt selection and prompt for a new search.
+  const canSelect = useMemo(() => {
+    if (!agentLastSearchQuery) return false;
+    const suggestions = queryClient.getQueryData<Suggestion[]>(['addressSearch', agentLastSearchQuery]);
+    return suggestions && suggestions.length > 0;
+  }, [agentLastSearchQuery, queryClient]);
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="space-y-6">
@@ -261,8 +290,8 @@ export default function AddressFinder() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className={getIntentColor(currentIntent)}>
-            Intent: {currentIntent}
+          <Badge variant="outline" className={getIntentColor(currentIntent || 'general')}>
+            Intent: {currentIntent || 'general'}
           </Badge>
           {isRecording && (
             <Badge variant="secondary" className="animate-pulse bg-red-100 text-red-800">
@@ -271,6 +300,32 @@ export default function AddressFinder() {
             </Badge>
           )}
         </div>
+
+        {/* Rural Address Confirmation Prompt */}
+        {pendingRuralConfirmation && (
+          <Card className="border-yellow-300 bg-yellow-50">
+            <CardHeader>
+              <CardTitle>Rural Address Exception</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-2">
+                <strong>This address could not be confirmed at the property level, but appears to be a rural address.</strong>
+                <br />
+                <span>If you are sure this is correct, you may accept it anyway.</span>
+                <div className="mt-2 text-sm text-gray-700">
+                  <div><strong>Address:</strong> {pendingRuralConfirmation.validation.formattedAddress || pendingRuralConfirmation.result.description}</div>
+                  <div><strong>Validation granularity:</strong> {pendingRuralConfirmation.validation.validationGranularity}</div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleAcceptRuralAddress}>Accept Anyway</Button>
+                <Button variant="outline" onClick={() => {/* Clear pending state */ setSelectedResult(null); setActiveSearch({ query: '', source: 'manual' }); setAgentRequestedManual(false); }}>
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

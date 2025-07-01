@@ -3,7 +3,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Badge } from "~/components/ui/badge";
-import { useSuburbAutocomplete, type LocationIntent } from "~/hooks/useSuburbAutocomplete";
+import { useSuburbAutocomplete, type LocationIntent, classifyIntent } from "~/hooks/useSuburbAutocomplete";
 import type { PlaceSuggestion } from "../../convex/location";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 
@@ -45,7 +45,7 @@ export function EnhancedPlaceSuggestions({
   isInputDisabled = false 
 }: EnhancedPlaceSuggestionsProps) {
   const [query, setQuery] = useState('');
-  const [selectedIntent, setSelectedIntent] = useState<LocationIntent | undefined>(undefined);
+  const [selectedIntent, setSelectedIntent] = useState<string | undefined>(undefined);
   const [selectedSuggestion, setSelectedSuggestion] = useState<PlaceSuggestion | null>(null);
   
   // Add address validation state
@@ -80,7 +80,6 @@ export function EnhancedPlaceSuggestions({
   const { 
     getPlaceSuggestions,
     validateFullAddress,
-    classifyIntent,
     suggestions,
     detectedIntent,
     isLoading,
@@ -120,8 +119,8 @@ export function EnhancedPlaceSuggestions({
     reset();
   };
 
-  const autoDetectedIntent = query ? classifyIntent(query) : null;
-  const currentIntent = selectedIntent || autoDetectedIntent;
+  const autoDetectedIntent = query ? (classifyIntent(query) ?? undefined) : undefined;
+  const currentIntent = (selectedIntent as LocationIntent) || autoDetectedIntent;
 
   return (
     <div className="space-y-6">
@@ -168,7 +167,7 @@ export function EnhancedPlaceSuggestions({
             {/* Intent Override */}
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Override intent:</span>
-              <Select value={selectedIntent} onValueChange={(value) => setSelectedIntent(value as LocationIntent)}>
+              <Select value={selectedIntent} onValueChange={(value) => setSelectedIntent(value)}>
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="Auto" />
                 </SelectTrigger>
@@ -239,8 +238,18 @@ export function EnhancedPlaceSuggestions({
                     <div className="bg-blue-50 p-3 rounded-md">
                       <h4 className="font-medium mb-2">Coordinates:</h4>
                       <p className="text-sm">
-                        Lat: {validationResult.result.geocode.latitude.toFixed(6)}<br/>
-                        Lng: {validationResult.result.geocode.longitude.toFixed(6)}
+                        {(() => {
+                          const lat = validationResult.result?.geocode?.latitude;
+                          const lng = validationResult.result?.geocode?.longitude;
+                          const latDisplay = typeof lat === 'number' ? lat.toFixed(6) : 'N/A';
+                          const lngDisplay = typeof lng === 'number' ? lng.toFixed(6) : 'N/A';
+                          return (
+                            <>
+                              Lat: {latDisplay}<br/>
+                              Lng: {lngDisplay}
+                            </>
+                          );
+                        })()}
                       </p>
                     </div>
                     
@@ -254,7 +263,7 @@ export function EnhancedPlaceSuggestions({
                     </div>
                   </div>
 
-                  {validationResult.result.addressComponents.length > 0 && (
+                  {Array.isArray(validationResult.result?.addressComponents) && validationResult.result.addressComponents.length > 0 && (
                     <div className="bg-gray-50 p-3 rounded-md">
                       <h4 className="font-medium mb-2">Address Components:</h4>
                       <div className="flex flex-wrap gap-2">

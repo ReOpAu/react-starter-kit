@@ -20,6 +20,7 @@ import type * as subscriptions from "../subscriptions.js";
 import type * as suburbLookup from "../suburbLookup.js";
 import type * as suburbLookup_updated from "../suburbLookup_updated.js";
 import type * as users from "../users.js";
+import type * as utils_logger from "../utils/logger.js";
 
 import type {
   ApiFromModules,
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   suburbLookup: typeof suburbLookup;
   suburbLookup_updated: typeof suburbLookup_updated;
   users: typeof users;
+  "utils/logger": typeof utils_logger;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

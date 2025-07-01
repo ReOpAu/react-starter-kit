@@ -176,6 +176,30 @@ function classifyLocationIntent(query: string): LocationIntent {
     return "suburb";
   }
   
+  // Rural indicators
+  const ruralKeywords = [
+    'hwy', 'highway', 'rd', 'road', 'lane', 'track', 'station', 'farm', 'mount', 'creek', 'way', 'drive', 'dr', 'ln', 'springmount'
+  ];
+  const ruralKeywordRegexes = ruralKeywords.map(
+    keyword => new RegExp(`\\b${keyword}\\b`, 'i')
+  );
+
+  // Check for rural type
+  const hasRuralType = ruralKeywordRegexes.some(regex => regex.test(lowerQuery));
+
+  // Updated address classification: house number + (street type OR rural type)
+  if ((hasHouseNumber || hasUnitNumber) && (hasStreetType || hasRuralType)) {
+    // Additional check: address should look complete (have suburb/state info)
+    const hasSuburbInfo = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(lowerQuery) ||
+                         /\b\d{4}\b/.test(lowerQuery) ||
+                         lowerQuery.split(',').length >= 2;
+    if (!hasSuburbInfo && lowerQuery.length < 50) {
+      console.log(`[Intent Classification] "${query}" has address components but appears incomplete - treating as street for autocomplete`);
+      return "street";
+    }
+    return "address";
+  }
+  
   return "general";
 }
 
@@ -1433,6 +1457,8 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
   formattedAddress?: string;
   error?: string;
   placeId?: string;
+  isRuralException?: boolean;
+  validationGranularity?: string;
 }> {
   try {
     console.log(`[Address Validation Only] Validating: "${address}"`);
@@ -1488,6 +1514,10 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
       return {
         isValid: false,
         error: 'Address is considered incomplete by the validation service.',
+        isRuralException: true,
+        validationGranularity,
+        formattedAddress: result.address?.formattedAddress,
+        placeId: result.geocode?.placeId || '',
       };
     }
     
@@ -1501,22 +1531,40 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
     
     const hasHouseNumber = /^\d+/.test(address.trim());
     
+    // Rural exception logic
+    function addressLooksRural(address: string): boolean {
+      // Simple heuristic: highway, road, or known rural locality keywords
+      return /hwy|highway|rd|road|lane|track|springmount|mount|creek|farm|station/i.test(address);
+    }
+    
     if (hasHouseNumber) {
+      if (
+        (validationGranularity === 'ROUTE' || validationGranularity === 'LOCALITY') &&
+        addressLooksRural(address)
+      ) {
+        // Rural exception: allow frontend to prompt user for confirmation
+        return {
+          isValid: false,
+          error: `This address could not be confirmed at the property level, but appears to be a rural address. You may allow the user to confirm this manually.`,
+          isRuralException: true,
+          validationGranularity,
+          formattedAddress: result.address?.formattedAddress,
+          placeId: result.geocode?.placeId || '',
+        };
+      }
       if (validationGranularity === 'LOCALITY') {
         return {
           isValid: false,
           error: "House number provided but address only validated to suburb level"
         };
       }
-      
-       if (validationGranularity !== 'PREMISE' && validationGranularity !== 'SUB_PREMISE') {
-         console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - House number provided but validation granularity is ${validationGranularity} (not exact premise level)`);
-         return {
-           isValid: false,
-           error: `House number validation insufficient - only validated to ${validationGranularity} level (house number location is estimated, not confirmed)`
-         };
-       }
-      
+      if (validationGranularity !== 'PREMISE' && validationGranularity !== 'SUB_PREMISE') {
+        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - House number provided but validation granularity is ${validationGranularity} (not exact premise level)`);
+        return {
+          isValid: false,
+          error: `House number validation insufficient - only validated to ${validationGranularity} level (house number location is estimated, not confirmed)`
+        };
+      }
       if (result.address?.addressComponents) {
         for (const component of result.address.addressComponents) {
           if (component.confirmationLevel === 'UNCONFIRMED_AND_SUSPICIOUS') {
