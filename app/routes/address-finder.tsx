@@ -386,6 +386,8 @@ export default function AddressFinder() {
               <SelectedResultCard 
                 result={selectedResult} 
                 onClear={handleClear} 
+                lat={(selectedResult as any)?.lat}
+                lng={(selectedResult as any)?.lng}
               />
             )}
           </CardContent>

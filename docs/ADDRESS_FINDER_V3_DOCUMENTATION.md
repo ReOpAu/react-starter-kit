@@ -114,6 +114,18 @@ It is critical to understand the method used for synchronization in this applica
 
 - **Live State Synchronization (Our Method):** This application uses a live, push-based method. The `useAgentSync` hook calls a function (`syncToAgent`) that continuously pushes a complete snapshot of "The Brain's" state to the agent during the conversation. This ensures the agent's context is always aligned with the UI in real-time. The `getCurrentState` tool is a mechanism to verify the success of this live push.
 
+### 5. Map Display for Confirmed Selection
+- After address validation, the confirmed selection is always enriched with `lat` and `lng` (coordinates) if available from the backend.
+- The Confirmed Selection UI displays a Google Map only when these coordinates are present.
+- This ensures that only fully validated, trustworthy locations are visualized on the map, never partial or ambiguous suggestions.
+- The enrichment step occurs in the validation handler (`useActionHandler`), which merges the coordinates into the `selectedResult`.
+- The `Suggestion` type now includes optional `lat` and `lng` fields for this purpose.
+
+#### Confirmed Selection Map Display (New Pattern)
+- When a user confirms an address (after validation), the UI checks for `lat` and `lng` on the confirmed selection.
+- If present, a Google Map is displayed below the address details.
+- This pattern guarantees that only validated, geocoded addresses are visualized, aligning with our data quality and UX goals.
+
 ## Application Flow
 
 ### Manual Input Flow

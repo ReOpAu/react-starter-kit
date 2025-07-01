@@ -70,3 +70,12 @@ To align the conversational agent with this unified system, it **must** be refac
 3.  **Refactor `useAddressFinderClientTools.ts`**: The `searchAddress` tool's responsibility must be simplified. Instead of containing its own logic, it should call the `getPlaceSuggestionsWithIntent` function from the `useSuburbAutocomplete` hook that has been passed down to it.
 
 By following this pattern, we ensure that a search initiated by the AI agent follows the exact same robust, centralized logic as a search initiated by manual user input, eliminating bugs and architectural divergence.
+
+---
+
+## Map Display for Validated Selections (Update)
+- After address validation, confirmed selections are enriched with `lat` and `lng` (coordinates) if available from the backend.
+- The map display in the Confirmed Selection UI is only shown when these coordinates are present.
+- This ensures that only validated, trustworthy locations are visualized on the map, never partial or ambiguous suggestions.
+- The enrichment step occurs in the validation handler, which merges the coordinates into the confirmed selection.
+- The `Suggestion` type now includes optional `lat` and `lng` fields for this purpose.

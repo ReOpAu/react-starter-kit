@@ -9,6 +9,9 @@ export interface Suggestion {
   resultType?: LocationIntent;
   suburb?: string;
   types?: string[];
+  // Optional validated coordinates
+  lat?: number;
+  lng?: number;
 }
 
 export interface HistoryItem {

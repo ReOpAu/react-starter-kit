@@ -72,6 +72,8 @@ export function useActionHandler({
             ...result,
             description: validation.result.address.formattedAddress,
             placeId: validation.result.geocode.placeId,
+            lat: validation.result.geocode.location.latitude,
+            lng: validation.result.geocode.location.longitude,
             // You can add more enriched data here if your Suggestion type supports it
           };
           const finalIntent = classifySelectedResult(enrichedResult);

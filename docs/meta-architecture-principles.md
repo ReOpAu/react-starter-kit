@@ -493,3 +493,9 @@ Modern applications rarely exist in isolation. They integrate with numerous thir
 This meta-architecture ensures that as the application grows in complexity, it does not collapse under the weight of its own state. It provides a scalable, maintainable, and highly debuggable foundation for building sophisticated user interfaces.
 
 ### 5. **Traceability**: When an error occurs, its origin should be immediately obvious from the console logs and component boundaries. 
+
+## Map Display and Information Flow (Update)
+- Only display maps for confirmed selections with validated coordinates (`lat`/`lng`).
+- After validation, the confirmed selection is enriched with these fields if available.
+- This ensures only critical, trustworthy information is visualized, never partial or ambiguous suggestions.
+- The `Suggestion` type now includes optional `lat` and `lng` fields, set in the validation handler after successful validation. 
