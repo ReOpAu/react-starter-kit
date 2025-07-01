@@ -1,14 +1,13 @@
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { useAddressFinderStore, type Suggestion, type LocationIntent } from '~/stores/addressFinderStore';
 import { useAgentSync } from '~/hooks/useAgentSync';
 import { useAudioManager } from '~/hooks/useAudioManager';
 import { useReliableSync } from '~/hooks/useReliableSync';
 import { useAddressFinderClientTools } from '~/hooks/useAddressFinderClientTools';
 import { useConversationManager } from '~/hooks/useConversationManager';
 import { useActionHandler } from '~/hooks/useActionHandler';
-import { classifySelectedResult, getIntentColor } from '~/utils/addressFinderUtils';
+import { classifySelectedResult, getIntentColor, classifyIntent } from '~/utils/addressFinderUtils';
 import {
   VoiceInputController,
   ManualSearchForm,
@@ -25,28 +24,25 @@ import { Badge } from '~/components/ui/badge';
 import AgentStatePanel from '~/components/address-finder/AgentStatePanel';
 import AgentDebugCopyPanel from '~/components/address-finder/AgentDebugCopyPanel';
 
+// New Pillar-Aligned Store Imports
+import type { Suggestion } from '~/stores/types';
+import { useUIStore } from '~/stores/uiStore';
+import { useIntentStore } from '~/stores/intentStore';
+import { useApiStore } from '~/stores/apiStore';
+import { useHistoryStore } from '~/stores/historyStore';
+import { useAddressFinderActions } from '~/hooks/useAddressFinderActions';
+
 export default function AddressFinder() {
   const queryClient = useQueryClient();
   const { syncToAgent } = useAgentSync();
   const { performReliableSync } = useReliableSync();
   
-  // Global state from Zustand
-  const {
-    searchQuery,
-    selectedResult,
-    isRecording,
-    isVoiceActive,
-    history,
-    currentIntent,
-    agentRequestedManual,
-    setSearchQuery,
-    setSelectedResult,
-    setCurrentIntent,
-    addHistory,
-    clear,
-    setApiResults,
-    setAgentRequestedManual,
-  } = useAddressFinderStore();
+  // State from new pillar-aligned stores
+  const { isRecording, isVoiceActive, agentRequestedManual, isLoggingEnabled, setAgentRequestedManual } = useUIStore();
+  const { searchQuery, selectedResult, currentIntent, activeSearchSource, setActiveSearch, setSelectedResult, setCurrentIntent } = useIntentStore();
+  const { setApiResults } = useApiStore();
+  const { history, addHistory } = useHistoryStore();
+  const { clearSelectionAndSearch } = useAddressFinderActions();
   
   // Local component state
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -56,7 +52,8 @@ export default function AddressFinder() {
   
   // Logging utility - STABLE: No dependencies to prevent infinite loops
   const log = useCallback((...args: any[]) => {
-    if (useAddressFinderStore.getState().isLoggingEnabled) {
+    // Use getState() to access store values without creating a reactive dependency
+    if (useUIStore.getState().isLoggingEnabled) {
       console.log('[AddressFinder]', ...args);
     }
   }, []); // Empty dependency array makes this completely stable
@@ -89,7 +86,7 @@ export default function AddressFinder() {
     log,
     setCurrentIntent,
     setSelectedResult,
-    setSearchQuery,
+    setActiveSearch,
     setAgentRequestedManual,
     addHistory,
     getSessionToken,
@@ -97,7 +94,7 @@ export default function AddressFinder() {
     isRecording,
     conversationRef,
     queryClient,
-    clearStore: clear,
+    clearSelectionAndSearch,
   });
 
   const clientTools = useAddressFinderClientTools(
@@ -113,91 +110,68 @@ export default function AddressFinder() {
 
   const { startRecording, stopRecording } = useAudioManager();
 
+  // New handlers to correctly pass the conversation object
+  const handleStartRecording = useCallback(() => {
+    startRecording(conversation);
+  }, [startRecording, conversation]);
+
+  const handleStopRecording = useCallback(() => {
+    stopRecording(conversation);
+  }, [stopRecording, conversation]);
+
   // API Action
   const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
   
   // UNIFIED QUERY - Single source of truth for all API data
-  const { 
-    data, 
-    isLoading, 
+  // This hook is a reactive subscriber to the agent's search results.
+  // By enabling it only during conversation, and preventing fetches, it ensures
+  // the UI updates instantly when the agent's tools populate the React Query cache.
+  const {
+    data: suggestions = [], // Default to empty array
+    isLoading,
     isError,
-    error 
-  } = useQuery({
+    error,
+  } = useQuery<Suggestion[]>({
     queryKey: ['addressSearch', searchQuery],
-    queryFn: async () => {
-      log('🔍 === UNIFIED QUERY TRIGGERED ===');
-      log('📊 QUERY STATE:', {
-        searchQuery,
-        currentIntent,
-        isRecording,
-        sessionToken: sessionTokenRef.current?.substring(0, 8) + '...',
-        mode: isRecording ? 'conversation' : 'manual'
-      });
-      
-      if (!searchQuery || searchQuery.trim().length < 3) {
-        log('⚠️ Query too short or empty, returning empty results');
-        return [];
-      }
-      
-      const result = await getPlaceSuggestionsAction({ 
-        query: searchQuery,
-        intent: (currentIntent && currentIntent !== 'general') ? currentIntent : 'general',
-        isAutocomplete: !isRecording,
-        sessionToken: getSessionToken(),
-      });
-      
-      if (result.success) {
-        log(`✅ UNIFIED QUERY SUCCESS:`, {
-          query: searchQuery,
-          suggestionsCount: result.suggestions?.length || 0,
-          intent: currentIntent,
-          mode: isRecording ? 'conversation' : 'manual',
-          suggestions: result.suggestions?.map(s => ({ 
-            placeId: s.placeId, 
-            description: s.description 
-          })) || []
-        });
-        return result.suggestions || [];
-      }
-      
-      if (!result.success) {
-        log(`❌ UNIFIED QUERY FAILED:`, {
-          query: searchQuery,
-          error: result.error,
-          intent: currentIntent,
-          mode: isRecording ? 'conversation' : 'manual'
-        });
-      }
-      return [];
+    queryFn: () => {
+      // This function should not fetch from the network. It's a reactive
+      // wrapper around the cache entry that the agent's tools modify.
+      return queryClient.getQueryData<Suggestion[]>(['addressSearch', searchQuery]) || [];
     },
-    enabled: !!searchQuery && searchQuery.trim().length >= 3,
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
+    enabled: isRecording, // Only subscribe to agent suggestions when in conversation mode.
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
-
-  // STABLE SUGGESTIONS
-  const suggestions = useMemo(() => data || [], [data]);
 
   // REQUIRED & CONSOLIDATED: Sync React Query state to Zustand and then to Agent
   useEffect(() => {
+    // Get query data inside the effect to prevent dependency-driven loops.
+    const suggestionsFromCache = queryClient.getQueryData<Suggestion[]>(['addressSearch', searchQuery]) || [];
+
     setApiResults({
-      suggestions: suggestions || [],
+      suggestions: suggestionsFromCache,
       isLoading,
       error: error ? (error as Error).message : null,
-      source: isRecording ? 'voice' : 'manual',
+      source: activeSearchSource,
     });
 
     syncToAgent();
   }, [
-    suggestions,
+    // 🎯 DEFINITIVE FIX: Use stable, primitive values in the dependency array.
+    // Objects like `error` and `selectedResult` can be unstable and cause
+    // infinite loops. We use their primitive representations instead.
     isLoading,
-    error,
+    isError, // Use the stable boolean flag instead of the error object.
     isRecording,
     isVoiceActive,
-    selectedResult,
+    selectedResult?.placeId, // Use the unique placeId string instead of the whole object.
     currentIntent,
     searchQuery,
     agentRequestedManual,
+    activeSearchSource,
+    queryClient
   ]);
 
   // Debounced search query effect
@@ -240,7 +214,7 @@ export default function AddressFinder() {
         lastUpdate: timestamp,
         sessionActive: isRecording,
         agentRequestedManual,
-        dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
+        dataFlow: 'API → React Query → Pillar Stores → Agent'
       }
     };
   }, [
@@ -273,7 +247,7 @@ export default function AddressFinder() {
   }, [conversation, addHistory, log]);
 
   // Dynamic UI visibility
-  const shouldShowSuggestions = suggestions.length > 0 && !selectedResult && !isLoading;
+  const shouldShowSuggestions = isRecording && suggestions.length > 0 && !selectedResult && !isLoading;
   const shouldShowManualForm = !isRecording || agentRequestedManual;
   const shouldShowSelectedResult = selectedResult && !isValidating;
   const shouldShowValidationStatus = isValidating || validationError;
@@ -306,8 +280,8 @@ export default function AddressFinder() {
             <VoiceInputController
               isRecording={isRecording}
               isVoiceActive={isVoiceActive}
-              startRecording={() => startRecording(conversation)}
-              stopRecording={() => stopRecording(conversation)}
+              startRecording={handleStartRecording}
+              stopRecording={handleStopRecording}
             />
             <Separator />
             

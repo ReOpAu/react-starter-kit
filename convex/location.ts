@@ -237,10 +237,16 @@ export const getPlaceSuggestions = action({
 
     try {
       const query = args.query.trim();
-      const detectedIntent = args.intent || classifyLocationIntent(query);
+      
+      // Prioritize client-provided intent. Only classify on the backend if the client did not provide one.
+      const clientIntent = args.intent;
+      const detectedIntent = clientIntent && clientIntent !== 'general' 
+        ? clientIntent 
+        : classifyLocationIntent(query);
+      
       const maxResults = args.maxResults || 8;
       
-      console.log(`[getPlaceSuggestions] Query: "${query}", Detected Intent: ${detectedIntent}`);
+      console.log(`[getPlaceSuggestions] Query: "${query}", Client Intent: ${clientIntent}, Final Intent: ${detectedIntent}`);
       
       // 🎯 NEW: Handle single-word queries that might be suburbs OR streets
       const isSingleWord = !query.includes(' ');
@@ -450,11 +456,11 @@ function shouldIncludeResult(prediction: GooglePlacePrediction, intent: Location
       const isGenuineSuburb = types.some((type: string) => 
         ['locality', 'sublocality', 'administrative_area_level_2'].includes(type)
       );
-      return isGenuineSuburb && !hasUnwantedType && !hasUnwantedKeyword;
+      return isGenuineSuburb && !hasUnwantedType;
     }
   }
   
-  return !hasUnwantedType && !hasUnwantedKeyword;
+  return !hasUnwantedType;
 }
 
 export const lookupSuburb = action({
@@ -1318,186 +1324,107 @@ export interface AddressValidationResult {
 export const validateAddress = action({
   args: {
     address: v.string(),
-    enableUspsCass: v.optional(v.boolean()),
-    regionCode: v.optional(v.string())
+    placeId: v.optional(v.string()), // Optional place_id to help validation
+    sessionToken: v.optional(v.string()), // Optional for billing
   },
   returns: v.union(
     v.object({
       success: v.literal(true),
-      result: v.object({
-        formattedAddress: v.string(),
-        addressComponents: v.array(v.object({
-          componentName: v.string(),
-          componentType: v.string(),
-          confirmationLevel: v.union(
-            v.literal("CONFIRMED"), 
-            v.literal("UNCONFIRMED_BUT_PLAUSIBLE"), 
-            v.literal("UNCONFIRMED_AND_SUSPICIOUS")
-          )
-        })),
-        geocode: v.object({
-          latitude: v.number(),
-          longitude: v.number(),
-          placeId: v.string(),
-          plusCode: v.optional(v.string())
-        }),
-        verdict: v.object({
-          addressComplete: v.boolean(),
-          hasUnconfirmedComponents: v.boolean(),
-          hasInferredComponents: v.boolean(),
-          hasReplacedComponents: v.boolean(),
-          validationGranularity: v.string(),
-          geocodeGranularity: v.string()
-        }),
-        uspsData: v.optional(v.object({
-          standardizedAddress: v.string(),
-          deliveryPointValidation: v.string(),
-          vacant: v.optional(v.boolean()),
-          commercialMailReceivingAgency: v.optional(v.boolean())
-        }))
-      })
+      isValid: v.boolean(),
+      result: v.any(), // Using v.any() as the result structure is complex and defined by Google
+      error: v.optional(v.string()),
     }),
     v.object({
       success: v.literal(false),
       error: v.string(),
-      issues: v.optional(v.array(v.object({
-        component: v.string(),
-        issue: v.string(),
-        severity: v.union(v.literal("ERROR"), v.literal("WARNING"))
-      })))
-    })
+    }),
   ),
   handler: async (ctx, args) => {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    
     if (!apiKey) {
-      return {
-        success: false as const,
-        error: "Google Places API key not configured"
-      };
+      return { success: false as const, error: 'Google Places API key not configured' };
     }
 
     try {
-      const requestBody = {
+      const requestBody: { address: { addressLines: string[] } } = {
         address: {
-          regionCode: "AU",
-          addressLines: [args.address]
+          addressLines: [args.address],
         },
-        enableUspsCass: false
       };
 
       const response = await fetch(
         `https://addressvalidation.googleapis.com/v1:validateAddress?key=${apiKey}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody)
-        }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        },
       );
 
       if (!response.ok) {
-        throw new Error(`Address validation API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.result) {
+        const errorBody = await response.text();
+        console.error(
+          `[Address Validation] API request failed with status ${response.status}:`,
+          errorBody,
+        );
         return {
           success: false as const,
-          error: "No validation result returned from API"
+          error: `Google API Error: ${response.statusText}`,
         };
       }
 
-      const result = data.result;
-      
-      // Process issues and warnings
-      const issues = [];
-      
-      // Check for unconfirmed components
-      if (result.address?.addressComponents) {
-        for (const component of result.address.addressComponents) {
-          if (component.confirmationLevel === 'UNCONFIRMED_AND_SUSPICIOUS') {
-            issues.push({
-              component: component.componentType,
-              issue: `Suspicious ${component.componentType}: ${component.componentName?.text}`,
-              severity: 'ERROR' as const
-            });
-          } else if (component.confirmationLevel === 'UNCONFIRMED_BUT_PLAUSIBLE') {
-            issues.push({
-              component: component.componentType,
-              issue: `Unconfirmed ${component.componentType}: ${component.componentName?.text}`,
-              severity: 'WARNING' as const
-            });
+      const responseData = await response.json();
+      const result = responseData.result;
+      const verdict = result.verdict || {};
+
+      // 🎯 CORRECTED: Final, more nuanced validation logic.
+      let isValid = true;
+      let validationError = '';
+      const validationGranularity = verdict.validationGranularity || '';
+
+      // An address is fundamentally invalid if the API says it's not complete.
+      if (!verdict.addressComplete) {
+        isValid = false;
+        validationError =
+          'Address is considered incomplete by the validation service.';
+      } else {
+        // If address is complete, check granularity for high confidence
+        const hasHouseNumber = /^\d+/.test(args.address.trim());
+        if (hasHouseNumber) {
+          // For addresses with house numbers, require PREMISE level validation.
+          // PREMISE_PROXIMITY indicates Google is estimating the location, which we reject.
+          if (validationGranularity !== 'PREMISE' && validationGranularity !== 'SUB_PREMISE') {
+            isValid = false;
+            validationError = `Address validation insufficient. Google could not confirm the exact location of the street number. Granularity: ${validationGranularity}.`;
+          }
+        }
+        
+        // If still valid, check for any explicitly suspicious components.
+        if (isValid && result.address?.addressComponents) {
+          for (const component of result.address.addressComponents) {
+            if (component.confirmationLevel === 'UNCONFIRMED_AND_SUSPICIOUS') {
+              isValid = false;
+              validationError = `Address component '${component.componentName?.text}' was suspicious.`;
+              break;
+            }
           }
         }
       }
 
-      // Check verdict for issues
-      if (!result.verdict?.addressComplete) {
-        issues.push({
-          component: 'address',
-          issue: 'Address appears incomplete',
-          severity: 'ERROR' as const
-        });
-      }
-
-      if (result.verdict?.hasUnconfirmedComponents) {
-        issues.push({
-          component: 'address',
-          issue: 'Address contains unconfirmed components',
-          severity: 'WARNING' as const
-        });
-      }
-
-      // Format the response
-      const formattedResult = {
-        formattedAddress: result.address?.formattedAddress || args.address,
-        addressComponents: result.address?.addressComponents?.map((comp: {
-          componentName?: { text?: string };
-          componentType?: string;
-          confirmationLevel?: 'CONFIRMED' | 'UNCONFIRMED_BUT_PLAUSIBLE' | 'UNCONFIRMED_AND_SUSPICIOUS';
-        }) => ({
-          componentName: comp.componentName?.text || '',
-          componentType: comp.componentType || '',
-          confirmationLevel: comp.confirmationLevel || 'UNCONFIRMED_BUT_PLAUSIBLE'
-        })) || [],
-        geocode: {
-          latitude: result.geocode?.location?.latitude || 0,
-          longitude: result.geocode?.location?.longitude || 0,
-          placeId: result.geocode?.placeId || '',
-          plusCode: result.geocode?.plusCode?.globalCode
-        },
-        verdict: {
-          addressComplete: result.verdict?.addressComplete || false,
-          hasUnconfirmedComponents: result.verdict?.hasUnconfirmedComponents || false,
-          hasInferredComponents: result.verdict?.hasInferredComponents || false,
-          hasReplacedComponents: result.verdict?.hasReplacedComponents || false,
-          validationGranularity: result.verdict?.validationGranularity || 'OTHER',
-          geocodeGranularity: result.verdict?.geocodeGranularity || 'OTHER'
-        },
-        uspsData: result.uspsData ? {
-          standardizedAddress: result.uspsData.standardizedAddress?.firstAddressLine || '',
-          deliveryPointValidation: result.uspsData.dpvConfirmation || 'N',
-          vacant: result.uspsData.vacant === 'Y',
-          commercialMailReceivingAgency: result.uspsData.cmra === 'Y'
-        } : undefined
-      };
-
       return {
         success: true as const,
-        result: formattedResult
+        isValid: isValid,
+        result,
+        error: validationError || undefined,
       };
-
-    } catch (error) {
-      console.error('Address validation error:', error);
+    } catch (error: any) {
+      console.error('[Address Validation] An unexpected error occurred:', error);
       return {
         success: false as const,
-        error: error instanceof Error ? error.message : "Address validation failed"
+        error: `An unexpected error occurred: ${error.message}`,
       };
     }
-  }
+  },
 });
 
 // Helper function for Step 1: Address validation only (returns simple valid/invalid + formatted address)
@@ -1548,19 +1475,22 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
     const result = data.result;
     const verdict = result.verdict || {};
     
-    // Strict validation criteria
     const addressComplete = verdict.addressComplete || false;
-    const hasUnconfirmedComponents = verdict.hasUnconfirmedComponents || false;
     const validationGranularity = verdict.validationGranularity || '';
     
     console.log(`[Address Validation Only] Verdict:`, {
       addressComplete,
-      hasUnconfirmedComponents,
       validationGranularity
     });
+
+    if (!addressComplete) {
+      console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Address is considered incomplete by the validation service.`);
+      return {
+        isValid: false,
+        error: 'Address is considered incomplete by the validation service.',
+      };
+    }
     
-    // 🎯 SMART VALIDATION: Balance between too strict and too lenient
-    // 1. Reject clearly invalid addresses  
     const unacceptableGranularities = ['COUNTRY', 'ADMINISTRATIVE_AREA', 'OTHER'];
     if (unacceptableGranularities.includes(validationGranularity)) {
       return {
@@ -1569,12 +1499,9 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
       };
     }
     
-    // 2. Smart premise-level validation for street addresses
-    // For addresses with house numbers, we need higher confidence
     const hasHouseNumber = /^\d+/.test(address.trim());
     
     if (hasHouseNumber) {
-      // If it has a house number, we need at least ROUTE level + good components
       if (validationGranularity === 'LOCALITY') {
         return {
           isValid: false,
@@ -1582,8 +1509,6 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
         };
       }
       
-             // 🎯 AGGRESSIVE: For house numbers, require exact PREMISE level validation
-       // PREMISE_PROXIMITY means Google is guessing the house number location - reject it!
        if (validationGranularity !== 'PREMISE' && validationGranularity !== 'SUB_PREMISE') {
          console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - House number provided but validation granularity is ${validationGranularity} (not exact premise level)`);
          return {
@@ -1592,40 +1517,28 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
          };
        }
       
-      // Check for suspicious components in numbered addresses
-      if (hasUnconfirmedComponents) {
-        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains unconfirmed components`);
-        return {
-          isValid: false,
-          error: "Street address has unconfirmed components - house number may not exist"
-        };
-      }
-       
-      // 🎯 NEW: Reject addresses with inferred house numbers
-      // If Google is inferring parts of a numbered address, the house number likely doesn't exist
-      if (result.verdict?.hasInferredComponents) {
-        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains inferred components (house number likely doesn't exist)`);
-        return {
-          isValid: false,
-          error: "Address contains inferred components - house number may not exist on this street"
-        };
+      if (result.address?.addressComponents) {
+        for (const component of result.address.addressComponents) {
+          if (component.confirmationLevel === 'UNCONFIRMED_AND_SUSPICIOUS') {
+            console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains suspicious component: ${component.componentName?.text}`);
+            return {
+              isValid: false,
+              error: `Address component '${component.componentName?.text}' was suspicious.`
+            };
+          }
+        }
       }
     }
     
-    // 3. 🎯 NEW: Reject addresses where Google significantly changed the input
-    // This catches cases where incomplete addresses get auto-completed to wrong locations
     const formattedAddress = result.address.formattedAddress;
     const inputWords = address.toLowerCase().split(/[\s,]+/).filter((w: string) => w.length > 0);
     const outputWords = formattedAddress.toLowerCase().split(/[\s,]+/).filter((w: string) => w.length > 0);
     
-    // Check if the formatted address contains fundamentally different location info
     const hasSignificantLocationChange = () => {
-      // If input has no suburb/state but output does, that's a red flag
       const inputHasSuburb = inputWords.some((w: string) => !w.match(/^\d+$/) && !['st', 'street', 'rd', 'road', 'ave', 'avenue', 'ln', 'lane', 'dr', 'drive'].includes(w));
       const outputHasSuburb = outputWords.some((w: string) => !w.match(/^\d+$/) && !['st', 'street', 'rd', 'road', 'ave', 'avenue', 'ln', 'lane', 'dr', 'drive', 'australia'].includes(w));
       
       if (!inputHasSuburb && outputHasSuburb) {
-        // Google added suburb/location info that wasn't in the input - this is dangerous auto-completion
         console.log(`[Address Validation Only] Input words: [${inputWords.join(', ')}]`);
         console.log(`[Address Validation Only] Output words: [${outputWords.join(', ')}]`);
         return true;
@@ -1642,7 +1555,6 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
       };
     }
     
-    // 4. Accept addresses that meet reasonable criteria
     console.log(`[Address Validation Only] Address is valid with granularity: ${validationGranularity}, hasHouseNumber: ${hasHouseNumber}`);
     
     return {

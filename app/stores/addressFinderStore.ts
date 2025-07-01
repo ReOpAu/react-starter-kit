@@ -41,19 +41,26 @@ interface AddressFinderState {
     timestamp: number;
   };
 
-  setSearchQuery: (query: string) => void;
+  // NEW: Context for agent's last search query
+  agentLastSearchQuery: string | null;
+  // NEW: The source of the currently active search
+  activeSearchSource: 'manual' | 'voice' | null;
+
+  setActiveSearch: (payload: { query: string; source: 'manual' | 'voice' }) => void;
   setSelectedResult: (result: Suggestion | null) => void;
   setIsRecording: (isRecording: boolean) => void;
   setIsVoiceActive: (isVoiceActive: boolean) => void;
   addHistory: (item: HistoryItem) => void;
   setIsLoggingEnabled: (enabled: boolean) => void;
   setAgentRequestedManual: (requested: boolean) => void;
-  clear: () => void;
+  clearSelectionAndSearch: () => void;
   // New actions for enhanced UI
   setCurrentIntent: (intent: LocationIntent) => void;
   setIsSmartValidationEnabled: (enabled: boolean) => void;
   // NEW: API results management
   setApiResults: (results: Partial<AddressFinderState['apiResults']>) => void;
+  // NEW: Context management for agent searches
+  setAgentLastSearchQuery: (query: string | null) => void;
 }
 
 const initialState = {
@@ -73,13 +80,21 @@ const initialState = {
       source: null,
       timestamp: 0,
     },
+    agentLastSearchQuery: null,
+    activeSearchSource: null,
 };
 
 export const useAddressFinderStore = create<AddressFinderState>()(
   devtools(
     (set) => ({
       ...initialState,
-      setSearchQuery: (query: string) => set({ searchQuery: query }),
+      setActiveSearch: (payload: { query: string; source: 'manual' | 'voice' }) => {
+        if (!payload.query) {
+          set({ searchQuery: '', activeSearchSource: null });
+        } else {
+          set({ searchQuery: payload.query, activeSearchSource: payload.source });
+        }
+      },
       setSelectedResult: (result: Suggestion | null) => set({ selectedResult: result }),
       setIsRecording: (recording: boolean) => set({ isRecording: recording }),
       setIsVoiceActive: (active: boolean) => set({ isVoiceActive: active }),
@@ -93,7 +108,21 @@ export const useAddressFinderStore = create<AddressFinderState>()(
       }),
       setIsLoggingEnabled: (enabled: boolean) => set({ isLoggingEnabled: enabled }),
       setAgentRequestedManual: (requested: boolean) => set({ agentRequestedManual: requested }),
-      clear: () => set(initialState),
+      clearSelectionAndSearch: () => set((state) => ({
+        searchQuery: '',
+        selectedResult: null,
+        agentRequestedManual: false,
+        currentIntent: 'general' as LocationIntent,
+        apiResults: {
+          suggestions: [],
+          isLoading: false,
+          error: null,
+          source: null,
+          timestamp: 0,
+        },
+        agentLastSearchQuery: null,
+        activeSearchSource: null,
+      })),
       // New action implementations
       setCurrentIntent: (intent: LocationIntent) => set({ currentIntent: intent }),
       setIsSmartValidationEnabled: (enabled: boolean) => set({ isSmartValidationEnabled: enabled }),
@@ -101,6 +130,8 @@ export const useAddressFinderStore = create<AddressFinderState>()(
       setApiResults: (results) => set((state) => ({
         apiResults: { ...state.apiResults, ...results, timestamp: Date.now() }
       })),
+      // NEW: Agent context management
+      setAgentLastSearchQuery: (query: string | null) => set({ agentLastSearchQuery: query }),
     }),
     { name: 'AddressFinderStore' }
   )

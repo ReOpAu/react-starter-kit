@@ -1,8 +1,8 @@
 # State Management Strategy: Multi-Modal UI-Agent Synchronization
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Status:** Production Ready  
-**Last Updated:** December 2024
+**Last Updated:** [Current Date]
 
 > **Critical Architecture**: This strategy prevents regression by ensuring perfect synchronization between conversational AI agents and traditional UI interactions. Failure to follow these patterns will break the sophisticated multi-modal user experience.
 
@@ -36,26 +36,26 @@ Agent Action → State Manipulation → UI Update + Agent Awareness
 ```
 
 **What We Built:**
-- **React Query** = Single source of truth for ALL API data
-- **Zustand** = Shared state bridge manipulated by both UI and agent
-- **State Manipulation** = Every action (user or agent) manipulates shared state
-- **ElevenLabs Variables** = Agent's window into manipulated state
-- **useAgentSync Hook** = Orchestrates state-to-agent synchronization
+- **React Query** = Single source of truth for ALL API data.
+- **Pillar-Based Zustand Stores** = Shared state is segregated into four distinct stores (`uiStore`, `intentStore`, `apiStore`, `historyStore`) that are manipulated by both the UI and agent actions.
+- **State Manipulation** = Every action (user or agent) manipulates the appropriate state in its dedicated store.
+- **ElevenLabs Variables** = Agent's window into the combined state from our pillar stores.
+- **`useAgentSync` Hook** = Orchestrates state-to-agent synchronization from all pillar stores.
 
-**Key Insight**: State manipulation IS the synchronization strategy. Every user action and every agent action manipulates the same shared state, ensuring perfect alignment.
+**Key Insight**: State manipulation IS the synchronization strategy. Every user action and every agent action manipulates the same architectural state (though now in separate stores), ensuring perfect alignment.
 
 ---
 
 ## 🏛️ The Four Pillars of Brain State
 
-To manage complexity, the "Brain" (our central state) is organized into four distinct categories. Understanding this separation is key to developing features reliably.
+To manage complexity, the "Brain" (our central state) is organized into four distinct categories, now implemented as separate Zustand stores. Understanding this separation is key to developing features reliably.
 
 | Category | Purpose | Where It Lives | Primary Changers |
 | :--- | :--- | :--- | :--- |
-| **1. API State** | **The "What"**: Represents knowledge from the outside world (search results, validation status). It is asynchronous and volatile. | **React Query** | System, Agent |
-| **2. User Input & Intent** | **The "Why"**: Captures the user's direct inputs (text, clicks) and our inferred goal for them. | **Zustand** | User, Agent |
-| **3. App Mode & UI** | **The "How"**: Defines the application's current interaction mode (e.g., voice vs. manual) and controls UI visibility. | **Zustand** | User, Agent, System |
-| **4. Session & History** | **The "Where We've Been"**: Maintains a contextual log of interactions and session-specific data (like billing tokens). | **Zustand, Refs** | User, Agent, System |
+| **1. API State** | **The "What"**: Represents knowledge from the outside world (search results, validation status). It is asynchronous and volatile. | **React Query** & `apiStore.ts` | System, Agent |
+| **2. User Input & Intent** | **The "Why"**: Captures the user's direct inputs (text, clicks) and our inferred goal for them. | `intentStore.ts` | User, Agent |
+| **3. App Mode & UI** | **The "How"**: Defines the application's current interaction mode (e.g., voice vs. manual) and controls UI visibility. | `uiStore.ts` | User, Agent, System |
+| **4. Session & History** | **The "Where We've Been"**: Maintains a contextual log of interactions and session-specific data (like billing tokens). | `historyStore.ts`, Refs | User, Agent, System |
 
 ---
 
@@ -132,19 +132,19 @@ const currentSuggestions = isRecording ? aiSuggestions : suggestions; // Choose 
 ### The Sacred Data Flow: State Manipulation Strategy (NEVER VIOLATE)
 
 ```
-API Calls → React Query (SINGLE SOURCE) → Zustand (SHARED STATE) → ElevenLabs Variables → Agent
-     ↑                                             ↓
-Client Tools ←──── STATE MANIPULATION ←──── User Actions
+API Calls → React Query (SINGLE SOURCE) → Zustand Pillar Stores (SHARED STATE) → ElevenLabs Variables → Agent
+     ↑                                                        ↓
+Client Tools ←───────── STATE MANIPULATION ─────────→ User Actions
 ```
 
 **The Synchronization Rules:**
-- **Rule #1**: ALL API results MUST flow through React Query first
-- **Rule #2**: Agent actions MUST manipulate shared state via client tools  
-- **Rule #3**: User actions MUST manipulate shared state and trigger sync
-- **Rule #4**: EVERY state manipulation MUST sync to agent via useAgentSync
-- **Rule #5**: NO direct setState for API data - only through shared stores
+- **Rule #1**: ALL API results MUST flow through React Query first.
+- **Rule #2**: Agent actions MUST manipulate shared state via client tools that call store actions.
+- **Rule #3**: User actions MUST manipulate shared state via store actions and trigger sync.
+- **Rule #4**: EVERY state manipulation MUST sync to agent via `useAgentSync`.
+- **Rule #5**: NO direct `setState` for API data—only through the `apiStore`.
 
-**Core Principle**: Both UI and Agent manipulate the SAME shared state. This state manipulation IS the synchronization mechanism.
+**Core Principle**: Both UI and Agent manipulate the SAME architectural state, which is now cleanly separated into pillar-aligned stores. This state manipulation IS the synchronization mechanism.
 
 ### Core Components
 
@@ -158,61 +158,54 @@ const { data: suggestions = [], isLoading, error } = useQuery({
 });
 ```
 
-#### 2. Zustand: Shared State Bridge (Manipulated by Both UI and Agent)
+#### 2. Zustand Pillar Stores: Shared, Segregated State
 ```typescript
-// ✅ CORRECT: Shared state manipulated by both UI and agent
-interface AddressFinderState {
-  // UI State (manipulated by user actions)
-  searchQuery: string;
-  selectedResult: Suggestion | null;
-  isRecording: boolean;
-  
-  // API State Mirror (manipulated by both user searches and agent searches)
-  apiResults: {
-    suggestions: Suggestion[];
-    isLoading: boolean;
-    error: string | null;
-    source: 'manual' | 'voice' | null;
-  };
-  
-  // State Manipulation Actions (used by both UI and agent)
-  setSearchQuery: (query: string) => void;      // Called by user typing AND agent searches
-  setSelectedResult: (result: Suggestion) => void; // Called by user clicks AND agent selections
-  setApiResults: (results: Partial<ApiResults>) => void; // Updated from React Query
-}
+// ✅ CORRECT: State is segregated by purpose into different stores.
+
+// ~/stores/intentStore.ts
+export const useIntentStore = create<IntentState>(() => ({
+  searchQuery: '',
+  selectedResult: null,
+  // ... actions like setSearchQuery, setSelectedResult
+}));
+
+// ~/stores/apiStore.ts
+export const useApiStore = create<ApiState>(() => ({
+  apiResults: { suggestions: [], ... },
+  // ... action setApiResults
+}));
+
+// ~/stores/uiStore.ts
+export const useUIStore = create<UIState>(() => ({
+  isRecording: false,
+  agentRequestedManual: false,
+  // ... actions like setIsRecording
+}));
 ```
 
 #### 3. useAgentSync: Orchestration Hub
 ```typescript
-// ✅ CORRECT: Centralized synchronization
+// ✅ CORRECT: Centralized synchronization from all pillar stores
 export function useAgentSync() {
-  const store = useAddressFinderStore();
-  const queryClient = useQueryClient();
+  const { isRecording, isVoiceActive, agentRequestedManual } = useUIStore();
+  const { searchQuery, selectedResult, currentIntent } = useIntentStore();
+  const { apiResults } = useApiStore();
   
   const syncToAgent = useCallback(() => {
     const windowWithElevenLabs = window as any;
     if (typeof windowWithElevenLabs.setVariable === 'function') {
       const agentState = {
-        ui: {
-          isRecording: store.isRecording,
-          searchQuery: store.searchQuery,
-          selectedResult: store.selectedResult,
-        },
-        api: {
-          suggestions: store.apiResults.suggestions,
-          isLoading: store.apiResults.isLoading,
-          error: store.apiResults.error,
-          hasResults: store.apiResults.suggestions.length > 0,
-        },
+        ui: { isRecording, isVoiceActive, agentRequestedManual, searchQuery, selectedResult, currentIntent },
+        api: { ...apiResults, hasResults: apiResults.suggestions.length > 0 },
         meta: {
           lastUpdate: Date.now(),
-          dataFlow: 'API → React Query → Zustand → ElevenLabs → Agent (Corrected)'
+          dataFlow: 'API → React Query → Pillar Stores → ElevenLabs → Agent (Corrected)'
         }
       };
       
       windowWithElevenLabs.setVariable("agentState", agentState);
     }
-  }, [store]);
+  }, [isRecording, isVoiceActive, agentRequestedManual, searchQuery, selectedResult, currentIntent, apiResults]);
   
   return { syncToAgent };
 }
@@ -223,30 +216,13 @@ export function useAgentSync() {
 // ✅ CORRECT: Agent actions update React Query first
 const clientTools = useMemo(() => ({
   searchAddress: async (params: { query: string }) => {
-    const result = await getPlaceSuggestionsAction({
-      query: params.query,
-      intent: 'general',
-      isAutocomplete: false,
-    });
-    
-    if (result.success && result.suggestions) {
-      // UPDATE REACT QUERY FIRST (eliminates dual storage)
-      queryClient.setQueryData(['addressSearch', params.query], {
-        suggestions: result.suggestions,
-        source: 'ai',
-        timestamp: Date.now()
-      });
-      
-      setSearchQuery(params.query);
-      syncToAgent();
-      
-      return JSON.stringify({
-        status: 'success',
-        suggestions: result.suggestions
-      });
-    }
+    const result = await getPlaceSuggestionsAction(params);
+    queryClient.setQueryData(['addressSearch', params.query], result); // ← Manipulate React Query
+    useIntentStore.getState().setSearchQuery(params.query);  // ← Manipulate Zustand state
+    syncToAgent();                 // ← UI now shows agent's search
+    return JSON.stringify(result);
   }
-}), [queryClient, setSearchQuery, syncToAgent]);
+}), [queryClient, syncToAgent]);
 ```
 
 ---
@@ -259,7 +235,9 @@ const clientTools = useMemo(() => ({
 // app/routes/address-finder.tsx
 export default function AddressFinder() {
   const { syncToAgent } = useAgentSync();
-  const { setApiResults } = useAddressFinderStore();
+  const { setApiResults } = useApiStore();
+  const { isRecording, isVoiceActive } = useUIStore();
+  const { searchQuery, selectedResult, currentIntent, setSelectedResult, setCurrentIntent, setSearchQuery } = useIntentStore();
   
   // STEP 1: Single source API data. Use useMemo for stable reference.
   const { data, isLoading, error } = useQuery({
@@ -271,7 +249,7 @@ export default function AddressFinder() {
   
   // STEP 2: The Consolidated Sync Effect. This is the single source of truth for syncing state.
   useEffect(() => {
-    // Bridge the latest data from React Query into our Zustand store
+    // Bridge the latest data from React Query into our apiStore
     setApiResults({
       suggestions,
       isLoading,
@@ -291,27 +269,26 @@ export default function AddressFinder() {
     searchQuery,
   ]);
   
-  // STEP 3: User actions simply manipulate state. The useEffect above handles the sync.
+  // STEP 3: User actions simply manipulate state via store actions.
   const handleSuggestionClick = useCallback((suggestion: Suggestion) => {
-    // Manipulate state...
+    // Manipulate state via dedicated actions...
     setSelectedResult(suggestion);
     setCurrentIntent(classifySelectedResult(suggestion));
     setSearchQuery(suggestion.description);
     // ... and that's it! The state change will trigger the useEffect,
-    // which handles the synchronization automatically. No syncToAgent() call needed here.
+    // which handles the synchronization automatically.
   }, [setSelectedResult, setCurrentIntent, setSearchQuery]);
   
-  // STEP 4: Client tools for the agent also just manipulate state.
+  // STEP 4: Client tools for the agent also just manipulate state via store actions.
   const clientTools = useMemo(() => ({
     searchAddress: async (params) => {
-      // Agent manipulates same shared state as user
       const result = await getPlaceSuggestionsAction(params);
       queryClient.setQueryData(['addressSearch', params.query], result); // ← Manipulate React Query
-      setSearchQuery(params.query);  // ← Manipulate Zustand state
+      useIntentStore.getState().setSearchQuery(params.query);  // ← Manipulate Zustand state
       syncToAgent();                 // ← UI now shows agent's search
       return JSON.stringify(result);
     }
-  }), [queryClient, setSearchQuery, syncToAgent]);
+  }), [queryClient, syncToAgent]);
   
   return (
     <div>
@@ -434,8 +411,8 @@ describe('State Management Validation', () => {
 | Component | Purpose | Critical Rules |
 |-----------|---------|----------------|
 | **React Query** | Single source for ALL API data | No useState for API results |
-| **Zustand** | UI state + agent bridge | Mirror React Query data |
-| **useAgentSync** | Synchronization orchestrator | Call after EVERY state change |
+| **Zustand Stores** | UI state + agent bridge, separated by pillar | Mirror React Query data in `apiStore` |
+| **`useAgentSync`** | Synchronization orchestrator | Call after EVERY state change |
 | **Client Tools** | Agent → UI communication | Update React Query first |
 
 ### Essential Hooks Pattern
@@ -443,7 +420,7 @@ describe('State Management Validation', () => {
 ```typescript
 // Standard pattern for all components
 const { syncToAgent } = useAgentSync();
-const { setApiResults, setSearchQuery } = useAddressFinderStore();
+const { setApiResults } = useApiStore();
 
 // Always sync after state changes
 useEffect(() => {
@@ -451,6 +428,27 @@ useEffect(() => {
   syncToAgent();
 }, [suggestions, isLoading, error, setApiResults, syncToAgent]);
 ```
+
+#### 2. Stable Callback Pattern (`useCallback`)
+For helper functions or event handlers passed as props, wrap them in `useCallback` with an empty dependency array `[]` if they don't depend on props or state. This prevents child components from re-rendering unnecessarily.
+
+```typescript
+// ✅ ALWAYS DO THIS - Create a completely stable callback
+const log = useCallback((...args: any[]) => {
+  // Use getState() to access store values without creating a dependency
+  if (useUIStore.getState().isLoggingEnabled) {
+    console.log('[AddressFinder]', ...args);
+  }
+}, []); // ✅ Empty dependency array makes this function reference stable
+```
+
+### 🔍 DEBUGGING INFINITE LOOPS: A CHECKLIST
+
+If you encounter a "Maximum update depth exceeded" error, follow these steps:
+1.  **Check `useEffect` Dependencies**: Immediately look for any state setters (`setSomething`, `syncToAgent`, etc.) in any `useEffect` dependency array. Remove them.
+2.  **Check `useQuery` Destructuring**: Find all `useQuery` calls. If you see `const { data: name = [] }`, change it to the `useMemo` pattern.
+3.  **Look for Multiple Syncs**: Search for all calls to `syncToAgent()`. If it's being called from more than one `useEffect`, consolidate them into the single required pattern shown above.
+4.  **Examine Callback Dependencies**: If you are using `useCallback`, ensure its dependency array is correct. Unstable callbacks passed to effects can also cause loops.
 
 ---
 
@@ -759,7 +757,7 @@ For helper functions or event handlers passed as props, wrap them in `useCallbac
 // ✅ ALWAYS DO THIS - Create a completely stable callback
 const log = useCallback((...args: any[]) => {
   // Use getState() to access store values without creating a dependency
-  if (useAddressFinderStore.getState().isLoggingEnabled) {
+  if (useUIStore.getState().isLoggingEnabled) {
     console.log('[AddressFinder]', ...args);
   }
 }, []); // ✅ Empty dependency array makes this function reference stable
@@ -925,16 +923,16 @@ When the agent calls `requestManualInput()`, it should **NEVER stop the conversa
 
 #### ✅ CORRECT Hybrid Mode Implementation
 
-**1. Update Zustand Store:** The shared state must include a flag for this mode.
+**1. Update Zustand Store:** The shared state must include a flag for this mode in the correct pillar store.
 ```typescript
-// app/stores/addressFinderStore.ts
-interface AddressFinderState {
+// app/stores/uiStore.ts
+interface UIState {
   // ... other state
   agentRequestedManual: boolean;
   setAgentRequestedManual: (requested: boolean) => void;
 }
 
-const initialState = {
+const initialUiState = {
   // ... other initial state
   agentRequestedManual: false,
 };
@@ -943,12 +941,13 @@ const initialState = {
 setAgentRequestedManual: (requested: boolean) => set({ agentRequestedManual: requested }),
 ```
 
-**2. Update Client Tool:** The agent's tool manipulates the shared state directly.
+**2. Update Client Tool:** The agent's tool manipulates the shared state directly via store actions.
 ```typescript
 // app/hooks/useAddressFinderClientTools.ts
 requestManualInput: async (params) => {
-  // Get setter from the store, not parameters
-  const { setAgentRequestedManual, addHistory } = useAddressFinderStore.getState();
+  // Get setters from the correct stores
+  const { setAgentRequestedManual } = useUIStore.getState();
+  const { addHistory } = useHistoryStore.getState();
 
   // KEEP conversation active - NO stopRecording() or endSession()
   // ONLY set UI flags to enable widget during conversation
@@ -977,8 +976,8 @@ The Brain component should render ManualSearchForm when EITHER:
 // ✅ CORRECT conditional rendering for hybrid support
 // app/routes/address-finder.tsx
 
-// Get state from the global store
-const { isRecording, agentRequestedManual } = useAddressFinderStore();
+// Get state from the global UI store
+const { isRecording, agentRequestedManual } = useUIStore();
 
 // UI logic remains simple and reactive
 const shouldShowManualForm = !isRecording || agentRequestedManual;
@@ -998,7 +997,7 @@ return (
 ```
 Agent calls requestManualInput()
 ├─ isRecording stays TRUE (conversation continues)
-├─ agentRequestedManual in Zustand becomes TRUE
+├─ agentRequestedManual in uiStore becomes TRUE
 ├─ UI reacts to global state change and shows ManualSearchForm
 ├─ User types → Widget callbacks → Brain → Agent sync
 └─ Agent continues conversation with new data

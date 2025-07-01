@@ -2,30 +2,32 @@ import { useCallback, useState, type RefObject } from 'react';
 import { useAction } from 'convex/react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { api } from 'convex/_generated/api';
-import { type Suggestion, type LocationIntent, useAddressFinderStore } from '~/stores/addressFinderStore';
+import { useIntentStore } from '~/stores/intentStore';
 import { classifySelectedResult } from '~/utils/addressFinderUtils';
 import { type useConversation } from '@elevenlabs/react';
+import type { Suggestion, LocationIntent, HistoryItem } from '~/stores/types';
+import { useReliableSync } from './useReliableSync';
 
 type UseActionHandlerDependencies = {
   log: (...args: any[]) => void;
   setCurrentIntent: (intent: LocationIntent) => void;
   setSelectedResult: (result: Suggestion | null) => void;
-  setSearchQuery: (query: string) => void;
+  setActiveSearch: (payload: { query: string; source: 'manual' | 'voice' }) => void;
   setAgentRequestedManual: (requested: boolean) => void;
-  addHistory: (entry: { type: 'user' | 'agent' | 'system'; text: string }) => void;
+  addHistory: (item: HistoryItem) => void;
   getSessionToken: () => string;
   clearSessionToken: () => void;
   isRecording: boolean;
   conversationRef: RefObject<ReturnType<typeof useConversation> | null>;
   queryClient: QueryClient;
-  clearStore: () => void;
+  clearSelectionAndSearch: () => void;
 };
 
 export function useActionHandler({
   log,
   setCurrentIntent,
   setSelectedResult,
-  setSearchQuery,
+  setActiveSearch,
   setAgentRequestedManual,
   addHistory,
   getSessionToken,
@@ -33,11 +35,12 @@ export function useActionHandler({
   isRecording,
   conversationRef,
   queryClient,
-  clearStore,
+  clearSelectionAndSearch,
 }: UseActionHandlerDependencies) {
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const validateAddressAction = useAction(api.location.validateAddress);
+  const { performReliableSync } = useReliableSync();
 
   const handleSelect = useCallback(async (result: Suggestion) => {
     log('🎯 === UNIFIED SELECTION FLOW START ===');
@@ -63,10 +66,10 @@ export function useActionHandler({
 
         log('🔬 VALIDATION RESULT:', validation);
 
-        if (validation.success) {
+        if (validation.success && validation.isValid) {
           const enrichedResult: Suggestion = {
             ...result,
-            description: validation.result.formattedAddress,
+            description: validation.result.address.formattedAddress,
             placeId: validation.result.geocode.placeId,
             // You can add more enriched data here if your Suggestion type supports it
           };
@@ -75,7 +78,7 @@ export function useActionHandler({
           setCurrentIntent(finalIntent);
           
           setSelectedResult(enrichedResult);
-          setSearchQuery(enrichedResult.description);
+          setActiveSearch({ query: enrichedResult.description, source: 'manual' });
           setAgentRequestedManual(false);
           addHistory({ type: 'user', text: `Selected: "${enrichedResult.description}"`});
           
@@ -95,9 +98,10 @@ export function useActionHandler({
             }
           }
         } else {
-          log(`❌ VALIDATION FAILED: ${validation.error}`);
-          setValidationError(validation.error);
-          addHistory({ type: 'system', text: `Validation failed: ${validation.error}` });
+          const errorMessage = validation.error || "The selected address could not be validated.";
+          log(`❌ VALIDATION FAILED: ${errorMessage}`);
+          setValidationError(errorMessage);
+          addHistory({ type: 'system', text: `Validation failed: ${errorMessage}` });
         }
       } catch (error: any) {
         log('💥 VALIDATION ACTION FAILED:', error);
@@ -110,7 +114,7 @@ export function useActionHandler({
     } else {
       log(`🎯 Intent is "${intent}", skipping full validation.`);
       setSelectedResult(result);
-      setSearchQuery(result.description);
+      setActiveSearch({ query: result.description, source: 'manual' });
       setAgentRequestedManual(false);
       addHistory({ type: 'user', text: `Selected: "${result.description}"` });
       clearSessionToken();
@@ -134,30 +138,49 @@ export function useActionHandler({
     log,
     setCurrentIntent,
     setSelectedResult,
-    setSearchQuery,
+    setActiveSearch,
     setAgentRequestedManual,
     addHistory,
     clearSessionToken,
     isRecording,
     conversationRef,
     validateAddressAction,
-    getSessionToken,
   ]);
 
   const handleClear = useCallback((context: 'user' | 'agent' = 'user') => {
     log(`🗑️ === UNIFIED CLEAR FLOW START (context: ${context}) ===`);
-    const { searchQuery } = useAddressFinderStore.getState();
+    const { searchQuery } = useIntentStore.getState();
     
     if (searchQuery) {
       queryClient.removeQueries({ queryKey: ['addressSearch', searchQuery], exact: true });
       log('🔧 Cleared React Query cache for:', searchQuery);
     }
     
-    clearStore();
+    clearSelectionAndSearch();
     addHistory({ type: context, text: 'State cleared.' });
     log('✅ ALL STATE CLEARED');
+
+    // Explicitly notify the agent if a conversation is active
+    if (isRecording && conversationRef.current?.status === 'connected') {
+      const clearMessage = "I have cleared my previous selection and am ready to continue.";
+      log('🗨️ SENDING CLEAR MESSAGE TO AGENT:', clearMessage);
+      try {
+        conversationRef.current?.sendUserMessage?.(clearMessage);
+        log('✅ Clear message sent to agent successfully');
+        addHistory({ type: 'system', text: 'Notified agent about state clear' });
+      } catch (error) {
+        log('❌ Failed to send clear message to agent:', error);
+        addHistory({ type: 'system', text: `Failed to notify agent of clear: ${error}` });
+      }
+    }
+
+    performReliableSync('clear').catch(error => {
+      log('❌ Sync failed after clear:', error);
+    });
+    log('🔄 SYNC WITH AGENT INITIATED');
+
     log('🗑️ === UNIFIED CLEAR FLOW END ===');
-  }, [log, queryClient, clearStore, addHistory]);
+  }, [log, queryClient, clearSelectionAndSearch, addHistory, performReliableSync, isRecording, conversationRef]);
 
   return {
     handleSelect,
@@ -165,4 +188,4 @@ export function useActionHandler({
     validationError,
     handleClear,
   };
-} 
+}

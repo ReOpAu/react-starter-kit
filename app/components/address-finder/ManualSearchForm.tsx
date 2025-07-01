@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { type Suggestion } from '~/stores/addressFinderStore';
+import { type Suggestion } from '~/stores/types';
 import { Badge } from '~/components/ui/badge';
 import { AnimatePresence, motion } from 'framer-motion';
 import AddressInput from './AddressInput';

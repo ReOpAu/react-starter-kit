@@ -1,22 +1,27 @@
 import { useCallback, useRef, useEffect } from 'react';
-import { useAddressFinderStore } from '~/stores/addressFinderStore';
+// import { useAddressFinderStore } from '~/stores/addressFinderStore'; // ❌ REMOVE OLD STORE
+import { useUIStore } from '~/stores/uiStore'; // ✅ ADD NEW STORE
+import { useHistoryStore } from '~/stores/historyStore'; // ✅ ADD NEW STORE
 
 export function useAudioManager() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   
+  // ✅ GET STATE AND ACTIONS FROM NEW PILLAR STORES
   const {
     isRecording,
     isVoiceActive,
+    isLoggingEnabled,
     setIsVoiceActive,
     setIsRecording,
-    addHistory,
     setAgentRequestedManual,
-  } = useAddressFinderStore();
+  } = useUIStore();
+  const { addHistory } = useHistoryStore();
 
   // Logging utility - STABLE: No dependencies to prevent infinite loops
   const log = useCallback((...args: any[]) => {
-    if (useAddressFinderStore.getState().isLoggingEnabled) {
+    // Use getState() to access store values without creating a reactive dependency
+    if (useUIStore.getState().isLoggingEnabled) {
       console.log('[AudioManager]', ...args);
     }
   }, []); // Empty dependency array makes this completely stable
@@ -35,8 +40,8 @@ export function useAudioManager() {
   const startRecording = useCallback(async (conversation: any) => {
     log('🎤 === STARTING RECORDING ===');
     log('📊 PRE-RECORDING STATE:', {
-      isRecording: useAddressFinderStore.getState().isRecording,
-      isVoiceActive: useAddressFinderStore.getState().isVoiceActive,
+      isRecording: useUIStore.getState().isRecording,
+      isVoiceActive: useUIStore.getState().isVoiceActive,
       conversationStatus: conversation.status,
     });
     
@@ -60,8 +65,8 @@ export function useAudioManager() {
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
         const isActive = average > 10;
         const now = Date.now();
-        if (isActive !== useAddressFinderStore.getState().isVoiceActive && (isActive || now - lastUpdate > 200)) {
-          useAddressFinderStore.getState().setIsVoiceActive(isActive);
+        if (isActive !== useUIStore.getState().isVoiceActive && (isActive || now - lastUpdate > 200)) {
+          useUIStore.getState().setIsVoiceActive(isActive);
           lastUpdate = now;
         }
         requestAnimationFrame(checkAudio);
@@ -90,12 +95,14 @@ export function useAudioManager() {
   const stopRecording = useCallback(async (conversation: any) => {
     log('🎤 === STOPPING RECORDING ===');
     log('📊 PRE-STOP STATE:', {
-      isRecording: useAddressFinderStore.getState().isRecording,
-      isVoiceActive: useAddressFinderStore.getState().isVoiceActive,
+      isRecording: useUIStore.getState().isRecording,
+      isVoiceActive: useUIStore.getState().isVoiceActive,
       conversationStatus: conversation.status,
     });
     
-    await conversation.endSession();
+    if (conversation.status === 'connected') {
+      await conversation.endSession();
+    }
     setIsRecording(false);
     setIsVoiceActive(false);
     cleanupAudio();

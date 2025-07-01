@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { PlaceSuggestion } from "../../convex/location";
+import { classifyIntent } from "~/utils/addressFinderUtils";
 
 export type LocationIntent = "suburb" | "street" | "address" | "general";
 
@@ -42,8 +43,7 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
   const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
   
   const searchPlaces = useCallback(async (
-    query: string,
-    intent?: LocationIntent
+    query: string
   ): Promise<EnhancedPlaceSearchResult> => {
     if (!query.trim()) {
       const emptyResult = {
@@ -60,9 +60,11 @@ export function useEnhancedPlaceSuggestions(options: UseEnhancedPlaceSuggestions
     setError(null);
 
     try {
+      const classifiedIntent = classifyIntent(query.trim());
+
       const result = await getPlaceSuggestionsAction({
         query: query.trim(),
-        intent,
+        intent: classifiedIntent,
         maxResults: options.maxResults || 8,
         location: options.location,
         radius: options.radius

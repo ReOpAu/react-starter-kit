@@ -2,8 +2,16 @@ import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAction } from 'convex/react';
 import { api } from 'convex/_generated/api';
-import { useAddressFinderStore, type Suggestion } from '~/stores/addressFinderStore';
-import { classifySelectedResult } from '~/utils/addressFinderUtils';
+import { classifySelectedResult, classifyIntent } from '~/utils/addressFinderUtils';
+
+// New Pillar-Aligned Store Imports
+import type { Suggestion } from '~/stores/types';
+import { useUIStore } from '~/stores/uiStore';
+import { useIntentStore } from '~/stores/intentStore';
+import { useApiStore } from '~/stores/apiStore';
+import { useHistoryStore } from '~/stores/historyStore';
+import { useAddressFinderActions } from '~/hooks/useAddressFinderActions';
+
 
 export function useAddressFinderClientTools(
   getSessionToken: () => string,
@@ -11,38 +19,40 @@ export function useAddressFinderClientTools(
 ) {
   const queryClient = useQueryClient();
   const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
+  const validateAddressAction = useAction(api.location.validateAddress);
   
+  // ✅ FIX: All required state values and setters are destructured at the top level.
+  const { isRecording, setAgentRequestedManual } = useUIStore();
   const {
     searchQuery,
     selectedResult,
     currentIntent,
-    isRecording,
-    setSearchQuery,
+    agentLastSearchQuery,
+    setActiveSearch,
     setSelectedResult,
     setCurrentIntent,
-    addHistory,
-    setAgentRequestedManual,
-  } = useAddressFinderStore();
+    setAgentLastSearchQuery,
+  } = useIntentStore();
+  const { addHistory } = useHistoryStore();
+  const { clearSelectionAndSearch } = useAddressFinderActions();
 
   // Logging utility - STABLE: No dependencies to prevent infinite loops
   const log = useCallback((...args: any[]) => {
-    if (useAddressFinderStore.getState().isLoggingEnabled) {
+    if (useUIStore.getState().isLoggingEnabled) {
       console.log('[ClientTools]', ...args);
     }
   }, []); // Empty dependency array makes this completely stable
 
   // Enhanced ClientTools for managing place suggestions directly
   const clientTools = useMemo(() => ({
-    searchAddress: async (params: unknown) => {
+    searchAddress: async (params: { query: string }) => {
       log('🔧 Tool Call: searchAddress with params:', params);
       
-      let query: string | undefined;
-
-      if (typeof params === 'string') {
-        query = params;
-      } else if (params && typeof params === 'object' && 'query' in params) {
-        query = (params as { query: string }).query;
-      }
+      // STATE RESET: Per documentation, a new search must clear any existing selection.
+      setSelectedResult(null);
+      setCurrentIntent('general');
+      
+      const { query } = params;
 
       if (typeof query !== 'string' || !query.trim()) {
         const errorMessage = "Invalid or missing 'query' parameter for searchAddress tool.";
@@ -55,59 +65,79 @@ export function useAddressFinderClientTools(
       
       addHistory({ type: 'agent', text: `Searching for: "${query}"` });
       
-      // Reset intent for a new search
-      setCurrentIntent('general');
-      
       try {
-        // Update React Query cache (eliminates dual storage)
-        const result = await getPlaceSuggestionsAction({ 
-          query: query,
-          intent: 'general',
-          isAutocomplete: false, // This is an AI search, not autocomplete
-          sessionToken: getSessionToken(),
-        });
-        
-        if (result.success && result.suggestions && result.suggestions.length > 0) {
-          log(`🔧 Updating cache for query: "${query}" with ${result.suggestions.length} suggestions`);
+        const intent = classifyIntent(query);
+        log(`🔧 Agent search for "${query}" classified with intent: "${intent}"`);
 
-          // As per documentation, update React Query cache first. This ensures
-          // the data source is updated before any state change that might trigger a sync.
-          queryClient.setQueryData(['addressSearch', query], result.suggestions);
+        if (intent === 'address') {
+          log(`🔬 Intent is "address", using direct/strict validation flow for agent.`);
+          const validation = await validateAddressAction({ address: query });
 
-          // Now, update the search query in the Zustand store. This change will
-          // be picked up by the consolidated useEffect, which will then sync
-          // the complete, consistent state to the agent.
-          setSearchQuery(query);
+          if (validation.success && validation.isValid) {
+            log(`✅ Agent search validated successfully: "${validation.result.address.formattedAddress}"`);
+            const validatedSuggestion: Suggestion = {
+              placeId: validation.result.geocode.placeId,
+              description: validation.result.address.formattedAddress,
+              types: ['street_address', 'validated_address'],
+              matchedSubstrings: [],
+              structuredFormatting: {
+                mainText: validation.result.address.addressComponents.find(c => c.componentType === 'street_number')?.componentName.text || '',
+                secondaryText: validation.result.address.formattedAddress,
+              },
+              resultType: 'address',
+              confidence: 1.0,
+            };
+            
+            queryClient.setQueryData(['addressSearch', query], [validatedSuggestion]);
+            setAgentLastSearchQuery(query);
+            setActiveSearch({ query, source: 'voice' });
 
-          // The call to `invalidateQueries` is removed as it's redundant.
-          // `setQueryData` updates the cache, and the `useQuery` hook will
-          // automatically re-render with the new data. Invalidating would
-          // cause an unnecessary network request.
-          
-          if (result.suggestions.length === 1) {
-            // Auto-select if only one result
-            const suggestion = result.suggestions[0];
-            setSelectedResult(suggestion);
-            addHistory({ type: 'agent', text: `Auto-selected: "${suggestion.description}"` });
-            return JSON.stringify({ 
-              status: "confirmed", 
-              selection: suggestion 
+            return JSON.stringify({
+              status: 'validated',
+              suggestions: [validatedSuggestion],
+              message: 'Address was successfully validated by the system and is ready for selection.'
             });
           } else {
-            return JSON.stringify({ 
-              status: "multiple_results", 
-              suggestions: result.suggestions,
-              count: result.suggestions.length
+            log(`❌ Agent search failed strict validation: ${validation.error}`);
+            addHistory({ type: 'agent', text: `Agent search failed validation: ${validation.error}` });
+            return JSON.stringify({
+              status: 'validation_failed',
+              suggestions: [],
+              error: validation.error || 'The provided address could not be validated.'
             });
           }
         }
-        
-        return JSON.stringify({ 
-          status: "no_results", 
-          message: "No places found for this search" 
+
+        const result = await getPlaceSuggestionsAction({ 
+          query: query,
+          intent: intent || 'general',
+          isAutocomplete: true,
+          sessionToken: getSessionToken(),
         });
+        
+        if (result.success && result.suggestions) {
+          log(`🔧 Search successful, populating cache for query: "${query}" with ${result.suggestions.length} suggestions.`);
+          
+          // Manually update the React Query cache - The Single Source of Truth for API State
+          queryClient.setQueryData(['addressSearch', query], result.suggestions);
+          
+          // Set the agent context in Zustand - The "Brain's" memory of the last agent action
+          setAgentLastSearchQuery(query);
+
+          // Update the main search query in the "Brain" to make the UI display these results.
+          setActiveSearch({ query, source: 'voice' });
+
+          // Return the suggestions to the agent
+          return JSON.stringify(result.suggestions);
+        }
+        
+        log('🔧 Search returned no results or failed.');
+        setAgentLastSearchQuery(null); // Clear context
+        return JSON.stringify([]); // Return an empty array on failure or no results.
+
       } catch (error) {
         log('Tool searchAddress failed:', error);
+        setAgentLastSearchQuery(null); // Clear context on failure
         return JSON.stringify({ 
           status: "error", 
           error: error instanceof Error ? error.message : "Search failed" 
@@ -117,14 +147,15 @@ export function useAddressFinderClientTools(
     
     getSuggestions: async () => {
       log('🔧 Tool Call: getSuggestions');
-      // Get current search query from fresh state
-      const currentSearchQuery = useAddressFinderStore.getState().searchQuery;
+      // ✅ CORRECT: Use `getState()` for access inside callbacks to ensure freshness.
+      const { isRecording: isRecordingFromState } = useUIStore.getState();
+      const currentSearchQuery = useIntentStore.getState().searchQuery;
       const suggestions = queryClient.getQueryData<Suggestion[]>(['addressSearch', currentSearchQuery]) || [];
       
       log('🔧 getSuggestions returning (unified source):', {
         totalSuggestions: suggestions.length,
         unified: suggestions.length, 
-        isRecording,
+        isRecording: isRecordingFromState,
         source: suggestions.length > 0 ? 'unified' : 'none',
         note: 'Using unified React Query source for all suggestions'
       });
@@ -133,7 +164,7 @@ export function useAddressFinderClientTools(
         suggestions: suggestions,
         count: suggestions.length,
         source: suggestions.length > 0 ? 'unified' : 'none',
-        mode: isRecording ? 'conversation' : 'manual',
+        mode: isRecordingFromState ? 'conversation' : 'manual',
         availableArrays: {
           unified: suggestions.length,
           note: 'single source of truth via React Query'
@@ -163,40 +194,47 @@ export function useAddressFinderClientTools(
         });
       }
       
-      // DECOUPLED STATE: Fetch fresh state directly to avoid stale closures.
-      const currentSearchQuery = useAddressFinderStore.getState().searchQuery;
-      const currentSuggestions = queryClient.getQueryData<Suggestion[]>(['addressSearch', currentSearchQuery]) || [];
-      
-      log(`🔧 SelectSuggestion debug:`, {
-        isRecording: useAddressFinderStore.getState().isRecording,
-        searchQuery: currentSearchQuery,
-        unified: currentSuggestions.length,
-        lookingForPlaceId: placeId,
-        note: 'Using fresh state from store/cache'
-      });
-      
-      // Try to find the selection directly from the fresh suggestions array
-      const selection = currentSuggestions.find((s) => s.placeId === placeId);
-      
-      log(`🔧 Selection search in ${currentSuggestions.length} fresh suggestions:`, { 
-        found: !!selection,
-      });
+      // ✅ CORRECT: Use `getState()` inside callbacks to get the freshest state.
+      const { 
+        selectedResult: currentSelectedResult, 
+        currentIntent: currentIntentFromState, 
+        searchQuery: currentSearchQueryFromState,
+        agentLastSearchQuery: agentLastSearchQueryFromState 
+      } = useIntentStore.getState();
+
+      let selection: Suggestion | undefined = undefined;
+
+      if (agentLastSearchQueryFromState) {
+        log(`🔧 Searching for selection in agent's last search context: "${agentLastSearchQueryFromState}"`);
+        // Use the context to read from the Single Source of Truth (React Query cache).
+        const suggestionsFromAgentSearch = queryClient.getQueryData<Suggestion[]>(['addressSearch', agentLastSearchQueryFromState]);
+        
+        if (suggestionsFromAgentSearch) {
+          selection = suggestionsFromAgentSearch.find((s) => s.placeId === placeId);
+          log(`🔧 Found ${suggestionsFromAgentSearch.length} suggestions in agent cache. Selection found: ${!!selection}`);
+        } else {
+          log(`⚠️ No suggestions found in React Query cache for agent's last query.`);
+        }
+      } else {
+        log(`⚠️ Agent last search query is not set. Cannot find selection context.`);
+      }
       
       if (selection) {
         const intent = classifySelectedResult(selection);
         log(`✅ AGENT SELECTION FOUND: "${selection.description}" with intent: ${intent}`);
         
         log('🔧 UPDATING STATE - Before update:', {
-          currentSelectedResult: selectedResult?.description,
-          currentIntent: currentIntent,
-          currentSearchQuery: searchQuery
+          currentSelectedResult: currentSelectedResult?.description,
+          currentIntent: currentIntentFromState,
+          currentSearchQuery: currentSearchQueryFromState
         });
         
         setCurrentIntent(intent);
         setSelectedResult(selection);
-        setSearchQuery(selection.description);
+        setActiveSearch({ query: selection.description, source: 'voice' });
         addHistory({ type: 'agent', text: `Agent selected: "${selection.description}" (${intent})` });
         clearSessionToken();
+        setAgentLastSearchQuery(null); // Clear context from the "Brain" after successful use
         
         log('🔧 STATE UPDATED - After update calls made');
         
@@ -215,111 +253,122 @@ export function useAddressFinderClientTools(
       }
       
       log('❌ Selection not found for placeId:', placeId);
-      // Log available unified suggestions
-      const debugSuggestions = currentSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description, source: 'unified' }));
-      log('Available unified suggestions:', debugSuggestions);
+      const agentLastSearchQueryFromStateForError = useIntentStore.getState().agentLastSearchQuery;
+      const suggestionsFromAgentSearch = agentLastSearchQueryFromStateForError ? queryClient.getQueryData<Suggestion[]>(['addressSearch', agentLastSearchQueryFromStateForError]) : [];
+      log('Available suggestions in agent context:', (suggestionsFromAgentSearch || []).map(s => ({ placeId: s.placeId, description: s.description })));
       
       return JSON.stringify({ 
         status: "not_found",
         searchedPlaceId: placeId,
-        availableSources: {
-          unified: currentSuggestions.map((s: Suggestion) => ({ placeId: s.placeId, description: s.description })),
-          note: "Using unified React Query source for all suggestions"
-        }
+        error: "The requested placeId could not be found in the last set of agent search results. The user may need to search again."
       });
     },
     
     getCurrentState: async () => {
       log('🔧 ===== Tool Call: getCurrentState =====');
+      // ✅ CORRECT: Use `getState()` for access inside callbacks.
       const { 
         isRecording, 
         isVoiceActive, 
-        currentIntent, 
-        searchQuery, 
+      } = useUIStore.getState();
+      const {
+        currentIntent,
+        searchQuery,
         selectedResult,
-        apiResults,
-      } = useAddressFinderStore.getState();
+      } = useIntentStore.getState();
+      const { apiResults } = useApiStore.getState();
+
+      let systemStatus: 'AWAITING_USER_INPUT' | 'AWAITING_USER_SELECTION' | 'SELECTION_CONFIRMED';
+      let systemStatusDescription: string;
+
+      if (selectedResult) {
+        systemStatus = 'SELECTION_CONFIRMED';
+        systemStatusDescription = `A final address has been selected: "${selectedResult.description}". The agent should now confirm this with the user or ask for next steps.`;
+      } else if (apiResults.suggestions && apiResults.suggestions.length > 0) {
+        systemStatus = 'AWAITING_USER_SELECTION';
+        systemStatusDescription = `Multiple address suggestions are available. The agent should help the user choose from the list of ${apiResults.suggestions.length} options.`;
+      } else {
+        systemStatus = 'AWAITING_USER_INPUT';
+        systemStatusDescription = `The system is idle and waiting for the user to provide an address to search for. The agent's primary goal is to ask the user for a search query.`;
+      }
 
       const stateSummary = {
+        systemStatus: {
+          status: systemStatus,
+          description: systemStatusDescription,
+        },
         ui: {
           isRecording,
           isVoiceActive,
           currentIntent: currentIntent || 'general',
           searchQuery,
+          hasQuery: !!searchQuery,
         },
         api: {
           suggestionsCount: apiResults.suggestions.length,
           isLoading: apiResults.isLoading,
           error: apiResults.error,
-          source: apiResults.source,
+          hasResults: apiResults.suggestions.length > 0,
         },
         selection: {
+          selectedResult,
           hasSelection: !!selectedResult,
           selectedAddress: selectedResult?.description || null,
           selectedPlaceId: selectedResult?.placeId || null,
         },
-        meta: {
-          timestamp: Date.now(),
-        }
       };
       
       log('🔧 getCurrentState returning summary:', stateSummary);
-      
       return JSON.stringify(stateSummary);
     },
     
     getConfirmedSelection: async () => {
-      log('🔧 ===== Tool Call: getConfirmedSelection =====');
+      log('🔧 Tool Call: getConfirmedSelection');
+      const { selectedResult: confirmedResult } = useIntentStore.getState();
+      const hasSelection = !!confirmedResult;
       
-      // DECOUPLED STATE: Fetch fresh state directly from the store.
-      const { selectedResult, currentIntent, searchQuery, isRecording } = useAddressFinderStore.getState();
-      const hasSelection = !!selectedResult;
-      
+      const { currentIntent, searchQuery } = useIntentStore.getState();
+      const { isRecording: isRecordingFromStore } = useUIStore.getState();
+
       log('🔧 Current state snapshot (fresh from store):', {
         hasSelection,
-        selectedResultExists: !!selectedResult,
-        selectedDescription: selectedResult?.description,
-        selectedPlaceId: selectedResult?.placeId,
+        selectedResultExists: !!confirmedResult,
+        selectedDescription: confirmedResult?.description,
+        selectedPlaceId: confirmedResult?.placeId,
         currentIntent,
         searchQuery,
-        isRecording,
+        isRecording: isRecordingFromStore,
         storeState: {
-          selectedResult: useAddressFinderStore.getState().selectedResult?.description,
-          currentIntent: useAddressFinderStore.getState().currentIntent,
-          searchQuery: useAddressFinderStore.getState().searchQuery
+          selectedResult: useIntentStore.getState().selectedResult?.description,
+          currentIntent: useIntentStore.getState().currentIntent,
+          searchQuery: useIntentStore.getState().searchQuery
         }
       });
       
       const response = {
         hasSelection,
-        selection: selectedResult,
+        selection: confirmedResult,
         intent: currentIntent,
         searchQuery: searchQuery,
-        timestamp: Date.now(),
-        mode: isRecording ? 'conversation' : 'manual'
       };
       
       if (hasSelection) {
         log('✅ CONFIRMED SELECTION AVAILABLE:', {
-          description: selectedResult?.description,
-          placeId: selectedResult?.placeId,
+          description: confirmedResult?.description,
+          placeId: confirmedResult?.placeId,
           intent: currentIntent
         });
       } else {
-        log('❌ NO SELECTION CONFIRMED - Agent has no selection to work with');
+        log('⚠️ No confirmed selection available.');
       }
-      
-      log('🔧 Returning response:', response);
       return JSON.stringify(response);
     },
     
     clearSelection: async () => {
       log('🔧 Tool Call: clearSelection');
-      setSelectedResult(null);
-      setCurrentIntent('general');
-      // Note: No need to clear suggestions - React Query manages state
-      addHistory({ type: 'agent', text: 'Selection cleared' });
-      // Note: syncToAgent will be called automatically by centralized useEffect
+      // Directly call the centralized action
+      clearSelectionAndSearch();
+      log('✅ Selection and search cleared via centralized action.');
       return JSON.stringify({ status: "cleared" });
     },
 
@@ -328,7 +377,7 @@ export function useAddressFinderClientTools(
       log('🔧 AGENT ACKNOWLEDGING USER SELECTION with params:', params);
       
       // This tool allows the agent to explicitly acknowledge a user's selection
-      const currentSelection = selectedResult;
+      const { selectedResult: currentSelection } = useIntentStore.getState();
       log('🔧 Current selection state:', {
         hasSelection: !!currentSelection,
         description: currentSelection?.description,
@@ -363,38 +412,49 @@ export function useAddressFinderClientTools(
       }
     },
     
-    requestManualInput: async (params: { reason?: string }) => {
+    requestManualInput: async (params: { reason: string }) => {
       log('🔧 ===== Tool Call: requestManualInput =====');
-      log('🔧 Agent is requesting manual input. Reason:', params?.reason);
-
-      addHistory({
-        type: 'agent',
-        text: `🤖 → 📝 ${params?.reason || 'The agent suggested switching to manual input for better accuracy.'}`,
-      });
-
-      // This directly updates the UI state in address-finder.tsx
+      const reason = params?.reason || "The agent has determined manual input may be more effective.";
+      
+      // Keep conversation active. Only set UI flags.
       setAgentRequestedManual(true);
+      addHistory({ type: 'agent', text: `🤖 → 📝 ${reason}` });
+
+      // ✅ CORRECT: Get fresh state inside the tool function.
+      const { isRecording: isRecordingFromState } = useUIStore.getState();
 
       return JSON.stringify({
-        status: 'hybrid_mode_activated',
-        message: 'Manual input has been enabled. The user can now type while the conversation continues.',
+        status: "hybrid_mode_activated",
+        message: "Manual input has been enabled.",
+        isRecording: isRecordingFromState,
       });
     },
+
+    getHistory: async () => {
+      log('🔧 Tool Call: getHistory');
+      const { history: recordedHistory } = useHistoryStore.getState();
+      log('🔧 Returning interaction history. Count:', recordedHistory.length);
+      return JSON.stringify(recordedHistory);
+    },
   }), [
-    addHistory, 
+    queryClient, 
     getPlaceSuggestionsAction, 
+    validateAddressAction,
     getSessionToken, 
-    setCurrentIntent, 
-    setSelectedResult, 
-    setSearchQuery, 
     clearSessionToken, 
-    queryClient,
     log,
+    isRecording,
+    searchQuery,
     selectedResult,
     currentIntent,
-    searchQuery,
-    isRecording,
+    agentLastSearchQuery,
+    setActiveSearch,
+    setSelectedResult,
+    setCurrentIntent,
+    addHistory,
     setAgentRequestedManual,
+    setAgentLastSearchQuery,
+    clearSelectionAndSearch,
   ]);
 
   return clientTools;

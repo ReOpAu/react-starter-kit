@@ -68,6 +68,14 @@ The system automatically classifies user queries into:
 - **address**: Complete addresses (e.g., "123 Collins Street, Melbourne")
 - **general**: Fallback for unclear queries
 
+#### Architectural Pattern: Client-First Intent with Server Fallback
+It is a critical architectural principle that intent classification is handled **client-first**.
+
+1.  **Client-Side Responsibility**: The initial intent is determined on the client within `app/hooks/useAddressFinderClientTools.ts` using the `classifyIntent` utility. This allows the UI to provide immediate, context-aware feedback and enables more efficient backend processing.
+2.  **Server as Fallback**: The client's determined intent is passed to the `getPlaceSuggestions` Convex action. The backend trusts the client's classification but contains its own logic to act as a reliable fallback in cases where the client does not provide an intent.
+
+This pattern ensures a responsive user experience while maintaining a robust, logical separation of concerns. All subsequent logic relies on this client-first classification.
+
 ### 3. Smart Suggestion Management
 - **Autocomplete Mode**: Real-time suggestions during manual typing (disabled during voice)
 - **AI Mode**: Agent-generated suggestions during conversation
@@ -89,6 +97,9 @@ AI suggestions should **ONLY** be displayed when **ALL** of the following condit
 3. **Pure autocomplete**: User is typing in manual mode (widget handles this internally)
 
 This ensures clean separation between manual autocomplete (widget-managed) and AI suggestions (brain-managed), preventing confusing duplicate displays.
+
+#### Critical State Transition Rule
+**A new search MUST clear the previous selection.** Any action that initiates a new search (e.g., the agent calling `searchAddress` or the user typing in `ManualSearchForm`) must programmatically set `selectedResult` to `null`. This is the only way to ensure the UI correctly transitions from a "confirmed" state to a "searching" state, allowing new suggestions to be displayed.
 
 ### 4. State Synchronization
 

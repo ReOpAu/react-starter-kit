@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '~/components/ui/card';
-import { type Suggestion } from '~/stores/addressFinderStore';
+import { type Suggestion } from '~/stores/types';
 import { Button } from '~/components/ui/button';
 
 interface SuggestionsDisplayProps {

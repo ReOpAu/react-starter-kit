@@ -1,16 +1,22 @@
 import { useCallback } from 'react';
 import { useConversation } from '@elevenlabs/react';
-import { useAddressFinderStore } from '~/stores/addressFinderStore';
+import { useUIStore } from '~/stores/uiStore';
+import { useHistoryStore } from '~/stores/historyStore';
 
 export function useConversationManager(clientTools: Record<string, any>) {
-  const { addHistory, setIsRecording, setIsVoiceActive } = useAddressFinderStore();
+  // More robust state selection to avoid lifecycle issues
+  const setIsRecording = useUIStore((state) => state.setIsRecording);
+  const setIsVoiceActive = useUIStore((state) => state.setIsVoiceActive);
+  const isLoggingEnabled = useUIStore((state) => state.isLoggingEnabled);
+  const addHistory = useHistoryStore((state) => state.addHistory);
 
   // Logging utility - STABLE: No dependencies to prevent infinite loops
   const log = useCallback((...args: any[]) => {
-    if (useAddressFinderStore.getState().isLoggingEnabled) {
+    // isLoggingEnabled is now a reactive value from the hook's perspective
+    if (isLoggingEnabled) {
       console.log('[ConversationManager]', ...args);
     }
-  }, []); // Empty dependency array makes this completely stable
+  }, [isLoggingEnabled]);
 
   // Conversation setup with enhanced clientTools
   const conversation = useConversation({
@@ -23,8 +29,9 @@ export function useConversationManager(clientTools: Record<string, any>) {
     onDisconnect: () => {
       log('🔌 Disconnected from ElevenLabs');
       // Force state update on external disconnect
-      useAddressFinderStore.getState().setIsRecording(false);
-      useAddressFinderStore.getState().setIsVoiceActive(false);
+      // Using .getState() is safe here as it's outside the React render cycle
+      useUIStore.getState().setIsRecording(false);
+      useUIStore.getState().setIsVoiceActive(false);
     },
     onTranscription: (text: string) => {
       // ENHANCED TRANSCRIPTION LOGGING
@@ -38,8 +45,8 @@ export function useConversationManager(clientTools: Record<string, any>) {
     },
     onMessage: (message: any) => {
       log('🤖 Agent message received:', message);
-      if (message.type === 'text') {
-        addHistory({ type: 'agent', text: `Agent: ${message.text}` });
+      if (message.source === 'ai' && message.message) {
+        addHistory({ type: 'agent', text: message.message });
       }
     },
     onStatusChange: (status: string) => {
