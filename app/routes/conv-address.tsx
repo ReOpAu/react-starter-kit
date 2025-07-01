@@ -282,7 +282,35 @@ interface AddressMatch {
   sessionToken?: string;
 }
 
+// === TYPE GUARD HELPERS ===
 
+function isAddressSearchParams(params: unknown): params is { address: string } {
+  return (
+    typeof params === 'object' &&
+    params !== null &&
+    'address' in params &&
+    typeof (params as any).address === 'string'
+  );
+}
+
+function isConfirmPlaceParams(
+  params: unknown
+): params is { results: Array<{ type: string; place_id: string; label: string }> } {
+  return (
+    typeof params === 'object' &&
+    params !== null &&
+    'results' in params &&
+    Array.isArray((params as any).results) &&
+    (params as any).results.every(
+      (r: any) =>
+        r &&
+        typeof r === 'object' &&
+        typeof r.type === 'string' &&
+        typeof r.place_id === 'string' &&
+        typeof r.label === 'string'
+    )
+  );
+}
 
 export default function ConvAddress() {
   // === CONSOLIDATED STATE WITH useReducer ===
@@ -387,25 +415,33 @@ export default function ConvAddress() {
           console.log('[ClientTool] Params type:', typeof params, 'Value:', JSON.stringify(params));
           
           // Handle different parameter formats that ElevenLabs might send
-          let address: string;
+          let address: string = '';
           if (typeof params === 'string') {
             address = params;
-          } else if (params && typeof params === 'object') {
+          } else if (isAddressSearchParams(params)) {
+            address = params.address;
+          } else if (
+            typeof params === 'object' &&
+            params !== null
+          ) {
             const paramObj = params as Record<string, unknown>;
             // Try multiple possible property names and also check nested objects
-            const dataObj = paramObj.data as Record<string, unknown> | undefined;
+            const dataObj =
+              typeof paramObj.data === 'object' && paramObj.data !== null
+                ? (paramObj.data as Record<string, unknown>)
+                : undefined;
             address = String(
-              paramObj.address || 
-              paramObj.suburb || 
-              paramObj.location || 
-              paramObj.query || 
-              paramObj.text || 
-              paramObj.input || 
-              paramObj.value ||
-              // Check if there's a nested object with these properties
-              dataObj?.address ||
-              dataObj?.suburb ||
-              ''
+              paramObj.address ||
+                paramObj.suburb ||
+                paramObj.location ||
+                paramObj.query ||
+                paramObj.text ||
+                paramObj.input ||
+                paramObj.value ||
+                (dataObj &&
+                  (dataObj.address ||
+                    dataObj.suburb)) ||
+                ''
             );
           } else {
             address = '';
@@ -1210,20 +1246,25 @@ export default function ConvAddress() {
             label: string;
           }> = [];
           
-          if (params && typeof params === 'object') {
-            const paramObj = params as Record<string, unknown>;
-            
-            // Try to extract results array from different possible parameter structures
-            if (Array.isArray(paramObj.results)) {
-              results = paramObj.results as typeof results;
-            } else if (Array.isArray(paramObj)) {
-              results = paramObj as typeof results;
-            } else if (paramObj.results && typeof paramObj.results === 'object') {
-              // Single result wrapped in object
-              const singleResult = paramObj.results as Record<string, unknown>;
-              if (singleResult.type && singleResult.place_id && singleResult.label) {
-                results = [singleResult as typeof results[0]];
-              }
+          if (isConfirmPlaceParams(params)) {
+            results = params.results;
+          } else if (Array.isArray(params)) {
+            results = params as typeof results;
+          } else if (
+            typeof params === 'object' &&
+            params !== null &&
+            'results' in params &&
+            typeof (params as any).results === 'object'
+          ) {
+            // Single result wrapped in object
+            const singleResult = (params as any).results;
+            if (
+              singleResult &&
+              typeof singleResult.type === 'string' &&
+              typeof singleResult.place_id === 'string' &&
+              typeof singleResult.label === 'string'
+            ) {
+              results = [singleResult];
             }
           }
 

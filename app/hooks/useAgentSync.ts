@@ -75,7 +75,7 @@ export function useAgentSync() {
     } catch (error) {
       console.warn('[AgentSync] Failed to sync state:', error);
     }
-  }, [queryClient]); // Only depend on queryClient which is stable
+  }, []); // No dependencies needed since we use getState() directly
   
   return { syncToAgent };
 } 

@@ -20,7 +20,8 @@ export interface SuburbResult {
 interface EnhancedSuburbResult {
   canonicalSuburb: string;
   placeId: string;
-  geocode: {
+  // Geocode is optional and may be undefined if not implemented
+  geocode?: {
     lat: number;
     lng: number;
   };
@@ -94,7 +95,8 @@ export function useSuburbAutocomplete() {
         const enhancedData = {
           canonicalSuburb: suggestion.description,
           placeId: suggestion.placeId,
-          geocode: { lat: 0, lng: 0 }, // Would need place details API for real coordinates
+          // Geocode fetching not implemented yet; set to undefined
+          geocode: undefined,
           types: suggestion.types
         };
         
@@ -133,7 +135,8 @@ export function useSuburbAutocomplete() {
         const results = result.suggestions.map(suggestion => ({
           canonicalSuburb: suggestion.description,
           placeId: suggestion.placeId,
-          geocode: { lat: 0, lng: 0 }, // Would need place details API for real coordinates
+          // Geocode fetching not implemented yet; set to undefined
+          geocode: undefined,
           types: suggestion.types
         }));
 

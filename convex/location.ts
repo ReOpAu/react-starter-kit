@@ -1886,3 +1886,42 @@ async function getPlacesApiSuggestions(
     };
   }
 }
+
+// Helper to determine if a prediction is a valid suburb
+function isValidSuburbPrediction(prediction: { types: string[]; description: string }): boolean {
+  // Only accept suburb-level types (not specific addresses or businesses)
+  const isSuburbLevel = prediction.types.some(type => [
+    'locality',
+    'sublocality',
+    'sublocality_level_1',
+    'administrative_area_level_2',
+    'political'
+  ].includes(type));
+
+  // Exclude specific addresses, businesses, and establishments
+  const isSpecificPlace = prediction.types.some(type => [
+    'establishment',
+    'point_of_interest',
+    'store',
+    'food',
+    'restaurant',
+    'gas_station',
+    'hospital',
+    'school',
+    'street_address',
+    'route',
+    'premise',
+    'subpremise'
+  ].includes(type));
+
+  // Must contain Australian state
+  const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
+
+  // Must NOT contain specific place names (tunnels, bridges, etc.)
+  const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(prediction.description);
+
+  // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
+  const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
+
+  return isSuburbLevel && !isSpecificPlace && hasAustralianState && !hasSpecificPlaceName && isSimpleSuburbFormat;
+}

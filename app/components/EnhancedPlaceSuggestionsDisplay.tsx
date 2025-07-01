@@ -186,12 +186,8 @@ export function EnhancedPlaceSuggestionsDisplay({
                           <span className="text-slate-500">→</span>
                         </div>
                       </div>
-                      
                       {/* Place details */}
                       <div className="flex flex-wrap gap-1">
-                        <Badge variant="outline" className={cn("text-xs", colors.badge)}>
-                          {suggestion.resultType}
-                        </Badge>
                         {suggestion.types.slice(0, 2).map((type) => (
                           <Badge key={type} variant="outline" className="text-xs bg-slate-100 text-slate-600">
                             {type.replace(/_/g, ' ')}
@@ -203,7 +199,6 @@ export function EnhancedPlaceSuggestionsDisplay({
                           </Badge>
                         )}
                       </div>
-
                       {/* Place ID for debugging */}
                       <p className="text-xs text-muted-foreground font-mono">
                         ID: {suggestion.placeId.substring(0, 16)}...

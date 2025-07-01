@@ -16,8 +16,12 @@ export default function EnhancedAddress() {
 
   // Conversational AI that disables inputs and populates suggestions
   const conversation = useConversation({
-    apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
+    apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY || '',
     onConnect: () => {
+      if (!import.meta.env.VITE_ELEVENLABS_API_KEY) {
+        console.error('[AI] API key is missing');
+        return;
+      }
       console.log('[AI] Connected - disabling input fields');
       setIsConversationActive(true);
     },

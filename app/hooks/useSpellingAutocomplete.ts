@@ -98,7 +98,13 @@ export const useSpellingAutocomplete = (options: UseSpellingAutocompleteOptions 
       }
       
       const results = await autocompleteAction(args);
-      setSuggestions(results);
+      // Validate that results is an array before setting
+      if (Array.isArray(results)) {
+        setSuggestions(results);
+      } else {
+        console.warn('Unexpected API response format:', results);
+        setSuggestions([]);
+      }
     } catch (err) {
       console.error("Address autocomplete error:", err);
       setError("Failed to fetch address suggestions");

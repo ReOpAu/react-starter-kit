@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { useAddressFinderStore } from '~/stores/addressFinderStore';
 import { useAgentSync } from './useAgentSync';
 
@@ -18,14 +19,16 @@ export function useReliableSync() {
     
     try {
       // Ensure state updates have been processed by React
-      await new Promise(resolve => setTimeout(resolve, 0));
+      // Use flushSync to immediately flush any pending React state updates
+      flushSync(() => {});
       
       // Perform initial sync
       syncToAgent();
       log(`🔧 Initial sync completed for ${context}`);
       
       // Wait for state propagation and validate
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Use flushSync again to ensure all state is up-to-date before confirmation sync
+      flushSync(() => {});
       
       // Validate synchronization by checking state consistency
       const storeState = useAddressFinderStore.getState();

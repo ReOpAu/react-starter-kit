@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card';
 import { Button } from '~/components/ui/button';
+import type { Suggestion } from '~/stores/types';
 
 export interface AgentDebugCopyPanelProps {
   agentState: {
@@ -12,7 +13,7 @@ export interface AgentDebugCopyPanelProps {
       hasQuery: boolean;
     };
     api: {
-      suggestions: any[];
+      suggestions: Suggestion[];
       isLoading: boolean;
       error: string | null;
       hasResults: boolean;
@@ -21,7 +22,7 @@ export interface AgentDebugCopyPanelProps {
       source: string;
     };
     selection: {
-      selectedResult: any;
+      selectedResult: Suggestion | null;
       hasSelection: boolean;
       selectedAddress: string | null;
       selectedPlaceId: string | null;
@@ -44,7 +45,7 @@ export default function AgentDebugCopyPanel({ agentState, history, className = "
       const ts = h.timestamp ? new Date(h.timestamp).toLocaleString() : '';
       return `  [${h.type}] ${ts} ${h.text}`;
     }).join('\n');
-    const suggestions = agentState.api.suggestions.map((s: any, i: number) =>
+    const suggestions = agentState.api.suggestions.map((s: Suggestion, i: number) =>
       `    ${i + 1}. ${s.description} (${s.placeId})`
     ).join('\n');
     return [

@@ -43,10 +43,17 @@ interface AddressMatch {
   sessionToken?: string;
 }
 
-// Helper function to detect if input looks like a full address with house number
-function looksLikeFullAddress(input: string): boolean {
-  // Check if it starts with a number (house number)
-  return /^\d+\s/.test(input.trim());
+// Helper function to sanitize and validate user input for address queries
+function sanitizeAddressInput(input: string): string {
+  // Allow only alphanumeric, spaces, comma, period, hyphen, apostrophe, and remove other characters
+  const cleaned = input.replace(/[^a-zA-Z0-9\s,.'\-]/g, '');
+  // Collapse multiple spaces
+  const normalized = cleaned.replace(/\s+/g, ' ').trim();
+  // Check for minimum length and at least one letter
+  if (normalized.length < 2 || !/[a-zA-Z]/.test(normalized)) {
+    throw new Error('Invalid input: address must contain at least two characters and a letter.');
+  }
+  return normalized;
 }
 
 // Helper function to generate session token (UUID v4)
@@ -179,12 +186,20 @@ async function validateFullAddress(input: string, apiKey: string): Promise<Addre
 
 // Helper function to search using Google Places Text Search API
 async function searchFullAddress(input: string, apiKey: string, sessionToken?: string): Promise<AddressMatch[]> {
-  console.log(`[Address Text Search] Searching for full address: "${input}"`);
+  // Sanitize and validate input before using in URL (enforced by project security/architecture rules)
+  let safeInput: string;
+  try {
+    safeInput = sanitizeAddressInput(input);
+  } catch (e) {
+    console.error('[Address Text Search] Input sanitization failed:', e);
+    return [];
+  }
+  console.log(`[Address Text Search] Searching for full address: "${safeInput}"`);
   
   try {
     // For Text Search, we don't use session tokens as they're primarily for Autocomplete + Place Details workflows
     const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
-      input + ' Australia'
+      safeInput + ' Australia'
     )}&type=street_address&key=${apiKey}`;
 
     const response = await fetch(textSearchUrl);
@@ -258,10 +273,19 @@ export const autocompleteAddresses = action({
         throw new Error("Google Places API key not configured");
       }
 
+      // Sanitize and validate input before using in URL (enforced by project security/architecture rules)
+      let safeInput: string;
+      try {
+        safeInput = sanitizeAddressInput(partialInput);
+      } catch (e) {
+        console.error("[Autocomplete] Input sanitization failed:", e);
+        throw new Error('Invalid input: address must contain at least two characters and a letter.');
+      }
+
       // Build the request URL
       const baseUrl = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
       const params = new URLSearchParams({
-        input: partialInput,
+        input: safeInput,
         key: apiKey,
         sessiontoken: sessionToken,
         types: "address",

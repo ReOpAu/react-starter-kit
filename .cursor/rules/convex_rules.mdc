@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description: Convex development guidelines and best practices
+globs: "convex/**/*"
 alwaysApply: true
 ---
 

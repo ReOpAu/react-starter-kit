@@ -76,7 +76,7 @@ function classifyLocationIntent(query: string): LocationIntent {
   }
   
   // Suburb patterns (simple text without numbers or street types)
-  const isSimpleText = /^[a-z\s\-']+$/i.test(lowerQuery);
+  const isSimpleText = /^[a-z0-9\s\-'\.]+$/i.test(lowerQuery);
   
   // If it's just simple text without street indicators, assume suburb
   if (isSimpleText && !hasStreetType) {

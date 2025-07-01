@@ -226,37 +226,43 @@ export const getPlaceSuggestions = action({
   ),
   handler: async (ctx, args) => {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    
     if (!apiKey) {
       return {
         success: false as const,
         error: "Google Places API key not configured"
       };
     }
-
     try {
       const query = args.query.trim();
       const detectedIntent = args.intent || classifyLocationIntent(query);
       const maxResults = args.maxResults || 8;
-      
-      console.log(`[getPlaceSuggestions] Query: "${query}", Detected Intent: ${detectedIntent}`);
-      
-      // 🎯 NEW TWO-STEP PROCESS - but only for explicit validation, not autocomplete
-      if (detectedIntent === "address" && !args.isAutocomplete) {
-        console.log(`[getPlaceSuggestions] Using two-step validation for full address`);
-        return await validateThenEnrichAddress(query, maxResults, apiKey, args.location);
+      // Use baseSuburbLookup for all intents
+      const baseResult = await baseSuburbLookup(query, apiKey, { includeDetails: true, maxResults });
+      if (baseResult.success) {
+        // Map to PlaceSuggestion[] format (with dummy fields for compatibility)
+        const suggestions = baseResult.results.map(r => ({
+          placeId: r.placeId || '',
+          description: r.canonicalSuburb,
+          types: r.types || [],
+          matchedSubstrings: [],
+          structuredFormatting: {
+            mainText: r.canonicalSuburb.split(',')[0] || r.canonicalSuburb,
+            secondaryText: r.canonicalSuburb.split(',').slice(1).join(',').trim() || '',
+          },
+          resultType: detectedIntent,
+          confidence: 1,
+          suburb: r.canonicalSuburb.split(',')[0] || r.canonicalSuburb,
+        }));
+        return {
+          success: true as const,
+          suggestions,
+          detectedIntent
+        };
       }
-      
-      // During autocomplete, even "address" intent should use Places API for suggestions
-      if (detectedIntent === "address" && args.isAutocomplete) {
-        console.log(`[getPlaceSuggestions] Autocomplete mode: Using Places API for address suggestions (no validation)`);
-        return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius);
-      }
-      
-      // For suburbs, streets, general - use Places API directly (no validation needed)
-      console.log(`[getPlaceSuggestions] Using Places API directly for intent: ${detectedIntent}`);
-      return await getPlacesApiSuggestions(query, detectedIntent, maxResults, apiKey, args.location, args.radius);
-
+      return {
+        success: false as const,
+        error: baseResult.error
+      };
     } catch (error) {
       console.error('Error in getPlaceSuggestions:', error);
       return {
@@ -421,6 +427,215 @@ function shouldIncludeResult(prediction: GooglePlacePrediction, intent: Location
   return !hasUnwantedType && !hasUnwantedKeyword;
 }
 
+// --- BEGIN: Base suburb lookup function and wrappers ---
+
+interface SuburbLookupOptions {
+  includeDetails?: boolean;
+  maxResults?: number;
+}
+
+interface SuburbLookupResult {
+  canonicalSuburb: string;
+  placeId?: string;
+  geocode?: { lat: number; lng: number };
+  types?: string[];
+}
+
+async function baseSuburbLookup(
+  suburbInput: string,
+  apiKey: string,
+  options: SuburbLookupOptions = {}
+): Promise<{
+  success: true;
+  results: SuburbLookupResult[];
+} | {
+  success: false;
+  error: string;
+}> {
+  const { includeDetails = false, maxResults = 5 } = options;
+  try {
+    // Helper function to get place details including geocode
+    const getPlaceDetails = async (placeId: string) => {
+      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,types&key=${apiKey}`;
+      const detailsResponse = await fetch(detailsUrl);
+      const detailsData = await detailsResponse.json();
+      if (detailsData.status === "OK" && detailsData.result) {
+        return {
+          lat: detailsData.result.geometry?.location?.lat || 0,
+          lng: detailsData.result.geometry?.location?.lng || 0,
+          types: detailsData.result.types || []
+        };
+      }
+      return null;
+    };
+
+    const allResults: SuburbLookupResult[] = [];
+    const urls = [
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=address&components=country:au&key=${apiKey}`,
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=geocode&components=country:au&key=${apiKey}`,
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=(regions)&components=country:au&key=${apiKey}`
+    ];
+    const responses = await Promise.all(urls.map(url => fetch(url).then(res => res.json())));
+    const [addressData, geocodeData, regionsData] = responses;
+
+    // Helper to filter predictions for valid suburbs
+    function filterSuburbPredictions(predictions: any[]): any[] {
+      return predictions.filter((prediction) => {
+        // Only accept suburb-level types (not specific addresses or businesses)
+        const isSuburbLevel = prediction.types.some((type: string) => [
+          'locality',
+          'sublocality',
+          'sublocality_level_1',
+          'administrative_area_level_2',
+          'political'
+        ].includes(type));
+        // Exclude specific addresses, businesses, and establishments
+        const isSpecificPlace = prediction.types.some((type: string) => [
+          'establishment',
+          'point_of_interest',
+          'store',
+          'food',
+          'restaurant',
+          'gas_station',
+          'hospital',
+          'school',
+          'street_address',
+          'route',
+          'premise',
+          'subpremise',
+          'shopping_mall',
+          'park',
+          'tourist_attraction',
+          'transit_station',
+          'train_station',
+          'bus_station',
+          'subway_station',
+          'airport',
+          'university',
+          'hotel',
+          'club',
+          'golf_course',
+          'stadium',
+          'casino',
+          'museum',
+          'art_gallery',
+          'aquarium',
+          'zoo',
+          'marina',
+          'beach',
+          'mountain',
+          'lake',
+          'river',
+          'waterfall',
+          'theme_park',
+          'amusement_park',
+          'bowling_alley',
+          'night_club',
+          'bar',
+          'movie_theater',
+          'beauty_salon',
+          'car_dealer',
+          'real_estate_agency',
+          'lawyer',
+          'dentist',
+          'doctor',
+          'pharmacy',
+          'bank',
+          'gym',
+          'campground',
+          'camping_cabin',
+          'hiking_area',
+          'natural_feature',
+          'walking_track',
+          'hiking_trail',
+          'nature_trail',
+          'walking_path',
+          'pedestrian_path',
+          'bike_path',
+          'cycling_path',
+          'trail_head',
+          'playground',
+          'picnic_ground',
+          'observation_deck',
+          'lookout',
+          'scenic_lookout',
+          'visitor_center',
+          'information_center',
+          'plaza',
+          'square',
+          'gardens',
+          'depot',
+          'terminal',
+          'junction',
+        ].includes(type));
+        // Must contain Australian state
+        const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
+        // Must NOT contain specific place names (tunnels, bridges, etc.)
+        const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(prediction.description);
+        // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
+        const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
+        return isSuburbLevel && !isSpecificPlace && hasAustralianState && !hasSpecificPlaceName && isSimpleSuburbFormat;
+      });
+    }
+
+    // Helper to add results from a prediction list
+    async function addResults(predictions: any[]) {
+      for (const prediction of predictions) {
+        if (allResults.length >= maxResults) break;
+        if (allResults.some(r => r.placeId === prediction.place_id)) continue;
+        if (includeDetails) {
+          const placeDetails = await getPlaceDetails(prediction.place_id);
+          if (placeDetails) {
+            allResults.push({
+              canonicalSuburb: prediction.description,
+              placeId: prediction.place_id,
+              geocode: { lat: placeDetails.lat, lng: placeDetails.lng },
+              types: placeDetails.types,
+            });
+          }
+        } else {
+          allResults.push({
+            canonicalSuburb: prediction.description,
+          });
+        }
+      }
+    }
+
+    // Try addressData
+    if (addressData.status === "OK" && addressData.predictions) {
+      const matches = filterSuburbPredictions(addressData.predictions);
+      await addResults(matches);
+    }
+    // Try geocodeData if needed
+    if (allResults.length < maxResults && geocodeData.status === "OK" && geocodeData.predictions) {
+      const matches = filterSuburbPredictions(geocodeData.predictions).filter(prediction =>
+        !allResults.some(r => r.placeId === prediction.place_id)
+      );
+      await addResults(matches);
+    }
+    // Try regionsData if needed
+    if (allResults.length < maxResults && regionsData.status === "OK" && regionsData.predictions) {
+      const matches = filterSuburbPredictions(regionsData.predictions).filter(prediction =>
+        !allResults.some(r => r.placeId === prediction.place_id)
+      );
+      await addResults(matches);
+    }
+    if (allResults.length > 0) {
+      return { success: true as const, results: allResults.slice(0, maxResults) };
+    }
+    return {
+      success: false as const,
+      error: `No valid Australian suburbs found for "${suburbInput}". Please try a different suburb name or check the spelling.`
+    };
+  } catch (error) {
+    console.error('baseSuburbLookup error:', error);
+    return {
+      success: false as const,
+      error: "Failed to lookup suburbs - please try again"
+    };
+  }
+}
+
 export const lookupSuburb = action({
   args: {
     suburbInput: v.string(),
@@ -437,196 +652,30 @@ export const lookupSuburb = action({
   ),
   handler: async (ctx, args) => {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    
     if (!apiKey) {
       return {
         success: false as const,
         error: "Google Places API key not configured"
       };
     }
-
-    try {
-      const { suburbInput } = args;
-      const urls = [
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=address&components=country:au&key=${apiKey}`,
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=geocode&components=country:au&key=${apiKey}`,
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=(regions)&components=country:au&key=${apiKey}`
-      ];
-
-      const responses = await Promise.all(urls.map(url => fetch(url).then(res => res.json())));
-      const [addressData, geocodeData, regionsData] = responses;
-      
-      console.log('Address-only API Response:', JSON.stringify(addressData, null, 2));
-
-      // Step 2: If we get address results, filter for SUBURB-LEVEL results only
-      if (addressData.status === "OK" && addressData.predictions && addressData.predictions.length > 0) {
-        const suburbMatch = addressData.predictions.find((prediction: {types: string[], description: string}) => {
-          // Only accept suburb-level types (not specific addresses or businesses)
-          const isSuburbLevel = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'sublocality_level_1',
-            'administrative_area_level_2',
-            'political'
-          ].includes(type));
-          
-          // Exclude specific addresses, businesses, and establishments
-          const isSpecificPlace = prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must contain Australian state
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT contain specific place names (tunnels, bridges, etc.)
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground)\b/i.test(prediction.description);
-          
-          return isSuburbLevel && !isSpecificPlace && hasAustralianState && !hasSpecificPlaceName;
-        });
-
-        if (suburbMatch) {
-          return {
-            success: true as const,
-            canonicalSuburb: suburbMatch.description
-          };
-        }
-      }
-
-      console.log('Geocode API Response:', JSON.stringify(geocodeData, null, 2));
-
-      if (geocodeData.status === "OK" && geocodeData.predictions && geocodeData.predictions.length > 0) {
-        // Filter for suburb/locality types only - NO specific places
-        const suburbanMatch = geocodeData.predictions.find((prediction: {types: string[], description: string}) => {
-          // Must contain locality-related types
-          const hasLocalityType = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'sublocality_level_1',
-            'administrative_area_level_2',
-            'political'
-          ].includes(type));
-          
-          // Must NOT contain establishment, business, or specific place types
-          const hasBusinessType = prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'shopping_mall',
-            'park',
-            'tourist_attraction',
-            'transit_station',
-            'train_station',
-            'bus_station',
-            'subway_station',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must contain Australian state abbreviation
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT contain specific infrastructure or landmark names
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel)\b/i.test(prediction.description);
-          
-          // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
-          const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
-          
-          return hasLocalityType && !hasBusinessType && hasAustralianState && !hasSpecificPlaceName && isSimpleSuburbFormat;
-        });
-
-        if (suburbanMatch) {
-          return {
-            success: true as const,
-            canonicalSuburb: suburbanMatch.description
-          };
-        }
-      }
-
-      console.log('Regions API Response:', JSON.stringify(regionsData, null, 2));
-
-      if (regionsData.status === "OK" && regionsData.predictions && regionsData.predictions.length > 0) {
-        // Very strict filtering for regions - ONLY genuine suburbs
-        const validRegion = regionsData.predictions.find((prediction: {types: string[], description: string}) => {
-          // Must be a genuine suburb/locality
-          const isGenuineSuburb = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'administrative_area_level_2'
-          ].includes(type));
-          
-          // Must contain Australian state
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT be any kind of specific place, business, or establishment
-          const isNotBusiness = !prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'shopping_mall',
-            'park',
-            'tourist_attraction',
-            'transit_station',
-            'train_station',
-            'bus_station',
-            'subway_station',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must NOT contain specific infrastructure or landmark names
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(prediction.description);
-          
-          // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
-          const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
-          
-          return isGenuineSuburb && hasAustralianState && isNotBusiness && !hasSpecificPlaceName && isSimpleSuburbFormat;
-        });
-
-        if (validRegion) {
-          return {
-            success: true as const,
-            canonicalSuburb: validRegion.description
-          };
-        }
-      }
-
+    const result = await baseSuburbLookup(args.suburbInput, apiKey, { includeDetails: false, maxResults: 1 });
+    if (result.success && result.results.length > 0) {
       return {
-        success: false as const,
-        error: "No valid address, street, or suburb found"
-      };
-
-    } catch (error) {
-      console.error('Google Places API Error:', error);
-      return {
-        success: false as const,
-        error: "Lookup failed - please try again"
+        success: true as const,
+        canonicalSuburb: result.results[0].canonicalSuburb
       };
     }
+    if (!result.success) {
+      return {
+        success: false as const,
+        error: result.error
+      };
+    }
+    // fallback: no results but success true (shouldn't happen)
+    return {
+      success: false as const,
+      error: "No valid suburb found."
+    };
   },
 });
 
@@ -652,247 +701,34 @@ export const lookupSuburbEnhanced = action({
   ),
   handler: async (ctx, args) => {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    
     if (!apiKey) {
       return {
         success: false as const,
         error: "Google Places API key not configured"
       };
     }
-
-    try {
-      const { suburbInput } = args;
-      // Step 1: Search for address-related places only (excludes businesses)
-      const urls = [
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-          suburbInput
-        )}&types=address&components=country:au&key=${apiKey}`,
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-          suburbInput
-        )}&types=geocode&components=country:au&key=${apiKey}`,
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-          suburbInput
-        )}&types=(regions)&components=country:au&key=${apiKey}`
-      ];
-      
-      const [addressData, geocodeData, regionsData] = await Promise.all(
-        urls.map(url => fetch(url).then(res => res.json()))
-      );
-
-      console.log('Enhanced Address-only API Response:', JSON.stringify(addressData, null, 2));
-
-      // Helper function to get place details including geocode
-      const getPlaceDetails = async (placeId: string) => {
-        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,types&key=${apiKey}`;
-        const detailsResponse = await fetch(detailsUrl);
-        const detailsData = await detailsResponse.json();
-        
-        if (detailsData.status === "OK" && detailsData.result) {
-          return {
-            lat: detailsData.result.geometry?.location?.lat || 0,
-            lng: detailsData.result.geometry?.location?.lng || 0,
-            types: detailsData.result.types || []
-          };
-        }
-        return null;
-      };
-
-      // Step 2: If we get address results, filter for SUBURB-LEVEL results only
-      if (addressData.status === "OK" && addressData.predictions && addressData.predictions.length > 0) {
-        const suburbMatch = addressData.predictions.find((prediction: {types: string[], description: string, place_id: string}) => {
-          // Only accept suburb-level types (not specific addresses or businesses)
-          const isSuburbLevel = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'sublocality_level_1',
-            'administrative_area_level_2',
-            'political'
-          ].includes(type));
-          
-          // Exclude specific addresses, businesses, and establishments
-          const isSpecificPlace = prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must contain Australian state
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT contain specific place names (tunnels, bridges, etc.)
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground)\b/i.test(prediction.description);
-          
-          return isSuburbLevel && !isSpecificPlace && hasAustralianState && !hasSpecificPlaceName;
-        });
-
-        if (suburbMatch) {
-          const placeDetails = await getPlaceDetails(suburbMatch.place_id);
-          if (placeDetails) {
-            return {
-              success: true as const,
-              canonicalSuburb: suburbMatch.description,
-              placeId: suburbMatch.place_id,
-              geocode: {
-                lat: placeDetails.lat,
-                lng: placeDetails.lng
-              },
-              types: placeDetails.types
-            };
-          }
-        }
-      }
-
-      console.log('Enhanced Geocode API Response:', JSON.stringify(geocodeData, null, 2));
-
-      if (geocodeData.status === "OK" && geocodeData.predictions && geocodeData.predictions.length > 0) {
-        // Filter for suburb/locality types only - NO specific places
-        const suburbanMatch = geocodeData.predictions.find((prediction: {types: string[], description: string, place_id: string}) => {
-          // Must contain locality-related types
-          const hasLocalityType = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'sublocality_level_1',
-            'administrative_area_level_2',
-            'political'
-          ].includes(type));
-          
-          // Must NOT contain establishment, business, or specific place types
-          const hasBusinessType = prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'shopping_mall',
-            'park',
-            'tourist_attraction',
-            'transit_station',
-            'train_station',
-            'bus_station',
-            'subway_station',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must contain Australian state abbreviation
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT contain specific infrastructure or landmark names
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel)\b/i.test(prediction.description);
-          
-          // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
-          const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
-          
-          return hasLocalityType && !hasBusinessType && hasAustralianState && !hasSpecificPlaceName && isSimpleSuburbFormat;
-        });
-
-        if (suburbanMatch) {
-          const placeDetails = await getPlaceDetails(suburbanMatch.place_id);
-          if (placeDetails) {
-            return {
-              success: true as const,
-              canonicalSuburb: suburbanMatch.description,
-              placeId: suburbanMatch.place_id,
-              geocode: {
-                lat: placeDetails.lat,
-                lng: placeDetails.lng
-              },
-              types: placeDetails.types
-            };
-          }
-        }
-      }
-
-      console.log('Enhanced Regions API Response:', JSON.stringify(regionsData, null, 2));
-
-      if (regionsData.status === "OK" && regionsData.predictions && regionsData.predictions.length > 0) {
-        // Very strict filtering for regions - ONLY genuine suburbs
-        const validRegion = regionsData.predictions.find((prediction: {types: string[], description: string, place_id: string}) => {
-          // Must be a genuine suburb/locality
-          const isGenuineSuburb = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'administrative_area_level_2'
-          ].includes(type));
-          
-          // Must contain Australian state
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT be any kind of specific place, business, or establishment
-          const isNotBusiness = !prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'shopping_mall',
-            'park',
-            'tourist_attraction',
-            'transit_station',
-            'train_station',
-            'bus_station',
-            'subway_station',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must NOT contain specific infrastructure or landmark names
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(prediction.description);
-          
-          // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
-          const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
-          
-          return isGenuineSuburb && hasAustralianState && isNotBusiness && !hasSpecificPlaceName && isSimpleSuburbFormat;
-        });
-
-        if (validRegion) {
-          const placeDetails = await getPlaceDetails(validRegion.place_id);
-          if (placeDetails) {
-            return {
-              success: true as const,
-              canonicalSuburb: validRegion.description,
-              placeId: validRegion.place_id,
-              geocode: {
-                lat: placeDetails.lat,
-                lng: placeDetails.lng
-              },
-              types: placeDetails.types
-            };
-          }
-        }
-      }
-
+    const result = await baseSuburbLookup(args.suburbInput, apiKey, { includeDetails: true, maxResults: 1 });
+    if (result.success && result.results.length > 0) {
+      const r = result.results[0];
       return {
-        success: false as const,
-        error: `No valid Australian suburb found for "${args.suburbInput}". Please try a different suburb name or check the spelling.`
-      };
-
-    } catch (error) {
-      console.error('Enhanced suburb lookup error:', error);
-      return {
-        success: false as const,
-        error: "Failed to lookup suburb - please try again"
+        success: true as const,
+        canonicalSuburb: r.canonicalSuburb,
+        placeId: r.placeId || '',
+        geocode: r.geocode || { lat: 0, lng: 0 },
+        types: r.types || [],
       };
     }
+    if (!result.success) {
+      return {
+        success: false as const,
+        error: result.error
+      };
+    }
+    // fallback: no results but success true (shouldn't happen)
+    return {
+      success: false as const,
+      error: "No valid suburb found."
+    };
   },
 });
 
@@ -920,308 +756,39 @@ export const lookupSuburbMultiple = action({
     })
   ),
   handler: async (ctx, args) => {
-    const { suburbInput, maxResults = 5 } = args;
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    
     if (!apiKey) {
       return {
         success: false as const,
         error: "Google Places API key not configured"
       };
     }
-
-    try {
-      // Helper function to get place details including geocode
-      const getPlaceDetails = async (placeId: string) => {
-        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,types&key=${apiKey}`;
-        const detailsResponse = await fetch(detailsUrl);
-        const detailsData = await detailsResponse.json();
-        
-        if (detailsData.status === "OK" && detailsData.result) {
-          return {
-            lat: detailsData.result.geometry?.location?.lat || 0,
-            lng: detailsData.result.geometry?.location?.lng || 0,
-            types: detailsData.result.types || []
-          };
-        }
-        return null;
-      };
-
-      const allResults: Array<{
-        canonicalSuburb: string;
-        placeId: string;
-        geocode: { lat: number; lng: number };
-        types: string[];
-      }> = [];
-
-      const urls = [
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=address&components=country:au&key=${apiKey}`,
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=geocode&components=country:au&key=${apiKey}`,
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(suburbInput)}&types=(regions)&components=country:au&key=${apiKey}`
-      ];
-
-      const responses = await Promise.all(urls.map(url => fetch(url).then(res => res.json())));
-      const [addressData, geocodeData, regionsData] = responses;
-      
-      console.log('Multiple Address-only API Response:', JSON.stringify(addressData, null, 2));
-
-      if (addressData.status === "OK" && addressData.predictions) {
-        // Filter ALL matching results, not just the first one
-        const suburbMatches = addressData.predictions.filter((prediction: {types: string[], description: string, place_id: string}) => {
-          // Only accept suburb-level types (not specific addresses or businesses)
-          const isSuburbLevel = prediction.types.some(type => [
-            'locality',
-            'sublocality',
-            'sublocality_level_1',
-            'administrative_area_level_2',
-            'political'
-          ].includes(type));
-          
-          // Exclude specific addresses, businesses, and establishments
-          const isSpecificPlace = prediction.types.some(type => [
-            'establishment',
-            'point_of_interest',
-            'store',
-            'food',
-            'restaurant',
-            'gas_station',
-            'hospital',
-            'school',
-            'street_address',
-            'route',
-            'premise',
-            'subpremise'
-          ].includes(type));
-          
-          // Must contain Australian state
-          const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-          
-          // Must NOT contain specific place names (tunnels, bridges, etc.)
-          const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground)\b/i.test(prediction.description);
-          
-          return isSuburbLevel && !isSpecificPlace && hasAustralianState && !hasSpecificPlaceName;
-        });
-
-        // Get details for all matches in parallel
-        const detailPromises = suburbMatches
-          .slice(0, maxResults)
-          .map(async (match: GoogleAutocompletePrediction) => {
-            const placeDetails = await getPlaceDetails(match.place_id);
-            if (placeDetails) {
-              return {
-                canonicalSuburb: match.description,
-                placeId: match.place_id,
-                geocode: {
-                  lat: placeDetails.lat,
-                  lng: placeDetails.lng
-                },
-                types: placeDetails.types,
-              };
-            }
-            return null;
-          });
-
-        const newResults = (await Promise.all(detailPromises)).filter(
-          (result): result is NonNullable<typeof result> => result !== null
-        );
-        allResults.push(...newResults);
-      }
-
-      // Step 2: Search for geocoded locations if we don't have enough results
-      if (allResults.length < maxResults) {
-        const geocodeUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-          suburbInput
-        )}&types=geocode&components=country:au&key=${apiKey}`;
-
-        const geocodeResponse = await fetch(geocodeUrl);
-        const geocodeData = await geocodeResponse.json();
-
-        console.log('Multiple Geocode API Response:', JSON.stringify(geocodeData, null, 2));
-
-        if (geocodeData.status === "OK" && geocodeData.predictions) {
-          // Filter for suburb/locality types only - NO specific places
-          const suburbanMatches = geocodeData.predictions.filter((prediction: {types: string[], description: string, place_id: string}) => {
-            // Skip if we already have this place ID
-            if (allResults.some(result => result.placeId === prediction.place_id)) {
-              return false;
-            }
-
-            // Must contain locality-related types
-            const hasLocalityType = prediction.types.some(type => [
-              'locality',
-              'sublocality',
-              'sublocality_level_1',
-              'administrative_area_level_2',
-              'political'
-            ].includes(type));
-            
-            // Must NOT contain establishment, business, or specific place types
-            const hasBusinessType = prediction.types.some(type => [
-              'establishment',
-              'point_of_interest',
-              'store',
-              'food',
-              'restaurant',
-              'gas_station',
-              'hospital',
-              'school',
-              'shopping_mall',
-              'park',
-              'tourist_attraction',
-              'transit_station',
-              'train_station',
-              'bus_station',
-              'subway_station',
-              'street_address',
-              'route',
-              'premise',
-              'subpremise'
-            ].includes(type));
-            
-            // Must contain Australian state abbreviation
-            const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-            
-            // Must NOT contain specific infrastructure or landmark names
-            const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel)\b/i.test(prediction.description);
-            
-            // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
-            const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
-            
-            return hasLocalityType && !hasBusinessType && hasAustralianState && !hasSpecificPlaceName && isSimpleSuburbFormat;
-          });
-
-          // Get details for additional matches in parallel
-          const detailPromises = suburbanMatches
-            .slice(0, maxResults - allResults.length)
-            .map(async (match: GoogleAutocompletePrediction) => {
-              const placeDetails = await getPlaceDetails(match.place_id);
-              if (placeDetails) {
-                return {
-                  canonicalSuburb: match.description,
-                  placeId: match.place_id,
-                  geocode: {
-                    lat: placeDetails.lat,
-                    lng: placeDetails.lng,
-                  },
-                  types: placeDetails.types,
-                };
-              }
-              return null;
-            });
-          const newResults = (await Promise.all(detailPromises)).filter(
-            (result): result is NonNullable<typeof result> => result !== null
-          );
-          allResults.push(...newResults);
-        }
-      }
-
-      // Step 3: Search regions if we still don't have enough results
-      if (allResults.length < maxResults) {
-        const regionsUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-          suburbInput
-        )}&types=(regions)&components=country:au&key=${apiKey}`;
-
-        const regionsResponse = await fetch(regionsUrl);
-        const regionsData = await regionsResponse.json();
-
-        console.log('Multiple Regions API Response:', JSON.stringify(regionsData, null, 2));
-
-        if (regionsData.status === "OK" && regionsData.predictions) {
-          // Very strict filtering for regions - ONLY genuine suburbs
-          const validRegions = regionsData.predictions.filter((prediction: {types: string[], description: string, place_id: string}) => {
-            // Skip if we already have this place ID
-            if (allResults.some(result => result.placeId === prediction.place_id)) {
-              return false;
-            }
-
-            // Must be a genuine suburb/locality
-            const isGenuineSuburb = prediction.types.some(type => [
-              'locality',
-              'sublocality',
-              'administrative_area_level_2'
-            ].includes(type));
-            
-            // Must contain Australian state
-            const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(prediction.description);
-            
-            // Must NOT be any kind of specific place, business, or establishment
-            const isNotBusiness = !prediction.types.some(type => [
-              'establishment',
-              'point_of_interest',
-              'store',
-              'food',
-              'restaurant',
-              'gas_station',
-              'hospital',
-              'school',
-              'shopping_mall',
-              'park',
-              'tourist_attraction',
-              'transit_station',
-              'train_station',
-              'bus_station',
-              'subway_station',
-              'street_address',
-              'route',
-              'premise',
-              'subpremise'
-            ].includes(type));
-            
-            // Must NOT contain specific infrastructure or landmark names
-            const hasSpecificPlaceName = /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(prediction.description);
-            
-            // Must be a simple suburb format (e.g., "Richmond VIC, Australia")
-            const isSimpleSuburbFormat = /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(prediction.description);
-            
-            return isGenuineSuburb && hasAustralianState && isNotBusiness && !hasSpecificPlaceName && isSimpleSuburbFormat;
-          });
-
-          // Get details for remaining matches in parallel
-          const detailPromises = validRegions
-            .slice(0, maxResults - allResults.length)
-            .map(async (match: GoogleAutocompletePrediction) => {
-              const placeDetails = await getPlaceDetails(match.place_id);
-              if (placeDetails) {
-                return {
-                  canonicalSuburb: match.description,
-                  placeId: match.place_id,
-                  geocode: {
-                    lat: placeDetails.lat,
-                    lng: placeDetails.lng,
-                  },
-                  types: placeDetails.types,
-                };
-              }
-              return null;
-            });
-          const newResults = (await Promise.all(detailPromises)).filter(
-            (result): result is NonNullable<typeof result> => result !== null
-          );
-          allResults.push(...newResults);
-        }
-      }
-
-      if (allResults.length > 0) {
-        return {
-          success: true as const,
-          results: allResults
-        };
-      }
-
+    const result = await baseSuburbLookup(args.suburbInput, apiKey, { includeDetails: true, maxResults: args.maxResults || 5 });
+    if (result.success) {
       return {
-        success: false as const,
-        error: `No valid Australian suburbs found for "${suburbInput}". Please try a different suburb name or check the spelling.`
-      };
-
-    } catch (error) {
-      console.error('Multiple suburb lookup error:', error);
-      return {
-        success: false as const,
-        error: "Failed to lookup suburbs - please try again"
+        success: true as const,
+        results: result.results.map(r => ({
+          canonicalSuburb: r.canonicalSuburb,
+          placeId: r.placeId || '',
+          geocode: r.geocode || { lat: 0, lng: 0 },
+          types: r.types || [],
+        }))
       };
     }
+    if (!result.success) {
+      return {
+        success: false as const,
+        error: result.error
+      };
+    }
+    // fallback: no results but success true (shouldn't happen)
+    return {
+      success: false as const,
+      error: "No valid suburbs found."
+    };
   },
 });
+// --- END: Base suburb lookup function and wrappers ---
 
 // Add this interface after the existing interfaces
 export interface AddressValidationResult {
@@ -1558,379 +1125,25 @@ async function validateAddressOnly(address: string, apiKey: string): Promise<{
       
       // Check for suspicious components in numbered addresses
       if (hasUnconfirmedComponents) {
-        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains unconfirmed components`);
+        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - House number provided but validation granularity is ${validationGranularity} (not exact premise level)`);
         return {
           isValid: false,
-          error: "Street address has unconfirmed components - house number may not exist"
-        };
-      }
-       
-      // 🎯 NEW: Reject addresses with inferred house numbers
-      // If Google is inferring parts of a numbered address, the house number likely doesn't exist
-      if (result.verdict?.hasInferredComponents) {
-        console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Contains inferred components (house number likely doesn't exist)`);
-        return {
-          isValid: false,
-          error: "Address contains inferred components - house number may not exist on this street"
+          error: `House number validation insufficient - only validated to ${validationGranularity} level (house number location is estimated, not confirmed)`
         };
       }
     }
-    
-    // 3. 🎯 NEW: Reject addresses where Google significantly changed the input
-    // This catches cases where incomplete addresses get auto-completed to wrong locations
-    const formattedAddress = result.address.formattedAddress;
-    const inputWords = address.toLowerCase().split(/[\s,]+/).filter((w: string) => w.length > 0);
-    const outputWords = formattedAddress.toLowerCase().split(/[\s,]+/).filter((w: string) => w.length > 0);
-    
-    // Check if the formatted address contains fundamentally different location info
-    const hasSignificantLocationChange = () => {
-      // If input has no suburb/state but output does, that's a red flag
-      const inputHasSuburb = inputWords.some((w: string) => !w.match(/^\d+$/) && !['st', 'street', 'rd', 'road', 'ave', 'avenue', 'ln', 'lane', 'dr', 'drive'].includes(w));
-      const outputHasSuburb = outputWords.some((w: string) => !w.match(/^\d+$/) && !['st', 'street', 'rd', 'road', 'ave', 'avenue', 'ln', 'lane', 'dr', 'drive', 'australia'].includes(w));
-      
-      if (!inputHasSuburb && outputHasSuburb) {
-        // Google added suburb/location info that wasn't in the input - this is dangerous auto-completion
-        console.log(`[Address Validation Only] Input words: [${inputWords.join(', ')}]`);
-        console.log(`[Address Validation Only] Output words: [${outputWords.join(', ')}]`);
-        return true;
-      }
-      
-      return false;
-    };
-    
-    if (hasSignificantLocationChange()) {
-      console.log(`[Address Validation Only] 🚨 REJECTING ADDRESS: "${address}" - Google auto-completed to different location: "${formattedAddress}"`);
-      return {
-        isValid: false,
-        error: "Address appears incomplete - Google auto-completed to a different location. Please provide full address including suburb/city."
-      };
-    }
-    
-    // 4. Accept addresses that meet reasonable criteria
-    console.log(`[Address Validation Only] Address is valid with granularity: ${validationGranularity}, hasHouseNumber: ${hasHouseNumber}`);
-    
+
     return {
-      isValid: true,
-      formattedAddress: result.address.formattedAddress,
-      placeId: result.geocode?.placeId
+      isValid: addressComplete,
+      formattedAddress: result.address?.formattedAddress || address,
+      placeId: result.geocode?.placeId || '',
     };
-    
+
   } catch (error) {
-    console.error('[Address Validation Only] Error:', error);
+    console.error('Address validation error:', error);
     return {
       isValid: false,
-      error: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
-  }
-}
-
-// 🎯 NEW: Two-Step Address Validation Process
-// Step 1: Validate address exists via Address Validation API
-// Step 2: If valid, enrich with suburb names via Places API
-async function validateThenEnrichAddress(
-  query: string,
-  maxResults: number,
-  apiKey: string,
-  location?: { lat: number; lng: number }
-): Promise<{ success: true; suggestions: PlaceSuggestion[]; detectedIntent: LocationIntent } | { success: false; error: string }> {
-  
-  console.log(`[Two-Step Validation] 🎯 Starting validation and enrichment for: "${query}"`);
-  
-  // Step 1: Validate the address exists using Address Validation API
-  console.log(`[Two-Step Validation] 🔍 Step 1: Calling validateAddressOnly...`);
-  const validationResult = await validateAddressOnly(query, apiKey);
-  console.log(`[Two-Step Validation] 📋 Step 1 Result:`, validationResult);
-  
-  if (!validationResult.isValid) {
-    console.log(`[Two-Step Validation] Address validation failed: ${validationResult.error}`);
-    return {
-      success: false,
-      error: `Address validation failed: ${validationResult.error || "Address does not exist or is invalid"}`
-    };
-  }
-  
-  console.log(`[Two-Step Validation] Address validated successfully. Formatted: "${validationResult.formattedAddress}"`);
-  console.log(`[Two-Step Validation] Now enriching with Places API to get suburb names...`);
-  
-  // Step 2: Get full place details from Places API using the validated address
-  // This gives us the suburb names that Address Validation API lacks
-  const placesResult = await getPlacesApiSuggestions(
-    validationResult.formattedAddress || query, 
-    "address", 
-    maxResults, 
-    apiKey, 
-    location
-  );
-  
-  if (placesResult.success) {
-    console.log(`[Two-Step Validation] Successfully enriched with ${placesResult.suggestions.length} Places API results`);
-    
-    // 🎯 NEW: Enhance suggestions with validation confidence boost AND suburb extraction
-    const enhancedSuggestions = placesResult.suggestions.map(suggestion => {
-      const extractedSuburb = extractSuburbFromPlacesSuggestion(suggestion);
-      
-      return {
-        ...suggestion,
-        confidence: Math.min(1, suggestion.confidence + 0.2), // Boost validated addresses
-        types: [...suggestion.types, 'address_validated'], // Mark as validated
-        resultType: "address" as const, // Ensure address type
-        suburb: extractedSuburb // 🎯 NEW: Add extracted suburb
-      };
-    });
-    
-    console.log(`[Two-Step Validation] Enhanced ${enhancedSuggestions.length} suggestions with suburb extraction`);
-    enhancedSuggestions.forEach((suggestion, index) => {
-      if (suggestion.suburb) {
-        console.log(`[Two-Step Validation] Suggestion ${index + 1}: "${suggestion.description}" -> Suburb: "${suggestion.suburb}"`);
-      }
-    });
-    
-    return {
-      success: true,
-      suggestions: enhancedSuggestions,
-      detectedIntent: "address"
-    };
-  }
-  
-  console.log(
-    `[Two-Step Validation] Places API enrichment failed: ${
-      !placesResult.success ? placesResult.error : "Unknown error"
-    }`
-  );
-  
-  // If Places API fails, fall back to just the validation result (without suburb names)
-  console.log(`[Two-Step Validation] Falling back to Address Validation API result only`);
-  return await getAddressValidationSuggestions(query, maxResults, apiKey, "address", location);
-}
-
-// Convert Address Validation API result to PlaceSuggestion format
-async function getAddressValidationSuggestions(
-  query: string, 
-  maxResults: number, 
-  apiKey: string,
-  actualIntent: LocationIntent,
-  location?: { lat: number; lng: number }
-): Promise<{ success: true; suggestions: PlaceSuggestion[]; detectedIntent: LocationIntent } | { success: false; error: string }> {
-  try {
-    console.log(`[Address Validation] Validating address: "${query}" with intent: ${actualIntent}`);
-    
-    const requestBody = {
-      address: {
-        regionCode: "AU",
-        addressLines: [query]
-      },
-      enableUspsCass: false
-    };
-
-    const response = await fetch(
-      `https://addressvalidation.googleapis.com/v1:validateAddress?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Address validation API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.result) {
-      return {
-        success: false,
-        error: "No validation result returned"
-      };
-    }
-
-    const result = data.result;
-    const suggestions: PlaceSuggestion[] = [];
-    
-    // Convert validation result to PlaceSuggestion format
-    if (result.address?.formattedAddress) {
-      const formattedAddress = result.address.formattedAddress;
-      const addressParts = formattedAddress.split(',');
-      
-      // Calculate confidence based on validation verdict
-      let confidence = 0.7; // Base confidence for validated address
-      
-      if (result.verdict?.addressComplete) confidence += 0.2;
-      if (!result.verdict?.hasUnconfirmedComponents) confidence += 0.1;
-      if (!result.verdict?.hasInferredComponents) confidence += 0.05;
-      
-      // Boost for high validation granularity
-      if (result.verdict?.validationGranularity === 'PREMISE') confidence += 0.15;
-      else if (result.verdict?.validationGranularity === 'SUB_PREMISE') confidence += 0.1;
-      
-      confidence = Math.min(1, confidence);
-      
-      const suggestion: PlaceSuggestion = {
-        placeId: result.geocode?.placeId || `validated_${Date.now()}`,
-        description: formattedAddress,
-        types: ['street_address', 'validated_address'],
-        matchedSubstrings: [],
-        structuredFormatting: {
-          mainText: addressParts[0]?.trim() || formattedAddress,
-          secondaryText: addressParts.slice(1).join(',').trim() || '',
-          main_text: addressParts[0]?.trim() || formattedAddress,
-          secondary_text: addressParts.slice(1).join(',').trim() || ''
-        },
-        resultType: "address",
-        confidence: confidence
-      };
-      
-      // 🎯 NEW: Extract suburb from validation result
-      const extractedSuburb = extractSuburbFromPlacesSuggestion(suggestion);
-      suggestion.suburb = extractedSuburb;
-      
-      suggestions.push(suggestion);
-      
-      console.log(`[Address Validation] Converted to suggestion:`, suggestion);
-    }
-    
-    return {
-      success: true,
-      suggestions: suggestions.slice(0, maxResults),
-      detectedIntent: actualIntent
-    };
-    
-  } catch (error) {
-    console.error('[Address Validation] Error:', error);
-    return {
-      success: false,
-      error: `Address validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    };
-  }
-}
-
-// Places API logic for suburb/street/general intents
-async function getPlacesApiSuggestions(
-  query: string,
-  actualIntent: LocationIntent,
-  maxResults: number,
-  apiKey: string,
-  location?: { lat: number; lng: number },
-  radius?: number
-): Promise<{ success: true; suggestions: PlaceSuggestion[]; detectedIntent: LocationIntent } | { success: false; error: string }> {
-  try {
-    console.log(`[Places API] Getting suggestions for intent: ${actualIntent}`);
-    
-    // Configure API parameters based on intent - SINGLE call approach
-    const getApiConfig = (intent: LocationIntent) => {
-      switch (intent) {
-        case "suburb":
-          return {
-            types: "(regions)",
-            strictness: "high"
-          };
-        case "street":
-          return {
-            types: "geocode",
-            strictness: "medium"
-          };
-        case "address":
-          return {
-            types: "address",
-            strictness: "low"
-          };
-        default:
-          return {
-            types: "geocode",
-            strictness: "medium"
-          };
-      }
-    };
-
-    const config = getApiConfig(actualIntent);
-    const suggestions: PlaceSuggestion[] = [];
-    
-    // Location bias parameters
-    let locationParam = "";
-    if (location) {
-      locationParam = `&location=${location.lat},${location.lng}`;
-      if (radius) {
-        locationParam += `&radius=${radius}`;
-      }
-    }
-
-    // Single consolidated API call to prevent duplicates
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=${config.types}&components=country:au${locationParam}&key=${apiKey}`;
-    
-    console.log(`[Places API] Single call with types: ${config.types} for intent: ${actualIntent}`);
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.status === "OK" && data.predictions) {
-      for (const prediction of data.predictions) {
-        const resultType = classifyResultType(prediction.types, prediction.description);
-        const confidence = calculateConfidence(prediction, actualIntent, resultType);
-        
-        // Apply filtering based on intent and strictness
-        if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
-          const tempSuggestion: PlaceSuggestion = {
-            placeId: prediction.place_id,
-            description: prediction.description,
-            types: prediction.types,
-            matchedSubstrings: prediction.matched_substrings || [],
-            structuredFormatting: {
-              mainText: prediction.structured_formatting?.main_text || prediction.description.split(',')[0],
-              secondaryText: prediction.structured_formatting?.secondary_text || prediction.description.split(',').slice(1).join(',').trim(),
-              main_text: prediction.structured_formatting?.main_text,
-              secondary_text: prediction.structured_formatting?.secondary_text,
-              main_text_matched_substrings: prediction.structured_formatting?.main_text_matched_substrings
-            },
-            resultType,
-            confidence
-          };
-          
-          // Extract suburb for all suggestions
-          const extractedSuburb = extractSuburbFromPlacesSuggestion(tempSuggestion);
-          
-          suggestions.push({
-            ...tempSuggestion,
-            suburb: extractedSuburb
-          });
-          
-          // Stop when we have enough results
-          if (suggestions.length >= maxResults) {
-            break;
-          }
-        }
-      }
-    } else {
-      console.log(`[Places API] No results or error: ${data.status}`);
-    }
-    
-    // Sort by intent match priority and confidence
-    const sortedSuggestions = suggestions
-      .sort((a, b) => {
-        // First, prioritize by intent match
-        const aMatchesIntent = doesResultMatchIntent(a.resultType, actualIntent);
-        const bMatchesIntent = doesResultMatchIntent(b.resultType, actualIntent);
-        
-        if (aMatchesIntent && !bMatchesIntent) return -1;
-        if (!aMatchesIntent && bMatchesIntent) return 1;
-        
-        // Then by confidence
-        return b.confidence - a.confidence;
-      })
-      .slice(0, maxResults);
-
-    return {
-      success: true,
-      suggestions: sortedSuggestions,
-      detectedIntent: actualIntent
-    };
-    
-  } catch (error) {
-    console.error('[Places API] Error:', error);
-    return {
-      success: false,
-      error: `Places API failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: error instanceof Error ? error.message : "Address validation failed"
     };
   }
 }
