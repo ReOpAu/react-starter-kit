@@ -80,6 +80,7 @@ const AddressInput = React.forwardRef<HTMLInputElement, AddressInputProps>(
 								stroke="currentColor"
 								viewBox="0 0 24 24"
 							>
+								<title>Clear input</title>
 								<path
 									strokeLinecap="round"
 									strokeLinejoin="round"
