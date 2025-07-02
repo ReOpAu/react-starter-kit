@@ -5,36 +5,14 @@ alwaysApply: true
 ---
 # AI Agent Collaboration Protocol
 
-## 1. The "Acknowledge and Cite First" Mandate
+- Always cite relevant project rules/docs before answering.
+- Ground solutions in cited rules.
+- Never explain general software concepts—only apply project patterns.
 
-**Principle:** Before providing any solution, explanation, or code, the AI agent's **FIRST** action MUST be to acknowledge the relevant, existing project-specific documentation or rules that govern the user's request. The agent must explicitly state how its proposed action aligns with these established principles.
+- Always consider the full system (UI, backend, APIs, external services).
+- Provide all steps for changes, including external config.
+- Diagnose errors holistically (not just client-side).
 
-### Implementation Checklist:
-
--   [ ] **Identify Relevant Rules:** Before answering, scan all `.md` and `.mdc` files for principles, patterns, or rules related to the query.
--   [ ] **Acknowledge and Cite:** Begin the response with a clear acknowledgment, citing the specific document. For example: "Of course. As per our `state-management-strategy.md`, the UI is the single source of truth. Therefore, to solve this..."
--   [ ] **Ground the Solution:** The proposed solution MUST be explicitly framed as an implementation of the cited rule.
--   [ ] **Avoid First Principles:** Do NOT explain concepts from general software engineering knowledge as if they are new discoveries. Instead, present them as applications of our project's established patterns.
-
-## 2. The "Holistic System View" Mandate
-
-**Principle:** The "system" is defined as the entire technology stack required to deliver the feature, including all third-party platforms, APIs, and external services (e.g., ElevenLabs, Convex, etc.). The agent's analysis and solutions MUST consider the constraints and requirements of every part of this holistic system.
-
-### Implementation Checklist:
-
--   [ ] **Identify External Dependencies:** Before proposing a change, identify all external platforms involved in the feature.
--   [ ] **Consult External System Rules:** Refer to our internal documentation on external systems (as per `meta-architecture-principles.md`). For example, acknowledge the "Dual Configuration" or "Data Serialization" requirements for ElevenLabs tools.
--   [ ] **Provide Complete Instructions:** Solutions MUST include all necessary steps across all parts of the system. If a code change in `*.ts` requires a corresponding change in an ElevenLabs prompt or tool registry, the instructions for the external change MUST be provided as part of the solution.
--   [ ] **Diagnose Errors Holistically:** When debugging, do not assume the error is in the client-side code. Consider the entire chain of communication, including potential failures in data serialization, platform race conditions, or incorrect external configuration.
-
-## 3. The "Precision Over Generality" Mandate
-
-**Principle:** This is a sophisticated application. General advice is rarely useful. All responses, analysis, and code must be tailored to the specific, complex, and unique architecture of this project.
-
-### Implementation Checklist:
-
--   [ ] **Use Project-Specific Terminology:** Refer to concepts using their documented names (e.g., "The Brain," "Widget Components," "Purpose-First Architecture").
--   [ ] **Connect to Specific Goals:** Explicitly state how a proposed change serves a higher-level architectural goal documented in `meta-architecture-principles.md`.
--   [ ] **Avoid Generic Best Practices:** Do not state a "best practice" without connecting it directly to a documented principle or a specific problem we are trying to solve in this application.
-
-By strictly adhering to this protocol, the AI agent will provide more accurate, efficient, and useful assistance, reducing errors and aligning its behavior with the project's high standards.
+- Use project-specific terms.
+- Connect changes to documented goals.
+- Never give generic best practices.

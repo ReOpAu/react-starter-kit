@@ -3,7 +3,19 @@ description: "Rules for map display based on validated address selections"
 globs: ["**/*.tsx", "**/*.ts"]
 alwaysApply: false
 ---
+# State Management Rules (Frontend)
 
+- Only sync critical information to the Brain/Agent (selections, intent, errors, completions).
+- Never sync cosmetic, animation, or UI-only state.
+- Brain components orchestrate global state and agent sync.
+- Widget components are self-contained and communicate only via callbacks.
+- Never import global stores or call syncToAgent() from widgets.
+- Use React Query as the single source of truth for API data.
+- Use Zustand for UI-specific state.
+- Never include state setters in useEffect dependencies.
+- Never include Zustand actions in dependencies.
+- Never include unstable callbacks in dependencies.
+- Hybrid mode: requestManualInput() must not stop conversation; only enable manual input.
 
 ## Map Display for Validated Selections (Rule)
 - Only display maps for confirmed selections with validated coordinates (`lat`/`lng`) or a valid Place ID for a suburb/locality.

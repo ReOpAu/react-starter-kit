@@ -3,108 +3,12 @@ description:
 globs: 
 alwaysApply: true
 ---
-# ✅ RULE: Enforce Unified Action-Handler Framework
+# Enforce Unified Action-Handler
 
-This rule prevents logic divergence between UI event handlers and Agent client tools by enforcing the use of a single, centralized Action Handler.
+- UI event handlers and clientTools must only delegate to a central handler.
+- Never put business logic in event handlers or clientTools.
 
-## The Core Principle
-
-**NEVER** implement business logic directly inside a UI event handler (e.g., `handleSelectResult`) or an Agent client tool (e.g., `selectSuggestion`). These functions are **Action Triggers** only. Their sole responsibility is to gather necessary parameters and delegate to the centralized **Action Handler** hook.
-
----
-
-## 🚫 Anti-Pattern: Logic in UI Event Handlers
-
-UI event handlers in `address-finder.tsx` should be trivial. They find the right data and call the handler.
-
-### ❌ FORBIDDEN in `address-finder.tsx`:
-
-```typescript
-// ❌ FORBIDDEN: Any business logic inside the event handler.
-const handleSelectResult = useCallback(async (result: Suggestion) => {
-    // ❌ NO classification logic
-    const intent = classifySelectedResult(result);
-
-    // ❌ NO conditional logic
-    if (intent === 'address') {
-        // ❌ NO API calls
-        const validation = await validateAddressAction(...);
-
-        // ❌ NO state updates
-        setSelectedResult(validation.enrichedAddress);
-    } else {
-        setSelectedResult(result);
-    }
-}, [/* ... */]);
-```
-
-### ✅ REQUIRED Pattern: Delegate to Handler
-
-```typescript
-// ✅ REQUIRED: The handler should be a one-line delegation.
-import { useActionHandler } from '~/hooks/useActionHandler'; // Hypothetical path
-
-// ...
-
-const { handleSelect } = useActionHandler();
-
+// Example:
 const handleSelectResult = useCallback((result: Suggestion) => {
-    // ✅ CORRECT: Just call the central handler.
-    handleSelect(result);
+  handleSelect(result);
 }, [handleSelect]);
-```
-
----
-
-## 🚫 Anti-Pattern: Logic in Agent Client Tools
-
-Client tools in `useAddressFinderClientTools.ts` must also be trivial wrappers that delegate to the central handler.
-
-### ❌ FORBIDDEN in `useAddressFinderClientTools.ts`:
-
-```typescript
-// ❌ FORBIDDEN: Any business logic inside the tool definition.
-const clientTools = useMemo(() => ({
-    selectSuggestion: async (params: { placeId: string }) => {
-        // ❌ NO data fetching
-        const suggestion = findSuggestionInCache(params.placeId);
-        
-        // ❌ NO classification logic
-        const intent = classifySelectedResult(suggestion);
-
-        // ❌ NO conditional logic or API calls
-        if (intent === 'address') {
-            const validation = await validateAddressAction(...);
-            // ...
-        }
-
-        // ❌ NO direct state updates
-        // setSelectedResult(...)
-
-        return JSON.stringify({ status: 'error', message: 'Logic must be in useActionHandler.' });
-    }
-}), [/* ... */]);
-```
-
-### ✅ REQUIRED Pattern: Delegate to Handler
-
-```typescript
-// ✅ REQUIRED: The tool should be a one-line delegation.
-import { useActionHandler } from '~/hooks/useActionHandler'; // Hypothetical path
-
-// ...
-
-const { handleSelect } = useActionHandler();
-
-const clientTools = useMemo(() => ({
-    selectSuggestion: async (params: { placeId: string; description: string; }) => {
-        // ✅ CORRECT: Rehydrate the object and delegate to the handler.
-        const suggestion: Suggestion = { ...params, types: [] };
-        await handleSelect(suggestion);
-        
-        return JSON.stringify({ status: 'success', message: 'Selection processed by central handler.' });
-    }
-}), [handleSelect]);
-```
-
-By enforcing this separation, we make it structurally impossible for UI and Agent logic to diverge, permanently eliminating this class of bugs.

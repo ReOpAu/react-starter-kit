@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# UI Component Rules (Frontend)
+
+- Reuse existing UI components from /app/components/ui.
+- Create new components by orchestrating UI primitives if needed.
+- Ask the user how to proceed if components or designs are missing.

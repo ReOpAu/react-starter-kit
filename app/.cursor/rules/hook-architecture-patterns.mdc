@@ -56,3 +56,12 @@ useEffect(() => {
 - Never use unrestricted or admin-level keys in frontend code.
 - For sensitive or quota-limited operations (e.g., geocoding, data enrichment), move the logic to a server-side proxy or backend function to keep the key secret and protected from abuse.
 - Regularly audit your API key usage and rotate keys if you suspect exposure or abuse.
+
+# Hook Architecture Patterns (Frontend)
+
+- Always use stable logging utilities (useCallback with empty deps).
+- Export clean, focused hook interfaces.
+- Pass dependencies as parameters, not via global state imports.
+- Never include setters in useEffect dependencies.
+- Never create circular dependencies between hooks.
+- Organize files by concern: pure utils, focused hooks, orchestration hooks.

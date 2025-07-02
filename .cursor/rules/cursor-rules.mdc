@@ -1,8 +1,14 @@
 ---
 description: How to add or edit Cursor rules in our project
-globs:
+globs: 
 alwaysApply: false
 ---
+# Cursor Rule Placement
+
+- Place all rule files in PROJECT_ROOT/.cursor/rules/
+- Use kebab-case and .mdc extension
+- Never place rules outside .cursor/rules/
+
 # Cursor Rules Location
 
 How to add new cursor rules to the project

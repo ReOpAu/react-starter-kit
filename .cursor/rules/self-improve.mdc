@@ -100,6 +100,13 @@ alwaysApply: true
 
 Follow [cursor-rules.mdc](mdc:.cursor/rules/cursor-rules.mdc) for proper rule formatting and structure.
 
+# Self-Improve Protocol
+
+- Add/modify rules when new patterns, bugs, or best practices emerge.
+- Update rules after major refactors or repeated feedback.
+- Remove outdated rules.
+- Keep examples and references up to date.
+
 
 
 
