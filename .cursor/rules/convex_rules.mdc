@@ -21,4 +21,14 @@ alwaysApply: true
 - Use v.null() for null return values.
 - Be strict with types, especially for Ids.
 - Never allow agent-facing mutations to use patch, replace, or delete on arbitrary tables.
+- Convex Function Naming: Name all Convex functions using lowerCamelCase. Agent-facing mutations must be prefixed with `agent` (e.g., `agentAddTodoItem`). Internal/private functions must be prefixed with `internal` (e.g., `internalSyncUser`).
+- AI Tool Registration: Every agent-facing Convex mutation must be registered in `convex/agentTools.ts` and in the ElevenLabs/OpenAI clientTools config. The tool name in clientTools must match the Convex mutation export. Document the tool's intent in both locations.
+- Agent Tool Parameter Validation: All agent-facing Convex mutations must use strict argument and return validators. Never accept `any` or loosely-typed parameters from the agent. Validate all input in both the Convex function and the clientTools registration.
+
+See also: ai-and-state.mdc
+
+# Cross-Rule Reference
+
+- When a rule is closely related to another, add a "See also: ..." line at the end, referencing the related rule file.
+- Example: "See also: state-management.mdc"
 

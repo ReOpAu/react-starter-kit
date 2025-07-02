@@ -8,3 +8,4 @@ alwaysApply: false
 - Reuse existing UI components from /app/components/ui.
 - Create new components by orchestrating UI primitives if needed.
 - Ask the user how to proceed if components or designs are missing.
+- Component Export Consistency: Always use named exports for all components in /app/components/ui and /app/components/. Never use default exports for components. Export all component variants as named exports from the same file.
