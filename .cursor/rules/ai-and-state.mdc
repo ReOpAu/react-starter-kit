@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# AI, State, and Data Fetching Rules
+
+- **AI SDK**: Use the OpenAI SDK (`@ai-sdk/openai`, `@ai-sdk/react`) and ElevenLabs SDK (`@elevenlabs/react`) for AI-powered features. For streaming UI responses, use the appropriate hooks (`useChat`, `useCompletion`, or ElevenLabs conversation hooks).
+- **Backend**: The backend is powered by Convex (`convex` package). All server-side logic and data fetching should be defined in Convex functions.
+- **Server State**: Use TanStack React Query (`@tanstack/react-query`) for all interactions with the Convex backend. Create custom hooks that wrap `useQuery` and `useMutation`.
+- **Client State**: For simple, global client-side state, use Zustand (`zustand`). Avoid using `useState` for state that needs to be shared across multiple components.
+
+# For AI Agent/internal use only.

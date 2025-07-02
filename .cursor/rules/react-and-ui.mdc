@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# React and UI Component Guidelines
+
+- **UI Primitives**: Use the shadcn/ui pattern—components are based on Radix UI (`@radix-ui/react-*`), styled with Tailwind CSS, and follow the shadcn/ui structure (see [shadcn/ui TanStack Router guide](mdc:https:/ui.shadcn.com/docs/installation/tanstack-router)). Do not build basic components like Dialogs, Dropdowns, or Checkboxes from scratch.
+- **Styling**: All styling must be done with Tailwind CSS utility classes. Use `tailwind-merge` and `clsx` for conditional/conflicting classes.
+- **Icons**: Use icons from the `lucide-react` library. (`@tabler/icons-react` may be used if needed.)
+- **Animation**: For complex animations, use `framer-motion`. For simple transitions, use Tailwind's built-in transition utilities.
+- **Component Structure**: Create components in their own folders (e.g., `app/components/MyButton/index.tsx`), following the shadcn/ui convention.
+
+# For AI Agent/internal use only.
