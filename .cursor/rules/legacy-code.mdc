@@ -1,0 +1,81 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Legacy Code Management
+
+**Purpose:**
+To ensure deprecated, legacy, or experimental code is clearly separated from active code, never accidentally shipped or referenced, and can be easily audited or removed in the future.
+
+---
+
+## 1. Folder Structure
+- All legacy code must be moved to a clearly named `old/` or `legacy/` subfolder within its parent directory (e.g., `app/routes/old/`, `app/components/old/`, `convex/old/`).
+- Never leave unused files in active directories. Move them as soon as they are deprecated.
+
+## 2. Import Hygiene
+- Update all imports in legacy files to reference other legacy files/components by their new `old/` path.
+- Never import from `old/` folders in active (non-legacy) code.
+  - If you need to "resurrect" code, move it back to the active directory and update imports accordingly.
+
+## 3. Documentation & Comments
+- Add a comment at the top of each legacy file indicating:
+  - When and why it was moved to `old/`
+  - What replaced it (if applicable)
+  - Who moved it (optional)
+- Document the existence of `old/` folders in your main README or CONTRIBUTING guide, so new contributors know the policy.
+
+## 4. Build, Lint & Type-Check Exclusion
+- Exclude `old/` folders from builds, tests, and linting if possible, to avoid accidental inclusion or errors.
+  - For example, update your `tsconfig.json`, linter configs, and build scripts to ignore these folders.
+
+### 4.1. **Automated Lint Enforcement with Biome**
+- Enforce the "Never import from `old/`" rule with Biome's `ban` rule for imports.
+- Example `biome.json` configuration:
+
+```json
+{
+  "linter": {
+    "rules": {
+      "ban": [
+        {
+          "name": "import",
+          "message": "Do not import from legacy directories. Move the required code back to an active directory first.",
+          "regex": "old/|legacy/"
+        }
+      ]
+    }
+  }
+}
+```
+- This will flag any import path containing `old/` or `legacy/` anywhere in the path.
+
+## 5. Regular Review & Cleanup
+- Schedule periodic reviews (e.g., every 1-2 months or before major releases) to:
+  - Remove `old/` code that is no longer needed
+  - Archive it elsewhere if required for compliance/history
+- Never keep sensitive or deprecated secrets/configs in `old/` code.
+
+## 6. Git-Based Archiving Strategy
+- Before deleting or moving code to `old/`, create a Git tag (e.g., `legacy/feature-x-YYYY-MM-DD`) to preserve history.
+- For large deprecations, consider a long-lived `legacy` branch. Merge removals into `main`, but keep the code on the `legacy` branch for reference.
+
+## 7. Rule Example (for quick reference)
+```markdown
+# Legacy Code Management
+- Move all deprecated code to an `old/` subfolder.
+- Update internal imports within legacy files to use the new `old/` path.
+- **Enforce a Biome lint rule to block any imports from `old/` folders in active code.**
+- Add a comment at the top of each legacy file with context and date.
+- Exclude `old/` folders from builds, tests, and type-checking.
+- Regularly review and permanently delete `old/` code when it's no longer needed.
+- **Use Git tags or a legacy branch to archive code before removal.**
+```
+
+---
+
+**Key Strengths:**
+- Clarity: The purpose and rules are unambiguous. Using `old/` or `legacy/` is a simple and effective convention.
+- Safety: The rules for import hygiene and build exclusion are crucial for preventing legacy code from affecting the production application.
+- Maintainability: The emphasis on documentation, comments, and regular reviews ensures the `old/` directories don't become a permanent code graveyard.

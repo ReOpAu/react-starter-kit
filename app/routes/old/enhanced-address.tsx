@@ -1,9 +1,10 @@
-import { EnhancedPlaceSuggestions } from "~/components/EnhancedPlaceSuggestions";
-import { GoogleMapsAutocomplete } from "~/components/GoogleMapsAutocomplete";
+import { EnhancedPlaceSuggestions } from "../../components/old/EnhancedPlaceSuggestions";
+import { EnhancedPlaceSuggestionsDisplay } from "../../components/old/EnhancedPlaceSuggestionsDisplay";
+import { GoogleMapsAutocomplete } from "../../components/old/GoogleMapsAutocomplete";
 import { useConversation } from '@elevenlabs/react';
 import { useCallback, useState, useRef } from 'react';
 import { useSuburbAutocomplete } from "~/hooks/useSuburbAutocomplete";
-import type { PlaceSuggestion } from "../../convex/location";
+import type { PlaceSuggestion } from "../../../convex/location";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";

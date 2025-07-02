@@ -11,12 +11,15 @@ import { cn } from "~/lib/utils";
 import { useSuburbAutocomplete, type SuburbResult } from "~/hooks/useSuburbAutocomplete";
 import { useSpellingAutocomplete } from "~/hooks/useSpellingAutocomplete";
 import { useEnhancedPlaceSuggestions, type EnhancedPlaceSuggestion } from "~/hooks/useEnhancedPlaceSuggestions";
-import { EnhancedPlaceSuggestionsDisplay } from "~/components/EnhancedPlaceSuggestionsDisplay";
+
 import { VoiceIndicator } from "~/components/conversation/VoiceIndicator";
 import { ShinyButton } from "~/components/ui/magicui/shiny-button";
 import { RainbowButton } from "~/components/ui/magicui/rainbow-button";
 import { DebugTools } from "~/components/conversation/DebugTools";
 import { useQueryClient } from '@tanstack/react-query';
+import { EnhancedPlaceSuggestions } from "../../components/old/EnhancedPlaceSuggestions";
+import { EnhancedPlaceSuggestionsDisplay } from "../../components/old/EnhancedPlaceSuggestionsDisplay";
+import { GoogleMapsAutocomplete } from "../../components/old/GoogleMapsAutocomplete";
 
 // === CONSOLIDATED STATE MANAGEMENT ===
 
