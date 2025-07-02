@@ -7,11 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": [
-			"app/components/old/**",
-			"app/routes/old/**",
-			"convex/old/**"
-		]
+		"ignore": ["app/components/old/**", "app/routes/old/**", "convex/old/**"]
 	},
 	"formatter": {
 		"enabled": true,

@@ -1,0 +1,46 @@
+---
+description: Ban the use of the `any` type except for explicit, documented interop with third-party APIs.
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: true
+---
+
+# No Explicit `any` Types
+
+- Never use the `any` type in application code.
+- Use `unknown` and type guards for dynamic data.
+- For third-party APIs (e.g., window.google), use `(window as any)` only with a comment explaining the necessity.
+- All new code must pass the linter rule: `typescript/noExplicitAny`.
+
+## Example
+
+```typescript
+// Good
+const foo: unknown = getDynamicData();
+if (typeof foo === 'string') {
+  // ...
+}
+
+// Acceptable (with comment)
+const google = (window as any).google; // Required for Google Maps interop
+
+// Bad
+const foo: any = getDynamicData();
+```
+```
+
+---
+
+## 4. **Automated Fix for Existing Code**
+
+- Run biome or eslint with --fix to auto-fix some cases.
+- For remaining any, do a global search for : any and manually refactor or add type assertions with comments.
+
+---
+
+## 5. **CI Enforcement**
+
+- Ensure your CI pipeline runs biome or eslint and fails on any new any usage.
+
+---
+
+**Would you like me to add the Cursor rule above to your project and check your biome config for the linter rule?**

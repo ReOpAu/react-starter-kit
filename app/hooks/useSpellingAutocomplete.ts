@@ -1,147 +1,149 @@
-import { useState, useEffect, useRef } from "react";
-import { api } from "../../convex/_generated/api";
 import { useAction } from "convex/react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../convex/_generated/api";
 
 export interface SpellingSuggestion {
-  address: string;
-  confidence: number;
-  matchType: string;
-  placeId: string;
-  addressType: string;
-  sessionToken?: string;
+	address: string;
+	confidence: number;
+	matchType: string;
+	placeId: string;
+	addressType: string;
+	sessionToken?: string;
 }
 
 interface UseSpellingAutocompleteOptions {
-  location?: {
-    lat: number;
-    lng: number;
-  };
-  radius?: number;
-  minLength?: number;
-  debounceMs?: number;
+	location?: {
+		lat: number;
+		lng: number;
+	};
+	radius?: number;
+	minLength?: number;
+	debounceMs?: number;
 }
 
-export const useSpellingAutocomplete = (options: UseSpellingAutocompleteOptions = {}) => {
-  const {
-    location,
-    radius = 50000, // 50km default radius
-    minLength = 2,
-    debounceMs = 300
-  } = options;
+export const useSpellingAutocomplete = (
+	options: UseSpellingAutocompleteOptions = {},
+) => {
+	const {
+		location,
+		radius = 50000, // 50km default radius
+		minLength = 2,
+		debounceMs = 300,
+	} = options;
 
-  const [suggestions, setSuggestions] = useState<SpellingSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Session token for cost optimization (persists across requests in same session)
-  const sessionTokenRef = useRef<string | null>(null);
-  
-  // Generate new session token using a simple fallback
-  const generateSessionToken = () => {
-    // Use crypto.randomUUID if available, otherwise fallback to a simple UUID
-    if (typeof globalThis.crypto?.randomUUID === 'function') {
-      return globalThis.crypto.randomUUID();
-    }
-    // Simple fallback UUID generator
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-  };
-  
-  // Get or create session token
-  const getSessionToken = () => {
-    if (!sessionTokenRef.current) {
-      sessionTokenRef.current = generateSessionToken();
-    }
-    return sessionTokenRef.current;
-  };
-  
-  // Reset session (call this when user selects an address or abandons search)
-  const resetSession = () => {
-    sessionTokenRef.current = null;
-  };
+	const [suggestions, setSuggestions] = useState<SpellingSuggestion[]>([]);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const autocompleteAction = useAction(api.autocomplete.autocompleteAddresses);
-  const debounceTimerRef = useRef<NodeJS.Timeout>(undefined);
+	// Session token for cost optimization (persists across requests in same session)
+	const sessionTokenRef = useRef<string | null>(null);
 
-  const getSuggestions = async (input: string) => {
-    if (input.length < minLength) {
-      setSuggestions([]);
-      setError(null);
-      return;
-    }
+	// Generate new session token using a simple fallback
+	const generateSessionToken = () => {
+		// Use crypto.randomUUID if available, otherwise fallback to a simple UUID
+		if (typeof globalThis.crypto?.randomUUID === "function") {
+			return globalThis.crypto.randomUUID();
+		}
+		// Simple fallback UUID generator
+		return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+			const r = (Math.random() * 16) | 0;
+			const v = c === "x" ? r : (r & 0x3) | 0x8;
+			return v.toString(16);
+		});
+	};
 
-    setIsLoading(true);
-    setError(null);
+	// Get or create session token
+	const getSessionToken = () => {
+		if (!sessionTokenRef.current) {
+			sessionTokenRef.current = generateSessionToken();
+		}
+		return sessionTokenRef.current;
+	};
 
-    try {
-      const sessionToken = getSessionToken();
-      
-      const args: {
-        partialInput: string;
-        maxResults: number;
-        sessionToken: string;
-        location?: { lat: number; lng: number };
-        radius?: number;
-      } = {
-        partialInput: input,
-        maxResults: 8,
-        sessionToken
-      };
-      
-      // Add location biasing if provided
-      if (location) {
-        args.location = location;
-        args.radius = radius;
-      }
-      
-      const results = await autocompleteAction(args);
-      // Validate that results is an array before setting
-      if (Array.isArray(results)) {
-        setSuggestions(results);
-      } else {
-        console.warn('Unexpected API response format:', results);
-        setSuggestions([]);
-      }
-    } catch (err) {
-      console.error("Address autocomplete error:", err);
-      setError("Failed to fetch address suggestions");
-      setSuggestions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+	// Reset session (call this when user selects an address or abandons search)
+	const resetSession = () => {
+		sessionTokenRef.current = null;
+	};
 
-  const debouncedGetSuggestions = (input: string) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+	const autocompleteAction = useAction(api.autocomplete.autocompleteAddresses);
+	const debounceTimerRef = useRef<NodeJS.Timeout>(undefined);
 
-    debounceTimerRef.current = setTimeout(() => {
-      getSuggestions(input);
-    }, debounceMs);
-  };
+	const getSuggestions = async (input: string) => {
+		if (input.length < minLength) {
+			setSuggestions([]);
+			setError(null);
+			return;
+		}
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
+		setIsLoading(true);
+		setError(null);
 
-  return {
-    suggestions,
-    isLoading,
-    error,
-    getSuggestions,
-    debouncedGetSuggestions,
-    getSessionToken,
-    resetSession,
-    clearSuggestions: () => setSuggestions([]),
-    clearError: () => setError(null)
-  };
-}; 
+		try {
+			const sessionToken = getSessionToken();
+
+			const args: {
+				partialInput: string;
+				maxResults: number;
+				sessionToken: string;
+				location?: { lat: number; lng: number };
+				radius?: number;
+			} = {
+				partialInput: input,
+				maxResults: 8,
+				sessionToken,
+			};
+
+			// Add location biasing if provided
+			if (location) {
+				args.location = location;
+				args.radius = radius;
+			}
+
+			const results = await autocompleteAction(args);
+			// Validate that results is an array before setting
+			if (Array.isArray(results)) {
+				setSuggestions(results);
+			} else {
+				console.warn("Unexpected API response format:", results);
+				setSuggestions([]);
+			}
+		} catch (err) {
+			console.error("Address autocomplete error:", err);
+			setError("Failed to fetch address suggestions");
+			setSuggestions([]);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const debouncedGetSuggestions = (input: string) => {
+		if (debounceTimerRef.current) {
+			clearTimeout(debounceTimerRef.current);
+		}
+
+		debounceTimerRef.current = setTimeout(() => {
+			getSuggestions(input);
+		}, debounceMs);
+	};
+
+	// Cleanup timeout on unmount
+	useEffect(() => {
+		return () => {
+			if (debounceTimerRef.current) {
+				clearTimeout(debounceTimerRef.current);
+			}
+		};
+	}, []);
+
+	return {
+		suggestions,
+		isLoading,
+		error,
+		getSuggestions,
+		debouncedGetSuggestions,
+		getSessionToken,
+		resetSession,
+		clearSuggestions: () => setSuggestions([]),
+		clearError: () => setError(null),
+	};
+};

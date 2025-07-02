@@ -1,267 +1,276 @@
-import { useState, useCallback } from "react";
 import { useAction } from "convex/react";
+import { useCallback, useState } from "react";
 import { api } from "../../convex/_generated/api";
-import type { AddressValidationResult, PlaceSuggestion } from "../../convex/location";
-import { classifyIntent } from "../utils/addressFinderUtils";
+import type {
+	AddressValidationResult,
+	PlaceSuggestion,
+} from "../../convex/location";
 import type { LocationIntent } from "../stores/types";
+import { classifyIntent } from "../utils/addressFinderUtils";
 
 // Legacy interfaces needed by conversation interface
 export interface SuburbResult {
-  canonicalSuburb: string;
-  placeId: string;
-  geocode?: {
-    lat: number;
-    lng: number;
-  };
-  types: string[];
+	canonicalSuburb: string;
+	placeId: string;
+	geocode?: {
+		lat: number;
+		lng: number;
+	};
+	types: string[];
 }
 
 interface EnhancedSuburbResult {
-  canonicalSuburb: string;
-  placeId: string;
-  // Geocode is optional and may be undefined if not implemented
-  geocode?: {
-    lat: number;
-    lng: number;
-  };
-  types: string[];
+	canonicalSuburb: string;
+	placeId: string;
+	// Geocode is optional and may be undefined if not implemented
+	geocode?: {
+		lat: number;
+		lng: number;
+	};
+	types: string[];
 }
 
 export function useSuburbAutocomplete() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Enhanced state for new system
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [detectedIntent, setDetectedIntent] = useState<LocationIntent | undefined>(undefined);
-  
-  // Legacy state needed by conversation interface
-  const [canonicalSuburb, setCanonicalSuburb] = useState<string | null>(null);
-  const [enhancedResult, setEnhancedResult] = useState<EnhancedSuburbResult | null>(null);
-  
-  const getPlaceSuggestions = useAction(api.location.getPlaceSuggestions);
-  const validateAddress = useAction(api.location.validateAddress);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  // Legacy functions for conversation interface (simplified versions)
-  const lookupSuburb = async (suburbInput: string) => {
-    setIsLoading(true);
-    setError(null);
+	// Enhanced state for new system
+	const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+	const [detectedIntent, setDetectedIntent] = useState<
+		LocationIntent | undefined
+	>(undefined);
 
-    try {
-      const result = await getPlaceSuggestions({
-        query: suburbInput,
-        intent: "suburb",
-        maxResults: 1
-      });
+	// Legacy state needed by conversation interface
+	const [canonicalSuburb, setCanonicalSuburb] = useState<string | null>(null);
+	const [enhancedResult, setEnhancedResult] =
+		useState<EnhancedSuburbResult | null>(null);
 
-      if (result.success && result.suggestions.length > 0) {
-        const suggestion = result.suggestions[0];
-        const canonicalName = suggestion.description;
-        setCanonicalSuburb(canonicalName);
-        return {
-          success: true as const,
-          canonicalSuburb: canonicalName
-        };
-      }
+	const getPlaceSuggestions = useAction(api.location.getPlaceSuggestions);
+	const validateAddress = useAction(api.location.validateAddress);
 
-      setError("No suburb found");
-      return {
-        success: false as const,
-        error: "No suburb found"
-      };
-    } catch (err) {
-      setError("Lookup failed - please try again");
-      console.error('Suburb lookup error:', err);
-      return { success: false as const, error: 'Failed to lookup suburb' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
+	// Legacy functions for conversation interface (simplified versions)
+	const lookupSuburb = async (suburbInput: string) => {
+		setIsLoading(true);
+		setError(null);
 
-  const lookupSuburbEnhanced = async (suburbInput: string) => {
-    setIsLoading(true);
-    setError(null);
+		try {
+			const result = await getPlaceSuggestions({
+				query: suburbInput,
+				intent: "suburb",
+				maxResults: 1,
+			});
 
-    try {
-      const result = await getPlaceSuggestions({
-        query: suburbInput,
-        intent: "suburb",
-        maxResults: 1
-      });
+			if (result.success && result.suggestions.length > 0) {
+				const suggestion = result.suggestions[0];
+				const canonicalName = suggestion.description;
+				setCanonicalSuburb(canonicalName);
+				return {
+					success: true as const,
+					canonicalSuburb: canonicalName,
+				};
+			}
 
-      if (result.success && result.suggestions.length > 0) {
-        const suggestion = result.suggestions[0];
-        const enhancedData = {
-          canonicalSuburb: suggestion.description,
-          placeId: suggestion.placeId,
-          // Geocode fetching not implemented yet; set to undefined
-          geocode: undefined,
-          types: suggestion.types
-        };
-        
-        setCanonicalSuburb(enhancedData.canonicalSuburb);
-        setEnhancedResult(enhancedData);
-        
-        return {
-          success: true as const,
-          ...enhancedData
-        };
-      }
+			setError("No suburb found");
+			return {
+				success: false as const,
+				error: "No suburb found",
+			};
+		} catch (err) {
+			setError("Lookup failed - please try again");
+			console.error("Suburb lookup error:", err);
+			return { success: false as const, error: "Failed to lookup suburb" };
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
-      setError("No suburb found");
-      return {
-        success: false as const,
-        error: "No suburb found"
-      };
-    } catch (err) {
-      setError("Enhanced lookup failed - please try again");
-      console.error('Enhanced suburb lookup error:', err);
-      return { success: false as const, error: 'Failed to lookup suburb details' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
+	const lookupSuburbEnhanced = async (suburbInput: string) => {
+		setIsLoading(true);
+		setError(null);
 
-  const lookupSuburbMultiple = async (suburbInput: string, maxResults = 5) => {
-    try {
-      const result = await getPlaceSuggestions({
-        query: suburbInput,
-        intent: "suburb",
-        maxResults
-      });
+		try {
+			const result = await getPlaceSuggestions({
+				query: suburbInput,
+				intent: "suburb",
+				maxResults: 1,
+			});
 
-      if (result.success && result.suggestions.length > 0) {
-        const results = result.suggestions.map(suggestion => ({
-          canonicalSuburb: suggestion.description,
-          placeId: suggestion.placeId,
-          // Geocode fetching not implemented yet; set to undefined
-          geocode: undefined,
-          types: suggestion.types
-        }));
+			if (result.success && result.suggestions.length > 0) {
+				const suggestion = result.suggestions[0];
+				const enhancedData = {
+					canonicalSuburb: suggestion.description,
+					placeId: suggestion.placeId,
+					// Geocode fetching not implemented yet; set to undefined
+					geocode: undefined,
+					types: suggestion.types,
+				};
 
-        return {
-          success: true as const,
-          results
-        };
-      }
+				setCanonicalSuburb(enhancedData.canonicalSuburb);
+				setEnhancedResult(enhancedData);
 
-      return {
-        success: false as const,
-        error: "No suburbs found"
-      };
-    } catch (err) {
-      console.error('Multiple suburb lookup error:', err);
-      return { success: false as const, error: 'Failed to lookup suburbs' };
-    }
-  };
+				return {
+					success: true as const,
+					...enhancedData,
+				};
+			}
 
-  // New enhanced place suggestions method
-  const validateFullAddress = async (address: string) => {
-    setIsLoading(true);
-    setError(null);
+			setError("No suburb found");
+			return {
+				success: false as const,
+				error: "No suburb found",
+			};
+		} catch (err) {
+			setError("Enhanced lookup failed - please try again");
+			console.error("Enhanced suburb lookup error:", err);
+			return {
+				success: false as const,
+				error: "Failed to lookup suburb details",
+			};
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
-    try {
-      const result = await validateAddress({ 
-        address
-      });
-      
-      return result;
-    } catch (err) {
-      setError("Address validation failed - please try again");
-      console.error('Address validation error:', err);
-      return { success: false as const, error: 'Failed to validate address' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
+	const lookupSuburbMultiple = async (suburbInput: string, maxResults = 5) => {
+		try {
+			const result = await getPlaceSuggestions({
+				query: suburbInput,
+				intent: "suburb",
+				maxResults,
+			});
 
-  const getPlaceSuggestionsWithIntent = async (
-    query: string, 
-    intent?: LocationIntent,
-    options?: {
-      maxResults?: number;
-      location?: { lat: number; lng: number };
-      radius?: number;
-      isAutocomplete?: boolean;
-    }
-  ) => {
-    setIsLoading(true);
-    setError(null);
-    setSuggestions([]);
-    setDetectedIntent(undefined);
+			if (result.success && result.suggestions.length > 0) {
+				const results = result.suggestions.map((suggestion) => ({
+					canonicalSuburb: suggestion.description,
+					placeId: suggestion.placeId,
+					// Geocode fetching not implemented yet; set to undefined
+					geocode: undefined,
+					types: suggestion.types,
+				}));
 
-    try {
-      const result = await getPlaceSuggestions({
-        query,
-        intent,
-        maxResults: options?.maxResults,
-        location: options?.location,
-        radius: options?.radius,
-        isAutocomplete: options?.isAutocomplete
-      });
+				return {
+					success: true as const,
+					results,
+				};
+			}
 
-      if (result.success) {
-        setSuggestions(result.suggestions);
-        setDetectedIntent(result.detectedIntent);
-        return result;
-      }
-      
-      setError(result.error);
-      return result;
-    } catch (err) {
-      setError("Place suggestions failed - please try again");
-      console.error('Place suggestions error:', err);
-      return { success: false, error: 'Failed to get place suggestions' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
+			return {
+				success: false as const,
+				error: "No suburbs found",
+			};
+		} catch (err) {
+			console.error("Multiple suburb lookup error:", err);
+			return { success: false as const, error: "Failed to lookup suburbs" };
+		}
+	};
 
-  const reset = useCallback(() => {
-    setIsLoading(false);
-    setError(null);
-    setSuggestions([]);
-    setDetectedIntent(undefined);
-    setCanonicalSuburb(null);
-    setEnhancedResult(null);
-  }, []);
+	// New enhanced place suggestions method
+	const validateFullAddress = async (address: string) => {
+		setIsLoading(true);
+		setError(null);
 
-  // Function to directly set results (for when agent confirms a selection)
-  const setResult = useCallback((result: SuburbResult) => {
-    setCanonicalSuburb(result.canonicalSuburb);
-    setEnhancedResult({
-      canonicalSuburb: result.canonicalSuburb,
-      placeId: result.placeId,
-      geocode: result.geocode,
-      types: result.types
-    });
-  }, []);
+		try {
+			const result = await validateAddress({
+				address,
+			});
 
-  return {
-    // Legacy methods for conversation interface
-    lookupSuburb,
-    lookupSuburbEnhanced,
-    lookupSuburbMultiple,
-    
-    // New enhanced methods
-    getPlaceSuggestions: getPlaceSuggestionsWithIntent,
-    validateFullAddress,
-    
-    // Legacy state for conversation interface
-    canonicalSuburb,
-    enhancedResult,
-    
-    // New state
-    suggestions,
-    detectedIntent,
-    isLoading,
-    error,
-    
-    // Utilities
-    reset,
-    setResult
-  };
+			return result;
+		} catch (err) {
+			setError("Address validation failed - please try again");
+			console.error("Address validation error:", err);
+			return { success: false as const, error: "Failed to validate address" };
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const getPlaceSuggestionsWithIntent = async (
+		query: string,
+		intent?: LocationIntent,
+		options?: {
+			maxResults?: number;
+			location?: { lat: number; lng: number };
+			radius?: number;
+			isAutocomplete?: boolean;
+		},
+	) => {
+		setIsLoading(true);
+		setError(null);
+		setSuggestions([]);
+		setDetectedIntent(undefined);
+
+		try {
+			const result = await getPlaceSuggestions({
+				query,
+				intent,
+				maxResults: options?.maxResults,
+				location: options?.location,
+				radius: options?.radius,
+				isAutocomplete: options?.isAutocomplete,
+			});
+
+			if (result.success) {
+				setSuggestions(result.suggestions);
+				setDetectedIntent(result.detectedIntent);
+				return result;
+			}
+
+			setError(result.error);
+			return result;
+		} catch (err) {
+			setError("Place suggestions failed - please try again");
+			console.error("Place suggestions error:", err);
+			return { success: false, error: "Failed to get place suggestions" };
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const reset = useCallback(() => {
+		setIsLoading(false);
+		setError(null);
+		setSuggestions([]);
+		setDetectedIntent(undefined);
+		setCanonicalSuburb(null);
+		setEnhancedResult(null);
+	}, []);
+
+	// Function to directly set results (for when agent confirms a selection)
+	const setResult = useCallback((result: SuburbResult) => {
+		setCanonicalSuburb(result.canonicalSuburb);
+		setEnhancedResult({
+			canonicalSuburb: result.canonicalSuburb,
+			placeId: result.placeId,
+			geocode: result.geocode,
+			types: result.types,
+		});
+	}, []);
+
+	return {
+		// Legacy methods for conversation interface
+		lookupSuburb,
+		lookupSuburbEnhanced,
+		lookupSuburbMultiple,
+
+		// New enhanced methods
+		getPlaceSuggestions: getPlaceSuggestionsWithIntent,
+		validateFullAddress,
+
+		// Legacy state for conversation interface
+		canonicalSuburb,
+		enhancedResult,
+
+		// New state
+		suggestions,
+		detectedIntent,
+		isLoading,
+		error,
+
+		// Utilities
+		reset,
+		setResult,
+	};
 }
 
 export type { LocationIntent };
-export { classifyIntent }; 
+export { classifyIntent };
