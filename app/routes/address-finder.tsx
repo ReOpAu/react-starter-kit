@@ -479,15 +479,6 @@ export default function AddressFinder() {
 											<SuburbBoundaryMap
 												suburbName={selectedResult.description}
 												placeId={selectedResult.placeId}
-												center={
-													typeof selectedResult.lat === "number" &&
-													typeof selectedResult.lng === "number"
-														? {
-																lat: selectedResult.lat,
-																lng: selectedResult.lng,
-															}
-														: { lat: -33.8688, lng: 151.2093 } // Fallback: Sydney
-												}
 												mapId="a26a63faa4c27b9388a5618d"
 											/>
 										</div>
