@@ -14,7 +14,7 @@ export interface PlaceSuggestion {
     secondary_text?: string;
     main_text_matched_substrings?: Array<{ length: number; offset: number }>;
   };
-  resultType: "suburb" | "street" | "address" | "general";
+  resultType: LocationIntent;
   confidence: number;
   suburb?: string;
 } 

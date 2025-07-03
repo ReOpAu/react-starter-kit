@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
+import { getPlaceDetails } from "./utils";
 
 function isValidSuburbPrediction(prediction: { types: string[]; description: string }): boolean {
   const isSuburbLevel = prediction.types.some((type) =>
@@ -85,19 +86,6 @@ export const lookupSuburbEnhanced = action({
       const [addressData, geocodeData, regionsData] = await Promise.all(
         urls.map((url) => fetch(url).then((res) => res.json())),
       );
-      const getPlaceDetails = async (placeId: string) => {
-        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,types&key=${apiKey}`;
-        const detailsResponse = await fetch(detailsUrl);
-        const detailsData = await detailsResponse.json();
-        if (detailsData.status === "OK" && detailsData.result) {
-          return {
-            lat: detailsData.result.geometry?.location?.lat || 0,
-            lng: detailsData.result.geometry?.location?.lng || 0,
-            types: detailsData.result.types || [],
-          };
-        }
-        return null;
-      };
       if (
         addressData.status === "OK" &&
         addressData.predictions &&
@@ -111,7 +99,7 @@ export const lookupSuburbEnhanced = action({
           }) => isValidSuburbPrediction(prediction)
         );
         if (suburbMatch) {
-          const placeDetails = await getPlaceDetails(suburbMatch.place_id);
+          const placeDetails = await getPlaceDetails(suburbMatch.place_id, apiKey);
           if (placeDetails) {
             return {
               success: true as const,
@@ -139,7 +127,7 @@ export const lookupSuburbEnhanced = action({
           }) => isValidSuburbPrediction(prediction)
         );
         if (suburbanMatch) {
-          const placeDetails = await getPlaceDetails(suburbanMatch.place_id);
+          const placeDetails = await getPlaceDetails(suburbanMatch.place_id, apiKey);
           if (placeDetails) {
             return {
               success: true as const,
@@ -167,7 +155,7 @@ export const lookupSuburbEnhanced = action({
           }) => isValidSuburbPrediction(prediction)
         );
         if (validRegion) {
-          const placeDetails = await getPlaceDetails(validRegion.place_id);
+          const placeDetails = await getPlaceDetails(validRegion.place_id, apiKey);
           if (placeDetails) {
             return {
               success: true as const,

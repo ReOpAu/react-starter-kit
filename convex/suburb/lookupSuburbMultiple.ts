@@ -1,50 +1,12 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
+import { isValidSuburbPrediction, getPlaceDetails } from "./utils";
 
-function isValidSuburbPrediction(prediction: { types: string[]; description: string }): boolean {
-  const isSuburbLevel = prediction.types.some((type) =>
-    [
-      "locality",
-      "sublocality",
-      "sublocality_level_1",
-      "administrative_area_level_2",
-      "political",
-    ].includes(type),
-  );
-  const isSpecificPlace = prediction.types.some((type) =>
-    [
-      "establishment",
-      "point_of_interest",
-      "store",
-      "food",
-      "restaurant",
-      "gas_station",
-      "hospital",
-      "school",
-      "street_address",
-      "route",
-      "premise",
-      "subpremise",
-    ].includes(type),
-  );
-  const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(
-    prediction.description,
-  );
-  const hasSpecificPlaceName =
-    /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(
-      prediction.description,
-    );
-  const isSimpleSuburbFormat =
-    /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(
-      prediction.description,
-    );
-  return (
-    isSuburbLevel &&
-    !isSpecificPlace &&
-    hasAustralianState &&
-    !hasSpecificPlaceName &&
-    isSimpleSuburbFormat
-  );
+// Define a type for suburb predictions
+interface SuburbPrediction {
+  types: string[];
+  description: string;
+  place_id: string;
 }
 
 export const lookupSuburbMultiple = action({
@@ -82,19 +44,6 @@ export const lookupSuburbMultiple = action({
       };
     }
     try {
-      const getPlaceDetails = async (placeId: string) => {
-        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,types&key=${apiKey}`;
-        const detailsResponse = await fetch(detailsUrl);
-        const detailsData = await detailsResponse.json();
-        if (detailsData.status === "OK" && detailsData.result) {
-          return {
-            lat: detailsData.result.geometry?.location?.lat || 0,
-            lng: detailsData.result.geometry?.location?.lng || 0,
-            types: detailsData.result.types || [],
-          };
-        }
-        return null;
-      };
       const allResults: Array<{
         canonicalSuburb: string;
         placeId: string;
@@ -112,16 +61,12 @@ export const lookupSuburbMultiple = action({
       const [addressData, geocodeData, regionsData] = responses;
       if (addressData.status === "OK" && addressData.predictions) {
         const suburbMatches = addressData.predictions.filter(
-          (prediction: {
-            types: string[];
-            description: string;
-            place_id: string;
-          }) => isValidSuburbPrediction(prediction)
+          (prediction: SuburbPrediction) => isValidSuburbPrediction(prediction)
         );
         const detailPromises = suburbMatches
           .slice(0, maxResults)
-          .map(async (match: any) => {
-            const placeDetails = await getPlaceDetails(match.place_id);
+          .map(async (match: SuburbPrediction) => {
+            const placeDetails = await getPlaceDetails(match.place_id, apiKey);
             if (placeDetails) {
               return {
                 canonicalSuburb: match.description,
@@ -148,75 +93,17 @@ export const lookupSuburbMultiple = action({
         const geocodeData = await geocodeResponse.json();
         if (geocodeData.status === "OK" && geocodeData.predictions) {
           const suburbanMatches = geocodeData.predictions.filter(
-            (prediction: {
-              types: string[];
-              description: string;
-              place_id: string;
-            }) => {
-              if (
-                allResults.some(
-                  (result) => result.placeId === prediction.place_id,
-                )
-              ) {
+            (prediction: SuburbPrediction) => {
+              if (allResults.some((result) => result.placeId === prediction.place_id)) {
                 return false;
               }
-              const hasLocalityType = prediction.types.some((type) =>
-                [
-                  "locality",
-                  "sublocality",
-                  "sublocality_level_1",
-                  "administrative_area_level_2",
-                  "political",
-                ].includes(type),
-              );
-              const hasBusinessType = prediction.types.some((type) =>
-                [
-                  "establishment",
-                  "point_of_interest",
-                  "store",
-                  "food",
-                  "restaurant",
-                  "gas_station",
-                  "hospital",
-                  "school",
-                  "shopping_mall",
-                  "park",
-                  "tourist_attraction",
-                  "transit_station",
-                  "train_station",
-                  "bus_station",
-                  "subway_station",
-                  "street_address",
-                  "route",
-                  "premise",
-                  "subpremise",
-                ].includes(type),
-              );
-              const hasAustralianState =
-                /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(
-                  prediction.description,
-                );
-              const hasSpecificPlaceName =
-                /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel)\b/i.test(
-                  prediction.description,
-                );
-              const isSimpleSuburbFormat =
-                /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(
-                  prediction.description,
-                );
-              return (
-                hasLocalityType &&
-                !hasBusinessType &&
-                hasAustralianState &&
-                !hasSpecificPlaceName &&
-                isSimpleSuburbFormat
-              );
-            },
+              return isValidSuburbPrediction(prediction);
+            }
           );
           const detailPromises = suburbanMatches
             .slice(0, maxResults - allResults.length)
-            .map(async (match: any) => {
-              const placeDetails = await getPlaceDetails(match.place_id);
+            .map(async (match: SuburbPrediction) => {
+              const placeDetails = await getPlaceDetails(match.place_id, apiKey);
               if (placeDetails) {
                 return {
                   canonicalSuburb: match.description,
@@ -244,73 +131,17 @@ export const lookupSuburbMultiple = action({
         const regionsData = await regionsResponse.json();
         if (regionsData.status === "OK" && regionsData.predictions) {
           const validRegions = regionsData.predictions.filter(
-            (prediction: {
-              types: string[];
-              description: string;
-              place_id: string;
-            }) => {
-              if (
-                allResults.some(
-                  (result) => result.placeId === prediction.place_id,
-                )
-              ) {
+            (prediction: SuburbPrediction) => {
+              if (allResults.some((result) => result.placeId === prediction.place_id)) {
                 return false;
               }
-              const isGenuineSuburb = prediction.types.some((type) =>
-                [
-                  "locality",
-                  "sublocality",
-                  "administrative_area_level_2",
-                ].includes(type),
-              );
-              const hasAustralianState =
-                /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(
-                  prediction.description,
-                );
-              const isNotBusiness = !prediction.types.some((type) =>
-                [
-                  "establishment",
-                  "point_of_interest",
-                  "store",
-                  "food",
-                  "restaurant",
-                  "gas_station",
-                  "hospital",
-                  "school",
-                  "shopping_mall",
-                  "park",
-                  "tourist_attraction",
-                  "transit_station",
-                  "train_station",
-                  "bus_station",
-                  "subway_station",
-                  "street_address",
-                  "route",
-                  "premise",
-                  "subpremise",
-                ].includes(type),
-              );
-              const hasSpecificPlaceName =
-                /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(
-                  prediction.description,
-                );
-              const isSimpleSuburbFormat =
-                /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(
-                  prediction.description,
-                );
-              return (
-                isGenuineSuburb &&
-                hasAustralianState &&
-                isNotBusiness &&
-                !hasSpecificPlaceName &&
-                isSimpleSuburbFormat
-              );
-            },
+              return isValidSuburbPrediction(prediction);
+            }
           );
           const detailPromises = validRegions
             .slice(0, maxResults - allResults.length)
-            .map(async (match: any) => {
-              const placeDetails = await getPlaceDetails(match.place_id);
+            .map(async (match: SuburbPrediction) => {
+              const placeDetails = await getPlaceDetails(match.place_id, apiKey);
               if (placeDetails) {
                 return {
                   canonicalSuburb: match.description,

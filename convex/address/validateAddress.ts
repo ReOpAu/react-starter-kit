@@ -4,8 +4,6 @@ import { action } from "../_generated/server";
 export const validateAddress = action({
   args: {
     address: v.string(),
-    placeId: v.optional(v.string()),
-    sessionToken: v.optional(v.string()),
   },
   returns: v.union(
     v.object({

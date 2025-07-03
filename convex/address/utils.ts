@@ -56,6 +56,15 @@ export function classifyLocationIntent(query: string): LocationIntent {
   return "general";
 }
 
+// Helper to clean suburb strings
+function cleanSuburbString(str: string): string {
+  return str
+    .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\s*\d{4}?/i, "")
+    .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)$/i, "")
+    .replace(/\s+\d{4}$/, "")
+    .trim();
+}
+
 // --- extractSuburbFromPlacesSuggestion ---
 export function extractSuburbFromPlacesSuggestion(suggestion: PlaceSuggestion): string | undefined {
   if (
@@ -69,11 +78,7 @@ export function extractSuburbFromPlacesSuggestion(suggestion: PlaceSuggestion): 
     const parts = secondaryText.split(",").map((part) => part.trim());
     if (parts.length > 0) {
       const firstPart = parts[0];
-      const suburb = firstPart
-        .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\s*\d{4}?/i, "")
-        .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)$/i, "")
-        .replace(/\s+\d{4}$/, "")
-        .trim();
+      const suburb = cleanSuburbString(firstPart);
       if (suburb) {
         return suburb;
       }
@@ -95,11 +100,7 @@ export function extractSuburbFromPlacesSuggestion(suggestion: PlaceSuggestion): 
       }
     }
     if (potentialSuburbPart) {
-      const suburb = potentialSuburbPart
-        .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\s*\d{4}?/i, "")
-        .replace(/\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)$/i, "")
-        .replace(/\s+\d{4}$/, "")
-        .trim();
+      const suburb = cleanSuburbString(potentialSuburbPart);
       if (suburb && suburb.length > 0 && suburb.toLowerCase() !== "australia") {
         return suburb;
       }

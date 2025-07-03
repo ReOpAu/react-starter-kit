@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useAction } from "convex/react";
+import { api } from "convex/_generated/api";
 
 interface NearbyAldiStoresProps {
   lat: number;
@@ -18,57 +20,37 @@ export const NearbyAldiStores: React.FC<NearbyAldiStoresProps> = ({ lat, lng }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getNearbyAldiStores = useAction(api.address.getNearbyAldiStores.getNearbyAldiStores);
+
   useEffect(() => {
     if (lat == null || lng == null) return;
-    const controller = new AbortController();
+    let cancelled = false;
     const fetchStores = async () => {
       setLoading(true);
       setError(null);
       setStores([]);
       try {
-        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-        if (!apiKey) {
-          setError("Google Maps API key not set.");
-          setLoading(false);
-          return;
+        const result = await getNearbyAldiStores({ lat, lng });
+        if (!cancelled) {
+          if (result.success) {
+            setStores(result.places);
+          } else {
+            setError(result.error);
+          }
         }
-        const body = {
-          includedTypes: ["supermarket"],
-          keyword: "Aldi",
-          maxResultCount: 5,
-          locationRestriction: {
-            circle: {
-              center: { latitude: lat, longitude: lng },
-              radius: 5000, // 5km
-            },
-          },
-        };
-        const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": apiKey,
-            "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location,places.distanceMeters,places.placeId",
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
-        const data = await res.json();
-        setStores(data.places || []);
       } catch (err: unknown) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          setError(err.message || "Failed to fetch stores.");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to fetch stores.");
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchStores();
-    return () => controller.abort();
-  }, [lat, lng]);
+    return () => {
+      cancelled = true;
+    };
+  }, [lat, lng, getNearbyAldiStores]);
 
   return (
     <div className="mt-6">

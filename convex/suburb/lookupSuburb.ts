@@ -1,51 +1,6 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
-
-function isValidSuburbPrediction(prediction: { types: string[]; description: string }): boolean {
-  const isSuburbLevel = prediction.types.some((type) =>
-    [
-      "locality",
-      "sublocality",
-      "sublocality_level_1",
-      "administrative_area_level_2",
-      "political",
-    ].includes(type),
-  );
-  const isSpecificPlace = prediction.types.some((type) =>
-    [
-      "establishment",
-      "point_of_interest",
-      "store",
-      "food",
-      "restaurant",
-      "gas_station",
-      "hospital",
-      "school",
-      "street_address",
-      "route",
-      "premise",
-      "subpremise",
-    ].includes(type),
-  );
-  const hasAustralianState = /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(
-    prediction.description,
-  );
-  const hasSpecificPlaceName =
-    /\b(tunnel|bridge|station|mall|centre|center|park|reserve|oval|ground|hospital|school|university|airport|port|wharf|pier|marina|golf|club|hotel|motel|plaza|square|gardens|depot|terminal|junction)\b/i.test(
-      prediction.description,
-    );
-  const isSimpleSuburbFormat =
-    /^[A-Za-z\s]+\s+(VIC|NSW|QLD|WA|SA|TAS|NT|ACT),?\s*Australia?$/i.test(
-      prediction.description,
-    );
-  return (
-    isSuburbLevel &&
-    !isSpecificPlace &&
-    hasAustralianState &&
-    !hasSpecificPlaceName &&
-    isSimpleSuburbFormat
-  );
-}
+import { isValidSuburbPrediction } from "./utils";
 
 export const lookupSuburb = action({
   args: {

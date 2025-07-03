@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as address_getNearbyAldiStores from "../address/getNearbyAldiStores.js";
 import type * as address_getPlaceDetails from "../address/getPlaceDetails.js";
 import type * as address_getPlaceSuggestions from "../address/getPlaceSuggestions.js";
 import type * as address_types from "../address/types.js";
@@ -25,6 +26,7 @@ import type * as subscriptions from "../subscriptions.js";
 import type * as suburb_lookupSuburb from "../suburb/lookupSuburb.js";
 import type * as suburb_lookupSuburbEnhanced from "../suburb/lookupSuburbEnhanced.js";
 import type * as suburb_lookupSuburbMultiple from "../suburb/lookupSuburbMultiple.js";
+import type * as suburb_utils from "../suburb/utils.js";
 import type * as suburbLookup from "../suburbLookup.js";
 import type * as suburbLookup_updated from "../suburbLookup_updated.js";
 import type * as users from "../users.js";
@@ -45,6 +47,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "address/getNearbyAldiStores": typeof address_getNearbyAldiStores;
   "address/getPlaceDetails": typeof address_getPlaceDetails;
   "address/getPlaceSuggestions": typeof address_getPlaceSuggestions;
   "address/types": typeof address_types;
@@ -62,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "suburb/lookupSuburb": typeof suburb_lookupSuburb;
   "suburb/lookupSuburbEnhanced": typeof suburb_lookupSuburbEnhanced;
   "suburb/lookupSuburbMultiple": typeof suburb_lookupSuburbMultiple;
+  "suburb/utils": typeof suburb_utils;
   suburbLookup: typeof suburbLookup;
   suburbLookup_updated: typeof suburbLookup_updated;
   users: typeof users;
