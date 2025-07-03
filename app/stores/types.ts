@@ -12,6 +12,8 @@ export interface Suggestion {
 	// Optional validated coordinates
 	lat?: number;
 	lng?: number;
+	// Confidence score (0-1) from backend
+	confidence?: number;
 }
 
 export interface HistoryItem {

@@ -330,6 +330,39 @@ export default function AddressFinder() {
 		return suggestions && suggestions.length > 0;
 	}, [agentLastSearchQuery, queryClient]);
 
+	// Add state for low-confidence single result
+	const [showLowConfidence, setShowLowConfidence] = useState(false);
+
+	// Auto-select or show search again for conversational flow
+	useEffect(() => {
+		if (
+			isRecording &&
+			!selectedResult &&
+			suggestions.length === 1 &&
+			!isLoading &&
+			!isError
+		) {
+			const suggestion = suggestions[0];
+			if (suggestion.confidence >= 0.7) {
+				// Auto-select high-confidence result
+				handleSelectResult(suggestion);
+				setShowLowConfidence(false);
+			} else {
+				// Show low-confidence message and search again button
+				setShowLowConfidence(true);
+			}
+		} else {
+			setShowLowConfidence(false);
+		}
+	}, [isRecording, selectedResult, suggestions, isLoading, isError, handleSelectResult]);
+
+	// Handler for Search Again button
+	const handleSearchAgain = useCallback(() => {
+		setShowLowConfidence(false);
+		clearSelectionAndSearch();
+		// Optionally, you can trigger the agent to prompt for a new query here
+	}, [clearSelectionAndSearch]);
+
 	return (
 		<div className="container mx-auto py-8 px-4 max-w-4xl">
 			<div className="space-y-6">
@@ -502,7 +535,7 @@ export default function AddressFinder() {
 				</Card>
 
 				{/* AI-Generated Suggestions Display */}
-				{shouldShowSuggestions && (
+				{shouldShowSuggestions && !showLowConfidence && (
 					<Card className="border-blue-200 bg-blue-50">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
@@ -523,6 +556,25 @@ export default function AddressFinder() {
 								isError={isError}
 								error={error}
 							/>
+						</CardContent>
+					</Card>
+				)}
+				{shouldShowSuggestions && showLowConfidence && (
+					<Card className="border-yellow-200 bg-yellow-50">
+						<CardHeader>
+							<CardTitle>Low Confidence Result</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div className="text-yellow-800">
+								<p>
+									I found one possible match, but I'm not confident it's correct:
+								</p>
+								<p className="font-semibold">{suggestions[0]?.description}</p>
+								<p className="text-xs">(Confidence: {Math.round(suggestions[0]?.confidence * 100)}%)</p>
+							</div>
+							<Button onClick={handleSearchAgain} variant="outline">
+								Search Again
+							</Button>
 						</CardContent>
 					</Card>
 				)}
