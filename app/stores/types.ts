@@ -14,6 +14,10 @@ export interface Suggestion {
 	lng?: number;
 	// Confidence score (0-1) from backend
 	confidence?: number;
+	structuredFormatting?: {
+		mainText?: string;
+		// ...other fields as needed
+	};
 }
 
 export interface HistoryItem {

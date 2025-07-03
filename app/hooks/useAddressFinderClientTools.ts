@@ -261,9 +261,9 @@ export function useAddressFinderClientTools(
 					useIntentStore.getState().agentLastSearchQuery;
 				const suggestionsFromAgentSearch = agentLastSearchQueryFromStateForError
 					? queryClient.getQueryData<Suggestion[]>([
-							"addressSearch",
-							agentLastSearchQueryFromStateForError,
-						])
+						"addressSearch",
+						agentLastSearchQueryFromStateForError,
+					])
 					: [];
 				log(
 					"Available suggestions in agent context:",
@@ -272,6 +272,21 @@ export function useAddressFinderClientTools(
 						description: s.description,
 					})),
 				);
+
+				// --- DEFENSIVE SYNC: If suggestions are empty but selectedResult matches, confirm selection ---
+				// See UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md for rationale.
+				const currentSelection = useIntentStore.getState().selectedResult;
+				if (currentSelection && currentSelection.placeId === placeId) {
+					log("✅ Defensive: Confirming selection from selectedResult, not suggestions array.");
+					const intent = useIntentStore.getState().currentIntent;
+					return JSON.stringify({
+						status: "confirmed",
+						selection: currentSelection,
+						intent,
+						timestamp: Date.now(),
+						confirmationMessage: `Confirmed selection of \"${currentSelection.description}\" as ${intent} (defensive path)`
+					});
+				}
 
 				return JSON.stringify({
 					status: "not_found",

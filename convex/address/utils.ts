@@ -315,6 +315,27 @@ export async function getPlacesApiSuggestions(
     ? sortedSuggestions.filter(s => s.resultType === actualIntent)
     : sortedSuggestions;
 
+  // --- STRICT SUBURB FILTERING FOR SINGLE-WORD QUERIES ---
+  // See UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md for rationale.
+  const isSingleWord = !query.includes(" ");
+  if (actualIntent === "suburb" && isSingleWord) {
+    const suburbOrLocality = strictlyFiltered.filter(
+      s => s.resultType === "suburb" || s.types.includes("locality")
+    );
+    if (suburbOrLocality.length > 0) {
+      return {
+        success: true,
+        suggestions: suburbOrLocality,
+        detectedIntent: actualIntent,
+      };
+    } else {
+      return {
+        success: false,
+        error: "No suburb or locality found for this query.",
+      };
+    }
+  }
+
   return {
     success: true,
     suggestions: strictlyFiltered,

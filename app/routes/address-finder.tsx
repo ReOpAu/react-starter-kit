@@ -209,6 +209,9 @@ export default function AddressFinder() {
 		return () => clearTimeout(timer);
 	}, [searchQuery, isRecording, debouncedSearchQuery]);
 
+	// --- SELECTION ACKNOWLEDGMENT STATE ---
+	const [selectionAcknowledged, setSelectionAcknowledged] = useState(false);
+
 	// Construct agent state for debugging
 	const agentStateForDebug = useMemo(() => {
 		const timestamp = Date.now();
@@ -234,6 +237,7 @@ export default function AddressFinder() {
 				hasSelection: !!selectedResult,
 				selectedAddress: selectedResult?.description || null,
 				selectedPlaceId: selectedResult?.placeId || null,
+				selectionAcknowledged,
 			},
 			meta: {
 				lastUpdate: timestamp,
@@ -252,7 +256,28 @@ export default function AddressFinder() {
 		error,
 		selectedResult,
 		agentRequestedManual,
+		selectionAcknowledged,
 	]);
+
+	// Listen for selectionAcknowledged from agent state
+	useEffect(() => {
+		if (agentStateForDebug.selection.selectionAcknowledged) {
+			setSelectionAcknowledged(true);
+		}
+	}, [agentStateForDebug.selection.selectionAcknowledged]);
+
+	// Only clear suggestions after selectionAcknowledged is true
+	useEffect(() => {
+		if (selectedResult && selectionAcknowledged) {
+			setApiResults({
+				suggestions: [],
+				isLoading: false,
+				error: null,
+				source: activeSearchSource,
+			});
+			setSelectionAcknowledged(false); // Reset for next cycle
+		}
+	}, [selectedResult, selectionAcknowledged, setApiResults, activeSearchSource]);
 
 	// Event handlers
 	const handleSelectResult = useCallback(
@@ -269,14 +294,37 @@ export default function AddressFinder() {
 					};
 				}
 			}
+			
+			// CRITICAL: Update agent's suggestions context to include this selection
+			// This prevents "stale context" issues by ensuring the agent can find the selection
+			// Works for both manual selections and auto-selections
+			const currentSearchQuery = searchQuery || result.description;
+			const currentSuggestions = queryClient.getQueryData<Suggestion[]>([
+				"addressSearch", 
+				currentSearchQuery
+			]) || [];
+			
+			// Add the selected result to the suggestions if it's not already there
+			if (!currentSuggestions.find(s => s.placeId === result.placeId)) {
+				const updatedSuggestions = [...currentSuggestions, updatedResult];
+				queryClient.setQueryData(
+					["addressSearch", currentSearchQuery],
+					updatedSuggestions
+				);
+				log("🔧 Context sync: Added selection to agent's suggestions array");
+			}
+			
 			handleSelect(updatedResult);
-			setAgentLastSearchQuery(null);
+			setAgentLastSearchQuery(currentSearchQuery); // Use the current search query, not null
 			queryClient.removeQueries({
 				queryKey: ["addressSearch", result?.description],
 				exact: true,
 			});
+			// --- CRITICAL: Immediately sync agent context after selection ---
+			// This ensures the agent sees the confirmed selection in its context, per UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md
+			syncToAgent();
 		},
-		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction]
+		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction, syncToAgent, searchQuery, log]
 	);
 
 	const handleRequestAgentState = useCallback(() => {
@@ -333,7 +381,15 @@ export default function AddressFinder() {
 	// Add state for low-confidence single result
 	const [showLowConfidence, setShowLowConfidence] = useState(false);
 
+	// Helper to extract state abbreviation from a string
+	function extractState(str: string): string | null {
+		const match = str.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
+		return match ? match[1].toUpperCase() : null;
+	}
+
 	// Auto-select or show search again for conversational flow
+	// extractState is a stable function defined in the component scope and does not change between renders
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(() => {
 		if (
 			isRecording &&
@@ -343,25 +399,28 @@ export default function AddressFinder() {
 			!isError
 		) {
 			const suggestion = suggestions[0];
-			if (suggestion.confidence >= 0.7) {
-				// Auto-select high-confidence result
+			const userState = extractState(searchQuery);
+			const resultState = extractState(suggestion.description);
+
+			const highConfidence = (suggestion.confidence ?? 1) >= 0.8;
+			const stateMatches = !userState || !resultState || userState === resultState;
+
+			if (highConfidence && stateMatches) {
 				handleSelectResult(suggestion);
 				setShowLowConfidence(false);
 			} else {
-				// Show low-confidence message and search again button
 				setShowLowConfidence(true);
 			}
 		} else {
 			setShowLowConfidence(false);
 		}
-	}, [isRecording, selectedResult, suggestions, isLoading, isError, handleSelectResult]);
+	}, [isRecording, selectedResult, suggestions, isLoading, isError, handleSelectResult, searchQuery]);
 
 	// Handler for Search Again button
 	const handleSearchAgain = useCallback(() => {
 		setShowLowConfidence(false);
-		clearSelectionAndSearch();
-		// Optionally, you can trigger the agent to prompt for a new query here
-	}, [clearSelectionAndSearch]);
+		handleClear("user");
+	}, [handleClear]);
 
 	return (
 		<div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -569,12 +628,29 @@ export default function AddressFinder() {
 								<p>
 									I found one possible match, but I'm not confident it's correct:
 								</p>
-								<p className="font-semibold">{suggestions[0]?.description}</p>
-								<p className="text-xs">(Confidence: {Math.round(suggestions[0]?.confidence * 100)}%)</p>
+								<button
+									type="button"
+									onClick={() => handleSelectResult(suggestions[0])}
+									className="font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer text-left"
+								>
+									{suggestions[0]?.description}
+								</button>
+								<p className="text-xs">(Confidence: {Math.round((suggestions[0]?.confidence ?? 0) * 100)}%)</p>
 							</div>
-							<Button onClick={handleSearchAgain} variant="outline">
-								Search Again
-							</Button>
+							<div className="flex gap-2">
+								<Button onClick={() => handleSelectResult(suggestions[0])} className="bg-green-600 hover:bg-green-700">
+									Confirm This Result
+								</Button>
+								<Button onClick={handleSearchAgain} variant="outline">
+									Search Again
+								</Button>
+								<Button
+									onClick={() => setAgentRequestedManual(true)}
+									variant="outline"
+								>
+									Manual Input
+								</Button>
+							</div>
 						</CardContent>
 					</Card>
 				)}

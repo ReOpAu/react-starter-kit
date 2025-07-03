@@ -206,6 +206,24 @@ export function useSuburbAutocomplete() {
 				isAutocomplete: options?.isAutocomplete,
 			});
 
+			// --- UI-SIDE SUBURB FILTERING ---
+			// See UNIFIED_ADDRESS_SYSTEM.md for rationale.
+			if ((intent ?? "suburb") === "suburb" && result.success) {
+				const hasSuburb = result.suggestions.some(
+					s => s.resultType === "suburb" || s.types?.includes("locality")
+				);
+				if (!hasSuburb) {
+					if (result.suggestions.length > 0) {
+						setError("No suburb found, but here are some other results you may select, or try a different suburb.");
+						setSuggestions(result.suggestions); // Show suggestions, but do not auto-select
+						return { success: true, suggestions: result.suggestions, detectedIntent: result.detectedIntent };
+					}
+					setError("No suburb found for this query. Please try a different suburb.");
+					setSuggestions([]);
+					return { success: false, error: "No suburb found for this query." };
+				}
+			}
+
 			if (result.success) {
 				setSuggestions(result.suggestions);
 				setDetectedIntent(result.detectedIntent);
