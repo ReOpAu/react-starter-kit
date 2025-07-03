@@ -309,9 +309,15 @@ export async function getPlacesApiSuggestions(
       return b.confidence - a.confidence;
     })
     .slice(0, maxResults);
+
+  // STRICT FILTERING: Only include results matching intent, unless intent is 'general'
+  const strictlyFiltered = actualIntent !== "general"
+    ? sortedSuggestions.filter(s => s.resultType === actualIntent)
+    : sortedSuggestions;
+
   return {
     success: true,
-    suggestions: sortedSuggestions,
+    suggestions: strictlyFiltered,
     detectedIntent: actualIntent,
   };
 }

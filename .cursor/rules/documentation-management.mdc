@@ -10,3 +10,7 @@ alwaysApply: true
   - Changing state management or architecture
   - Modifying Cursor Rules or enforcement patterns
 - Never delete or change docs/rules without explicit approval.
+
+- Document the need to run `npx convex dev` after backend file changes that affect Convex actions, so that API types are regenerated for the frontend.
+
+- [ ] When a new architectural pattern is established (e.g., unified selection hydration), update both documentation and Cursor Rules to reflect it.

@@ -20,8 +20,9 @@ export function useAddressFinderClientTools(
 	clearSessionToken: () => void,
 ) {
 	const queryClient = useQueryClient();
-	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions);
-	const validateAddressAction = useAction(api.address.validateAddress);
+	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
+	const validateAddressAction = useAction(api.address.validateAddress.validateAddress);
+	const getPlaceDetailsAction = useAction(api.address.getPlaceDetails.getPlaceDetails);
 
 	// ✅ FIX: All required state values and setters are destructured at the top level.
 	const { isRecording, setAgentRequestedManual } = useUIStore();
@@ -199,27 +200,18 @@ export function useAddressFinderClientTools(
 				log("🔧 AGENT ATTEMPTING SELECTION with params:", params);
 
 				let placeId: string | undefined;
-
 				if (typeof params === "string") {
 					placeId = params;
 				} else if (params && typeof params === "object") {
 					const paramObj = params as Record<string, unknown>;
-					placeId = (paramObj.placeId || paramObj.place_id) as
-						| string
-						| undefined;
+					placeId = (paramObj.placeId || paramObj.place_id) as string | undefined;
 				}
-
 				if (typeof placeId !== "string" || !placeId.trim()) {
-					const errorMessage =
-						"Invalid or missing 'placeId' or 'place_id' parameter for selectSuggestion tool.";
+					const errorMessage = "Invalid or missing 'placeId' or 'place_id' parameter for selectSuggestion tool.";
 					log(`Tool selectSuggestion failed: ${errorMessage}`, { params });
-					return JSON.stringify({
-						status: "error",
-						error: errorMessage,
-					});
+					return JSON.stringify({ status: "error", error: errorMessage });
 				}
 
-				// ✅ CORRECT: Use `getState()` inside callbacks to get the freshest state.
 				const {
 					selectedResult: currentSelectedResult,
 					currentIntent: currentIntentFromState,
@@ -228,72 +220,39 @@ export function useAddressFinderClientTools(
 				} = useIntentStore.getState();
 
 				let selection: Suggestion | undefined = undefined;
-
 				if (agentLastSearchQueryFromState) {
-					log(
-						`🔧 Searching for selection in agent's last search context: "${agentLastSearchQueryFromState}"`,
-					);
-					// Use the context to read from the Single Source of Truth (React Query cache).
-					const suggestionsFromAgentSearch = queryClient.getQueryData<
-						Suggestion[]
-					>(["addressSearch", agentLastSearchQueryFromState]);
-
+					const suggestionsFromAgentSearch = queryClient.getQueryData<Suggestion[]>(["addressSearch", agentLastSearchQueryFromState]);
 					if (suggestionsFromAgentSearch) {
-						selection = suggestionsFromAgentSearch.find(
-							(s) => s.placeId === placeId,
-						);
-						log(
-							`🔧 Found ${suggestionsFromAgentSearch.length} suggestions in agent cache. Selection found: ${!!selection}`,
-						);
-					} else {
-						log(
-							`⚠️ No suggestions found in React Query cache for agent's last query.`,
-						);
+						selection = suggestionsFromAgentSearch.find((s) => s.placeId === placeId);
 					}
-				} else {
-					log(
-						"⚠️ Agent last search query is not set. Cannot find selection context.",
-					);
 				}
 
 				if (selection) {
-					const intent = classifySelectedResult(selection);
-					log(
-						`✅ AGENT SELECTION FOUND: "${selection.description}" with intent: ${intent}`,
-					);
-
-					log("🔧 UPDATING STATE - Before update:", {
-						currentSelectedResult: currentSelectedResult?.description,
-						currentIntent: currentIntentFromState,
-						currentSearchQuery: currentSearchQueryFromState,
-					});
-
+					let updatedSelection = selection;
+					if ((selection.lat === undefined || selection.lng === undefined) && selection.placeId) {
+						const detailsRes = await getPlaceDetailsAction({ placeId: selection.placeId });
+						if (detailsRes.success && detailsRes.details?.geometry?.location) {
+							updatedSelection = {
+								...selection,
+								lat: detailsRes.details.geometry.location.lat,
+								lng: detailsRes.details.geometry.location.lng,
+							};
+						}
+					}
+					const intent = classifySelectedResult(updatedSelection);
 					setCurrentIntent(intent);
-					setSelectedResult(selection);
-					setActiveSearch({ query: selection.description, source: "voice" });
-					addHistory({
-						type: "agent",
-						text: `Agent selected: "${selection.description}" (${intent})`,
-					});
+					setSelectedResult(updatedSelection);
+					setActiveSearch({ query: updatedSelection.description, source: "voice" });
+					addHistory({ type: "agent", text: `Agent selected: "${updatedSelection.description}" (${intent})` });
 					clearSessionToken();
-					setAgentLastSearchQuery(null); // Clear context from the "Brain" after successful use
-
-					log("🔧 STATE UPDATED - After update calls made");
-
-					// Note: Centralized sync effect will handle sync automatically
-
+					setAgentLastSearchQuery(null);
 					const confirmationResponse = {
 						status: "confirmed",
-						selection,
+						selection: updatedSelection,
 						intent,
 						timestamp: Date.now(),
-						confirmationMessage: `Successfully selected "${selection.description}" as ${intent}`,
+						confirmationMessage: `Successfully selected "${updatedSelection.description}" as ${intent}`,
 					};
-
-					log(
-						"✅ AGENT SELECTION SUCCESSFUL - Returning:",
-						confirmationResponse,
-					);
 					return JSON.stringify(confirmationResponse);
 				}
 
@@ -502,6 +461,7 @@ export function useAddressFinderClientTools(
 			queryClient,
 			getPlaceSuggestionsAction,
 			validateAddressAction,
+			getPlaceDetailsAction,
 			getSessionToken,
 			clearSessionToken,
 			log,

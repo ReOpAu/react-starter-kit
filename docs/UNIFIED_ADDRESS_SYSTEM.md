@@ -81,3 +81,9 @@ By following this pattern, we ensure that a search initiated by the AI agent fol
 - This ensures that only validated, trustworthy locations are visualized on the map, never partial or ambiguous suggestions.
 - The enrichment step occurs in the validation handler, which merges the coordinates into the confirmed selection.
 - The `Suggestion` type now includes optional `lat` and `lng` fields for this purpose.
+
+### 2024-06: Backend Strict Intent Filtering
+- The backend now enforces strict filtering of place suggestions by intent:
+  - For 'suburb', 'street', or 'address', only results of that type are returned.
+  - For 'general', broader results are allowed.
+- This ensures the UI and agent only present results matching the user's classified intent, reducing ambiguity in conversational flows.

@@ -12,3 +12,10 @@ alwaysApply: true
 const handleSelectResult = useCallback((result: Suggestion) => {
   handleSelect(result);
 }, [handleSelect]);
+
+# Unified Selection Hydration Rule
+
+- All confirmed selections (manual or agent) must be hydrated using a single, centralized logic path.
+- Never allow divergent selection logic between manual and conversational/agent flows.
+- Always ensure that confirmed selections are display-ready (with lat/lng and all required fields) before updating state or displaying in the UI.
+- If hydration requires fetching additional details (e.g., via getPlaceDetails), this must be done before confirming the selection.

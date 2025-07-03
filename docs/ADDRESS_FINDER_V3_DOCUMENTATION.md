@@ -114,17 +114,16 @@ It is critical to understand the method used for synchronization in this applica
 
 - **Live State Synchronization (Our Method):** This application uses a live, push-based method. The `useAgentSync` hook calls a function (`syncToAgent`) that continuously pushes a complete snapshot of "The Brain's" state to the agent during the conversation. This ensures the agent's context is always aligned with the UI in real-time. The `getCurrentState` tool is a mechanism to verify the success of this live push.
 
-### 5. Map Display for Confirmed Selection
-- After address validation, the confirmed selection is always enriched with `lat` and `lng` (coordinates) if available from the backend.
+### 5. Map Display for Confirmed Selection (Updated Pattern)
+- All confirmed selections, regardless of whether they originate from manual or conversational/agent flows, must be fully hydrated with coordinates (`lat`/`lng`) before being set in state and displayed. The system guarantees that the Confirmed Selection UI is always consistent and display-ready.
+- Both manual and agent-driven selections must use a single, centralized logic path to ensure that all confirmed selections are fully hydrated (with coordinates and any other required fields). Divergent logic between flows is not permitted, as it leads to inconsistent UI and technical debt.
+- The enrichment step occurs in the selection handler, which merges the coordinates into the `selectedResult` if needed (by fetching details from the backend).
+- The `Suggestion` type includes optional `lat` and `lng` fields for this purpose.
 - The Confirmed Selection UI displays a Google Map only when these coordinates are present.
-- This ensures that only fully validated, trustworthy locations are visualized on the map, never partial or ambiguous suggestions.
-- The enrichment step occurs in the validation handler (`useActionHandler`), which merges the coordinates into the `selectedResult`.
-- The `Suggestion` type now includes optional `lat` and `lng` fields for this purpose.
-
-#### Confirmed Selection Map Display (New Pattern)
-- When a user confirms an address (after validation), the UI checks for `lat` and `lng` on the confirmed selection.
-- If present, a Google Map is displayed below the address details.
 - This pattern guarantees that only validated, geocoded addresses are visualized, aligning with our data quality and UX goals.
+
+### Future Direction
+The ideal architecture is for the backend to always return fully-hydrated, display-ready selection objects for any confirmed selection. The frontend should never need to patch up or fetch additional details after selection.
 
 ## Application Flow
 
@@ -273,3 +272,11 @@ useAction(api.address.getPlaceSuggestions)
 
 **Why:**
 Convex generates a nested object for each file and export, so the correct path is always `api.folder.file.exportName`.
+
+## Backend Strict Intent Filtering (2024-06)
+
+- The backend now strictly filters place suggestions by the detected or provided intent:
+  - If the intent is 'suburb', 'street', or 'address', only results matching that type are returned.
+  - If the intent is 'general', broader results are returned as before.
+- This change minimizes ambiguity in conversational UI flows and ensures the user sees only the most relevant results for their query intent.
+- The frontend continues to classify and send intent, but the backend enforces this filter for all API requests.

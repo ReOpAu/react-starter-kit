@@ -42,8 +42,8 @@ export function useSuburbAutocomplete() {
 	const [enhancedResult, setEnhancedResult] =
 		useState<EnhancedSuburbResult | null>(null);
 
-	const getPlaceSuggestions = useAction(api.address.getPlaceSuggestions);
-	const validateAddress = useAction(api.address.validateAddress);
+	const getPlaceSuggestions = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
+	const validateAddress = useAction(api.address.validateAddress.validateAddress);
 
 	// Legacy functions for conversation interface (simplified versions)
 	const lookupSuburb = async (suburbInput: string) => {
@@ -199,7 +199,7 @@ export function useSuburbAutocomplete() {
 		try {
 			const result = await getPlaceSuggestions({
 				query,
-				intent,
+				intent: intent ?? "suburb",
 				maxResults: options?.maxResults,
 				location: options?.location,
 				radius: options?.radius,
