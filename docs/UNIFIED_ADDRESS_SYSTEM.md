@@ -45,6 +45,8 @@ This is the Convex backend file that contains the powerful server-side logic for
 -   **Fuzzy Matching & Lookups**: Performs enhanced lookups for suburbs and postcodes.
 -   **Fallback Intent Classification**: The `getPlaceSuggestions` action contains sophisticated server-side intent classification that serves as the fallback and final authority if the client-side classification is ambiguous.
 
+> **Note:** After moving or adding Convex actions, always run `npx convex dev` to regenerate API types for the frontend.
+
 ---
 
 ## 3. Data & Logic Flow

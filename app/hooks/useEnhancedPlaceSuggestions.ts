@@ -43,7 +43,7 @@ export function useEnhancedPlaceSuggestions(
 	const [lastResult, setLastResult] =
 		useState<EnhancedPlaceSearchResult | null>(null);
 
-	const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
+	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions);
 
 	const searchPlaces = useCallback(
 		async (query: string): Promise<EnhancedPlaceSearchResult> => {

@@ -122,7 +122,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 							);
 
 							// Call the suburb lookup action
-							const result = await convex.action(api.location.lookupSuburb, {
+							const result = await convex.action(api.suburb.lookupSuburb, {
 								suburbInput: address,
 							});
 

@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# DRY Principle for Business Logic and Validation
+
+All business logic, validation, and filtering patterns that are used in more than one place **must** be extracted into a shared helper function or utility.  
+Never duplicate such logic inline in multiple files or functions.
+
+## Steps
+
+1. When you identify logic (e.g., filtering, validation, transformation) that is used in more than one place, extract it into a helper function.
+2. Place the helper in a shared location (e.g., `convex/utils/`, `app/utils/`, or a relevant module).
+3. Replace all inline copies of the logic with calls to the shared helper.
+4. During code review, check for repeated logic and require refactoring to helpers.
+
+## Example
+
+```typescript
+// Good: Use a shared helper
+function isValidSuburbPrediction(prediction: Prediction): boolean { ... }
+
+// Usage everywhere:
+if (isValidSuburbPrediction(prediction)) { ... }
+```
+
+```typescript
+// Bad: Duplicating the same filtering logic inline in multiple places
+if (
+  prediction.types.includes("locality") &&
+  !prediction.types.includes("establishment") &&
+  ...
+) { ... }
+```

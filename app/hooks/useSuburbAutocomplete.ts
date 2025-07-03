@@ -1,10 +1,7 @@
 import { useAction } from "convex/react";
 import { useCallback, useState } from "react";
 import { api } from "../../convex/_generated/api";
-import type {
-	AddressValidationResult,
-	PlaceSuggestion,
-} from "../../convex/location";
+import type { PlaceSuggestion } from "../../convex/address/types";
 import type { LocationIntent } from "../stores/types";
 import { classifyIntent } from "../utils/addressFinderUtils";
 
@@ -45,8 +42,8 @@ export function useSuburbAutocomplete() {
 	const [enhancedResult, setEnhancedResult] =
 		useState<EnhancedSuburbResult | null>(null);
 
-	const getPlaceSuggestions = useAction(api.location.getPlaceSuggestions);
-	const validateAddress = useAction(api.location.validateAddress);
+	const getPlaceSuggestions = useAction(api.address.getPlaceSuggestions);
+	const validateAddress = useAction(api.address.validateAddress);
 
 	// Legacy functions for conversation interface (simplified versions)
 	const lookupSuburb = async (suburbInput: string) => {

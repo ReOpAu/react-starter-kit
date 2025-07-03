@@ -1,6 +1,7 @@
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { Suggestion } from "~/stores/addressFinderStore";
+import { NearbyAldiStores } from "./NearbyAldiStores";
 
 interface SelectedResultCardProps {
 	result: Suggestion;
@@ -9,7 +10,7 @@ interface SelectedResultCardProps {
 	lng?: number;
 }
 
-const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
+export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 	result,
 	onClear,
 	lat,
@@ -38,6 +39,33 @@ const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 							{result.placeId}
 						</p>
 					</div>
+					{/* Additional API Data */}
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-purple-100/40 rounded p-3">
+						{result.resultType && (
+							<div>
+								<span className="font-semibold text-purple-800">Result Type: </span>
+								<span className="text-purple-700">{result.resultType}</span>
+							</div>
+						)}
+						{result.suburb && (
+							<div>
+								<span className="font-semibold text-purple-800">Suburb: </span>
+								<span className="text-purple-700">{result.suburb}</span>
+							</div>
+						)}
+						{result.types && result.types.length > 0 && (
+							<div className="md:col-span-2">
+								<span className="font-semibold text-purple-800">Types: </span>
+								<span className="text-purple-700">{result.types.join(", ")}</span>
+							</div>
+						)}
+						{(lat !== undefined && lng !== undefined) && (
+							<div className="md:col-span-2">
+								<span className="font-semibold text-purple-800">Coordinates: </span>
+								<span className="text-purple-700">{lat}, {lng}</span>
+							</div>
+						)}
+					</div>
 					{lat !== undefined && lng !== undefined && (
 						<div className="mt-4">
 							<p className="font-semibold text-purple-800 mb-2">
@@ -53,6 +81,7 @@ const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								referrerPolicy="no-referrer-when-downgrade"
 								src={`https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed`}
 							/>
+							<NearbyAldiStores lat={lat} lng={lng} />
 						</div>
 					)}
 				</div>
@@ -60,5 +89,3 @@ const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 		</Card>
 	);
 };
-
-export default SelectedResultCard;

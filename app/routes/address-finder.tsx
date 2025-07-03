@@ -27,6 +27,7 @@ import {
 	classifyIntent,
 	classifySelectedResult,
 	getIntentColor,
+	fetchLatLngForPlaceId,
 } from "~/utils/addressFinderUtils";
 
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
@@ -145,7 +146,8 @@ export default function AddressFinder() {
 	}, [stopRecording, conversation]);
 
 	// API Action
-	const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
+	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
+	const getPlaceDetailsAction = useAction(api.address.getPlaceDetails.getPlaceDetails);
 
 	// UNIFIED QUERY - Single source of truth for all API data
 	// This hook is a reactive subscriber to the agent's search results.
@@ -254,16 +256,27 @@ export default function AddressFinder() {
 
 	// Event handlers
 	const handleSelectResult = useCallback(
-		(result: Suggestion) => {
-			handleSelect(result);
-			// Clear context after selection
+		async (result: Suggestion) => {
+			let updatedResult = result;
+			if ((result.lat === undefined || result.lng === undefined) && result.placeId) {
+				const detailsRes = await getPlaceDetailsAction({ placeId: result.placeId });
+				if (detailsRes.success && detailsRes.details?.geometry?.location) {
+					updatedResult = {
+						...result,
+						lat: detailsRes.details.geometry.location.lat,
+						lng: detailsRes.details.geometry.location.lng,
+						// Optionally merge more details if needed
+					};
+				}
+			}
+			handleSelect(updatedResult);
 			setAgentLastSearchQuery(null);
 			queryClient.removeQueries({
 				queryKey: ["addressSearch", result?.description],
 				exact: true,
 			});
 		},
-		[handleSelect, setAgentLastSearchQuery, queryClient],
+		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction]
 	);
 
 	const handleRequestAgentState = useCallback(() => {

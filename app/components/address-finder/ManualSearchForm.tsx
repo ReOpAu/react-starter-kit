@@ -72,7 +72,7 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 
 		// ManualSearchForm's own autocomplete query - completely independent
 		const getPlaceSuggestionsAction = useAction(
-			api.location.getPlaceSuggestions,
+			api.address.getPlaceSuggestions.getPlaceSuggestions,
 		);
 
 		const {

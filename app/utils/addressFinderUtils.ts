@@ -217,3 +217,17 @@ export function classifyIntent(query: string): LocationIntent {
 
 	return "general";
 }
+
+export async function fetchLatLngForPlaceId(placeId: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
+	const res = await fetch(
+		`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${apiKey}`
+	);
+	const data = await res.json();
+	if (data.result?.geometry?.location) {
+		return {
+			lat: data.result.geometry.location.lat,
+			lng: data.result.geometry.location.lng,
+		};
+	}
+	return null;
+}

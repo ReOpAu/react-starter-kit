@@ -20,8 +20,8 @@ export function useAddressFinderClientTools(
 	clearSessionToken: () => void,
 ) {
 	const queryClient = useQueryClient();
-	const getPlaceSuggestionsAction = useAction(api.location.getPlaceSuggestions);
-	const validateAddressAction = useAction(api.location.validateAddress);
+	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions);
+	const validateAddressAction = useAction(api.address.validateAddress);
 
 	// ✅ FIX: All required state values and setters are destructured at the top level.
 	const { isRecording, setAgentRequestedManual } = useUIStore();
