@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Suggestion } from "~/stores/types";
+import type { Suggestion, Mode } from "~/stores/types";
 
 interface ApiState {
 	apiResults: {
 		suggestions: Suggestion[];
 		isLoading: boolean;
 		error: string | null;
-		source: "manual" | "voice" | null;
+		source: Mode | null;
 		timestamp: number;
 	};
 	agentLastSearchQuery: string | null;

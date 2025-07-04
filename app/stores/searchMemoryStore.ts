@@ -24,6 +24,7 @@ interface SearchMemoryStore {
 export const useSearchMemoryStore = create<SearchMemoryStore>((set, get) => ({
   memory: [],
   addOrUpdateSearch: (entry) => {
+    // Now allow storing any search (including unconfirmed, multi-result searches)
     // Improved de-duplication: Remove any entry where either placeId or query matches the new entry
     let updated = get().memory.filter(e => {
       // If both have placeId and they match, remove

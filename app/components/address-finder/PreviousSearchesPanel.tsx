@@ -11,7 +11,7 @@ interface PreviousSearchesPanelProps {
 
 export const PreviousSearchesPanel: React.FC<PreviousSearchesPanelProps> = ({ onRecall, onClose }) => {
   const memory = useSearchMemoryStore((s) => s.memory);
-  const previousSearches = memory.slice(1); // Exclude the current/active search
+  const previousSearches = memory; // Show all confirmed selections, including the most recent
   const { searchQuery } = useIntentStore();
 
   if (previousSearches.length === 0) {

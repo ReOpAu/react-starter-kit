@@ -1,18 +1,18 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { LocationIntent, Suggestion } from "~/stores/types";
+import type { LocationIntent, Suggestion, Mode } from "~/stores/types";
 
 interface IntentState {
 	searchQuery: string;
 	selectedResult: Suggestion | null;
 	currentIntent: LocationIntent;
 	isSmartValidationEnabled: boolean;
-	activeSearchSource: "manual" | "voice" | null;
+	activeSearchSource: Mode | null;
 	agentLastSearchQuery: string | null;
 
 	setActiveSearch: (payload: {
 		query: string;
-		source: "manual" | "voice";
+		source: Mode;
 	}) => void;
 	setSelectedResult: (result: Suggestion | null) => void;
 	setCurrentIntent: (intent: LocationIntent) => void;
@@ -38,7 +38,7 @@ export const useIntentStore = create<IntentState>()(
 			...initialIntentState,
 			setActiveSearch: (payload: {
 				query: string;
-				source: "manual" | "voice";
+				source: Mode;
 			}) => {
 				if (!payload.query) {
 					set({ searchQuery: "", activeSearchSource: null });

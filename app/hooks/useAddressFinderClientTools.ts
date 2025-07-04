@@ -18,6 +18,7 @@ import { useUIStore } from "~/stores/uiStore";
 export function useAddressFinderClientTools(
 	getSessionToken: () => string,
 	clearSessionToken: () => void,
+	onSelectResult?: (suggestion: Suggestion) => Promise<unknown>,
 ) {
 	const queryClient = useQueryClient();
 	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
@@ -239,6 +240,16 @@ export function useAddressFinderClientTools(
 							};
 						}
 					}
+					if (onSelectResult) {
+						await onSelectResult(updatedSelection);
+						return JSON.stringify({
+							status: "confirmed",
+							selection: updatedSelection,
+							timestamp: Date.now(),
+							confirmationMessage: `Successfully selected "${updatedSelection.description}"`,
+						});
+					}
+					// fallback: legacy direct state update (should not be used)
 					const intent = classifySelectedResult(updatedSelection);
 					setCurrentIntent(intent);
 					setSelectedResult(updatedSelection);
@@ -246,14 +257,13 @@ export function useAddressFinderClientTools(
 					addHistory({ type: "agent", text: `Agent selected: "${updatedSelection.description}" (${intent})` });
 					clearSessionToken();
 					setAgentLastSearchQuery(null);
-					const confirmationResponse = {
+					return JSON.stringify({
 						status: "confirmed",
 						selection: updatedSelection,
 						intent,
 						timestamp: Date.now(),
 						confirmationMessage: `Successfully selected "${updatedSelection.description}" as ${intent}`,
-					};
-					return JSON.stringify(confirmationResponse);
+					});
 				}
 
 				log("❌ Selection not found for placeId:", placeId);
@@ -492,11 +502,6 @@ export function useAddressFinderClientTools(
 			getSessionToken,
 			clearSessionToken,
 			log,
-			isRecording,
-			searchQuery,
-			selectedResult,
-			currentIntent,
-			agentLastSearchQuery,
 			setActiveSearch,
 			setSelectedResult,
 			setCurrentIntent,
@@ -504,7 +509,9 @@ export function useAddressFinderClientTools(
 			setAgentRequestedManual,
 			setAgentLastSearchQuery,
 			clearSelectionAndSearch,
-		],
+			onSelectResult,
+			currentIntent,
+		]
 	);
 
 	return clientTools;

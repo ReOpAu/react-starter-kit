@@ -25,3 +25,12 @@ export interface HistoryItem {
 	text: string;
 	timestamp?: number;
 }
+
+// Update mode type to include 'agent'
+export type Mode = 'manual' | 'voice' | 'agent';
+
+// Update any interfaces that use mode
+export interface ActiveSearch {
+	query: string;
+	source: Mode;
+}
