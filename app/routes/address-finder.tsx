@@ -71,7 +71,7 @@ export default function AddressFinder() {
 	const { setApiResults } = useApiStore();
 	const { history, addHistory } = useHistoryStore();
 	const { clearSelectionAndSearch } = useAddressFinderActions();
-	const { addSearch, getMemory } = useSearchMemoryStore();
+	const { addOrUpdateSearch, getMemory } = useSearchMemoryStore();
 	const memory = useSearchMemoryStore((s) => s.memory);
 
 	// Local component state
@@ -265,6 +265,8 @@ export default function AddressFinder() {
 	]);
 
 	// Event handlers
+	const [isRecallMode, setIsRecallMode] = useState(false);
+
 	const handleSelectResult = useCallback(
 		async (result: Suggestion) => {
 			let updatedResult = result;
@@ -275,21 +277,14 @@ export default function AddressFinder() {
 						...result,
 						lat: detailsRes.details.geometry.location.lat,
 						lng: detailsRes.details.geometry.location.lng,
-						// Optionally merge more details if needed
 					};
 				}
 			}
-			
-			// CRITICAL: Update agent's suggestions context to include this selection
-			// This prevents "stale context" issues by ensuring the agent can find the selection
-			// Works for both manual selections and auto-selections
 			const currentSearchQuery = searchQuery || result.description;
 			const currentSuggestions = queryClient.getQueryData<Suggestion[]>([
-				"addressSearch", 
+				"addressSearch",
 				currentSearchQuery
 			]) || [];
-			
-			// Add the selected result to the suggestions if it's not already there
 			if (!currentSuggestions.find(s => s.placeId === result.placeId)) {
 				const updatedSuggestions = [...currentSuggestions, updatedResult];
 				queryClient.setQueryData(
@@ -298,29 +293,39 @@ export default function AddressFinder() {
 				);
 				log("🔧 Context sync: Added selection to agent's suggestions array");
 			}
-			
 			handleSelect(updatedResult);
-			setAgentLastSearchQuery(currentSearchQuery); // Use the current search query, not null
+			setAgentLastSearchQuery(currentSearchQuery);
 			queryClient.removeQueries({
 				queryKey: ["addressSearch", result?.description],
 				exact: true,
 			});
-			// --- CRITICAL: Immediately sync agent context after selection ---
-			// This ensures the agent sees the confirmed selection in its context, per UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md
 			syncToAgent();
-
-			// 4. Add to search memory as confirmed
-			addSearch({
-				query: currentSearchQuery,
-				results: currentSuggestions.length > 0 ? currentSuggestions : [updatedResult],
-				context: {
-					mode: isRecording ? "voice" : "manual",
-					intent: currentIntent || "general",
-					confirmed: true,
-				},
-			});
+			// Only add to memory if not in recall mode (i.e., true new search)
+			if (!isRecallMode) {
+				// IMPORTANT: Always use the event payload (selected suggestion) as the source of truth for memory/history.
+				// Never use possibly stale state (e.g., currentSearchQuery) here. This ensures the Brain and Agent are always in sync
+				// and prevents subtle bugs where state lags behind user actions. See state-management-strategy.md and UNIFIED_ADDRESS_SYSTEM.md.
+				const entry = {
+					query: updatedResult.description, // Use the selected result's description as the query
+					results: currentSuggestions.length > 0 ? currentSuggestions : [updatedResult],
+					context: {
+						mode: (isRecording ? "voice" : "manual") as 'manual' | 'voice',
+						intent: (currentIntent ?? "general"),
+						confirmed: true,
+					},
+					placeId: updatedResult.placeId,
+				};
+				console.log('[addOrUpdateSearch] handleSelectResult', {
+					query: entry.query,
+					placeId: entry.placeId,
+					firstResult: entry.results?.[0]?.description,
+					context: entry.context,
+				});
+				addOrUpdateSearch(entry);
+			}
+			setIsRecallMode(false); // Always reset after a new search
 		},
-		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction, syncToAgent, searchQuery, log, addSearch, isRecording, currentIntent]
+		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction, syncToAgent, searchQuery, log, addOrUpdateSearch, isRecording, currentIntent, isRecallMode]
 	);
 
 	const handleRequestAgentState = useCallback(() => {
@@ -341,7 +346,7 @@ export default function AddressFinder() {
 
 	// Dynamic UI visibility
 	const shouldShowSuggestions =
-		isRecording && suggestions.length > 0 && !selectedResult && !isLoading;
+		suggestions.length > 0 && !selectedResult && !isLoading;
 	const shouldShowManualForm = !isRecording || agentRequestedManual;
 	const shouldShowSelectedResult = selectedResult && !isValidating;
 	const shouldShowValidationStatus = isValidating || validationError;
@@ -349,30 +354,42 @@ export default function AddressFinder() {
 	// After every successful search or autocomplete, update the agentLastSearchQuery
 	const handleManualSearch = useCallback(
 		async (query: string) => {
-			// 1. Fetch suggestions from API
 			const result = await getPlaceSuggestionsAction({ query });
 			if (result.success) {
-				// 2. Update agent context and cache
 				setAgentLastSearchQuery(query);
 				queryClient.setQueryData(["addressSearch", query], result.suggestions);
-
-				// 3. Add to search memory
-				addSearch({
-					query,
-					results: result.suggestions,
-					context: {
-						mode: isRecording ? "voice" : "manual",
-						intent: currentIntent || "general",
-						confirmed: false,
-					},
-				});
+				if (!isRecallMode) {
+					// Try to infer placeId if only one suggestion and it matches the query
+					let placeId = undefined;
+					if (result.suggestions.length === 1 && result.suggestions[0].description === query) {
+						placeId = result.suggestions[0].placeId;
+					}
+					const entry = {
+						query,
+						results: result.suggestions,
+						context: {
+							mode: (isRecording ? "voice" : "manual") as 'manual' | 'voice',
+							intent: (currentIntent ?? "general"),
+							confirmed: false,
+						},
+						placeId,
+					};
+					console.log('[addOrUpdateSearch] handleManualSearch', {
+						query: entry.query,
+						placeId: entry.placeId,
+						firstResult: entry.results?.[0]?.description,
+						context: entry.context,
+					});
+					addOrUpdateSearch(entry);
+				}
+				setIsRecallMode(false); // Always reset after a new search
 				// ...rest of logic (e.g., sync, UI updates)...
 			} else {
 				// Optionally handle error (e.g., show error to user)
 				// log('Manual search failed:', result.error);
 			}
 		},
-		[setAgentLastSearchQuery, queryClient, getPlaceSuggestionsAction, addSearch, isRecording, currentIntent],
+		[setAgentLastSearchQuery, queryClient, getPlaceSuggestionsAction, addOrUpdateSearch, isRecording, currentIntent, isRecallMode]
 	);
 
 	// Defensive checks: if agentLastSearchQuery is null or the cache is empty, do not attempt selection and prompt for a new search.
@@ -432,8 +449,7 @@ export default function AddressFinder() {
 
 	// Centralized hydration handler for recalling a previous search
 	const handleRecallPreviousSearch = useCallback((entry: SearchMemoryEntry) => {
-		// Hydrate all relevant state
-		setSelectedResult(null); // Clear any current selection
+		setActiveSearch({ query: entry.query, source: entry.context.mode });
 		setCurrentIntent(entry.context.intent as LocationIntent);
 		setAgentLastSearchQuery(entry.query);
 		setApiResults({
@@ -442,14 +458,13 @@ export default function AddressFinder() {
 			error: null,
 			source: entry.context.mode,
 		});
-		// If not in an active AI conversation, update the search query and source for full UI hydration
-		if (!isRecording) {
-			setActiveSearch({ query: entry.query, source: entry.context.mode });
-		}
-		// Sync to agent
-		syncToAgent();
+		setSelectedResult(null);
+		queryClient.setQueryData(["addressSearch", entry.query], entry.results);
+		setDebouncedSearchQuery(entry.query);
 		setShowPreviousSearches(false);
-	}, [setSelectedResult, setCurrentIntent, setAgentLastSearchQuery, setApiResults, setActiveSearch, syncToAgent, isRecording]);
+		syncToAgent();
+		setIsRecallMode(true); // Set recall mode only in recall handler
+	}, [setActiveSearch, setCurrentIntent, setAgentLastSearchQuery, setApiResults, setSelectedResult, syncToAgent, queryClient]);
 
 	return (
 		<div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -489,7 +504,7 @@ export default function AddressFinder() {
 						size="sm"
 						variant="outline"
 						onClick={() => setShowPreviousSearches(true)}
-						disabled={memory.length === 0}
+						disabled={memory.length <= 1}
 					>
 						Previous Searches
 					</Button>

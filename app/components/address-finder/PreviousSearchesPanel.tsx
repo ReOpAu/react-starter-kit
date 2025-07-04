@@ -2,6 +2,7 @@ import type React from "react";
 import { useSearchMemoryStore } from "~/stores/searchMemoryStore";
 import type { SearchMemoryEntry } from "~/stores/searchMemoryStore";
 import { Button } from "../ui/button";
+import { useIntentStore } from "~/stores/intentStore";
 
 interface PreviousSearchesPanelProps {
   onRecall: (entry: SearchMemoryEntry) => void;
@@ -10,8 +11,10 @@ interface PreviousSearchesPanelProps {
 
 export const PreviousSearchesPanel: React.FC<PreviousSearchesPanelProps> = ({ onRecall, onClose }) => {
   const memory = useSearchMemoryStore((s) => s.memory);
+  const previousSearches = memory.slice(1); // Exclude the current/active search
+  const { searchQuery } = useIntentStore();
 
-  if (memory.length === 0) {
+  if (previousSearches.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
         No previous searches this session.
@@ -30,7 +33,7 @@ export const PreviousSearchesPanel: React.FC<PreviousSearchesPanelProps> = ({ on
         )}
       </div>
       <ul className="space-y-2">
-        {memory.map((entry, idx) => (
+        {previousSearches.map((entry, idx) => (
           <li key={entry.id} className="flex items-center justify-between border-b pb-2 last:border-b-0">
             <div>
               <div className="font-medium">{idx + 1}. {entry.query}</div>

@@ -11,6 +11,10 @@ This system is designed to provide a single, reliable source of truth for addres
 
 **The golden rule of this architecture is: All address-related UI components MUST use the `useSuburbAutocomplete` hook.**
 
+> **Note:** All memory/history updates and agent sync operations must use explicit, up-to-date state or event payloads (e.g., the selected suggestion in an autocomplete). Never use possibly stale, derived, or cached values. This prevents state/event confusion and ensures robust Brain/Agent synchronization.
+>
+> See: [state-management-strategy.md](./state-management-strategy.md), [Cursor Rule: Explicit State and Event Payloads](../.cursor/rules/app/state-management.mdc)
+
 ---
 
 ## 2. Core Components
@@ -90,9 +94,17 @@ By following this pattern, we ensure that a search initiated by the AI agent fol
 
 ## Unified Memory and Recall (2024 Update)
 
-- **Session-local memory**: Use Zustand to store the last 7 successful searches for fast UI recall. This enables the user or agent to revisit previous search options in the current session.
-- **Long-term/agent memory**: Use Convex for persistent memory, analytics, or agent recall across sessions/devices. Only sync from Zustand to Convex when needed.
-- **Unified hydration**: All selection/recall flows (manual, agent, previous search) must use a single, centralized handler to hydrate state and sync to the agent.
-- **Explicit nulling**: When clearing, set all selection-related state to `null` (not just remove from UI).
-- **No premature clearing**: Only clear suggestions when a new search is started or the user explicitly requests it.
-- **UI/agent recall flows**: Both UI and agent can recall previous searches; agent tools must be registered and validated. Selecting a previous search rehydrates all relevant state and syncs to the agent.
+- **Session-local memory:** Use Zustand to store the last 7 successful searches for fast UI recall. The memory/history must reflect the true, chronological, de-duplicated log of user-confirmed searches. The modal must never mutate or reorder on recall, and must never display the current/active search as a previous search.
+- **Long-term/agent memory:** Use Convex for persistent memory, analytics, or agent recall across sessions/devices. Only sync from Zustand to Convex when needed.
+- **Unified hydration:** All selection/recall flows (manual, agent, previous search) must use a single, centralized handler to hydrate state and sync to the agent.
+- **Explicit nulling:** When clearing, set all selection-related state to `null`.
+- **No premature clearing:** Only clear suggestions on new search or explicit clear.
+- **UI/agent recall flows:** Both UI and agent recall must use the same hydration logic and never mutate memory/history.
+
+See also: [state-management-strategy.md](state-management-strategy.md)
+
+## Recall Suppression Rule
+
+When a user recalls a previous search from the Previous Searches modal, that search must **not** be re-added to the session memory. This is enforced by a recall suppression mechanism (`isRecallMode` flag) in the AddressFinder component, which prevents the next search or selection from being added to memory if it was triggered by a recall. This ensures the memory only contains true user-initiated searches and avoids duplicates or replayed entries.
+
+- See also: ADDRESS_FINDER_V3_DOCUMENTATION.md (Recall Suppression Logic)

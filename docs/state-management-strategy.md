@@ -6,6 +6,45 @@
 
 > **Critical Architecture**: This strategy prevents regression by ensuring perfect synchronization between conversational AI agents and traditional UI interactions. Failure to follow these patterns will break the sophisticated multi-modal user experience.
 
+## 🔒 Explicit State and Event Payloads: The Only Source of Truth
+
+**Rule:**
+> When updating memory/history or syncing to the Agent, always reference the explicit, up-to-date state or the event payload (e.g., the selected suggestion in an autocomplete). Never use possibly stale, derived, or cached values (such as a previous search query from closure or a value that may not have been updated yet).
+
+**Why:**
+- State updates in React and similar frameworks are asynchronous. Reading from state in an event handler may yield a previous value, not the one the user just acted on.
+- The event payload (e.g., the suggestion object passed to a selection handler) is always the true, current representation of the user's action.
+- This prevents subtle bugs where memory/history or Agent sync reflects the wrong user intent, and ensures the Brain and Agent are always in sync.
+
+**Pattern:**
+```typescript
+// On suggestion select:
+setSelectedResult(suggestion); // update state immediately
+setCurrentIntent(detectedIntent); // update state immediately
+
+// When adding to memory/history:
+addOrUpdateSearch({
+  query: suggestion.description, // event payload
+  placeId: suggestion.placeId,   // event payload
+  context: { intent: detectedIntent, ... }
+});
+
+// When syncing to Agent:
+syncToAgent({
+  selectedResult, // explicit state
+  currentIntent,  // explicit state
+  // ...
+});
+```
+
+**Never do:**
+- Use a value from a previous render/closure (e.g., `currentSearchQuery` from a closure)
+- Use a value that might not have been updated yet due to async state updates
+
+**See also:**
+- [UNIFIED_ADDRESS_SYSTEM.md](UNIFIED_ADDRESS_SYSTEM.md)
+- [Agent Sync Principles](#agent-sync)
+
 ---
 
 ## 🎯 WHAT WE DO: Unified Multi-Modal State Management
@@ -939,3 +978,21 @@ This ensures that the widget remains self-contained and testable, even in the co
 - Never clear `apiResults.suggestions` on selection—only clear when a new search is initiated or the user explicitly clears state.
 - All selection/recall flows (manual, agent, previous search) must use a single, centralized hydration handler.
 - When recalling a previous search, hydrate the UI and agent state using the same unified handler as for new selections.
+
+### Previous Searches Recall Suppression
+
+To prevent duplicate or replayed entries, when a user recalls a previous search from the Previous Searches modal, the system enters a recall suppression mode (via an `isRecallMode` flag in the AddressFinder component). While in this mode, the next search or selection is not added to the session memory. This ensures the memory only contains original user-initiated searches.
+
+- See: UNIFIED_ADDRESS_SYSTEM.md (Recall Suppression Rule)
+- See: ADDRESS_FINDER_V3_DOCUMENTATION.md (Recall Suppression Logic)
+
+## 🧠 Memory/History Source of Truth
+
+- **Canonical Event:** Only add to session memory/history on a *true, user-confirmed search event* (manual or agent). Never add to memory/history on recall, UI state changes, or agent-side effects. Define "confirmed search" as: The user selects a suggestion or submits a manual search, and the selection is hydrated via the unified action handler.
+- **No Mutation on Recall:** Recalling a previous search must **never** mutate, reorder, or add to the memory/history array. The recall action must only hydrate UI and agent state.
+- **De-duplication:** When a new search is confirmed: If it already exists in memory (by placeId or description), move it to the top and update its timestamp/results. Otherwise, add it to the top. Always cap the array at 7 entries.
+- **Modal Display:** The modal must always display `memory.slice(1)` (i.e., all but the current/active search), in most-recent-first order. Never filter, reverse, or slice in ad-hoc ways.
+- **Single Source of Truth:** All memory/history updates must be triggered by the *centralized, unified action handler*—never from UI event handlers, recall flows, or side effects.
+- **Logging:** Log every time memory/history is updated, with the full array, for debugging and auditability.
+
+See also: [UNIFIED_ADDRESS_SYSTEM.md](UNIFIED_ADDRESS_SYSTEM.md), [ADDRESS_FINDER_V3_DOCUMENTATION.md](ADDRESS_FINDER_V3_DOCUMENTATION.md)

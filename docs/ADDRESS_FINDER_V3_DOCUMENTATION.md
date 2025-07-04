@@ -283,9 +283,26 @@ Convex generates a nested object for each file and export, so the correct path i
 
 ## Memory and Recall Pattern (2024 Update)
 
-- **Session-local memory**: Store the last 7 successful searches in Zustand for fast recall in the UI and agent.
+- **Session-local memory**: Store the last 7 successful searches in Zustand for fast recall in the UI and agent. **The current (most recent) search should not be included in the 'Previous Searches' modal or recall list.**
 - **Long-term/agent memory**: Use Convex for persistent memory and agent recall across sessions/devices.
 - **Unified hydration**: All selection/recall flows (manual, agent, previous search) use a single, centralized handler.
 - **Explicit nulling**: When clearing, set all selection-related state to `null`.
 - **No premature clearing**: Only clear suggestions on new search or explicit clear.
 - **UI/agent recall flows**: UI and agent can recall previous searches; agent tools must be registered and validated. Selecting a previous search rehydrates all relevant state and syncs to the agent.
+
+## Recall Suppression Logic for Previous Searches
+
+When a user recalls a previous search from the Previous Searches modal, the system enters a special 'recall mode' (tracked by an `isRecallMode` flag in the AddressFinder component). While in recall mode, any subsequent search or selection will **not** be added to the session memory. This ensures that recalled searches are not duplicated in the Previous Searches list. The recall mode is reset after the next search or selection.
+
+- The `isRecallMode` flag is set to `true` when a recall is triggered.
+- In both `handleManualSearch` and `handleSelectResult`, if `isRecallMode` is `true`, the search/selection is not added to memory and the flag is reset.
+- This prevents the Previous Searches list from being polluted with recalled entries.
+
+## Previous Searches Modal (2024 Update)
+
+- The modal must always reflect the true, chronological, de-duplicated log of user-confirmed searches.
+- Never mutate or reorder the memory/history array on recall.
+- Never display the current/active search as a previous search.
+- The modal must always display `memory.slice(1)` (i.e., all but the current/active search), in most-recent-first order.
+
+See also: [state-management-strategy.md](state-management-strategy.md)
