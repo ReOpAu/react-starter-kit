@@ -37,6 +37,10 @@ import { useIntentStore } from "~/stores/intentStore";
 // New Pillar-Aligned Store Imports
 import type { Suggestion } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
+import { useSearchMemoryStore } from "~/stores/searchMemoryStore";
+import { PreviousSearchesPanel } from "~/components/address-finder/PreviousSearchesPanel";
+import type { SearchMemoryEntry } from "~/stores/searchMemoryStore";
+import type { LocationIntent } from "~/stores/types";
 
 export default function AddressFinder() {
 	const queryClient = useQueryClient();
@@ -65,6 +69,7 @@ export default function AddressFinder() {
 	const { setApiResults } = useApiStore();
 	const { history, addHistory } = useHistoryStore();
 	const { clearSelectionAndSearch } = useAddressFinderActions();
+	const { addSearch, getMemory } = useSearchMemoryStore();
 
 	// Local component state
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -323,8 +328,19 @@ export default function AddressFinder() {
 			// --- CRITICAL: Immediately sync agent context after selection ---
 			// This ensures the agent sees the confirmed selection in its context, per UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md
 			syncToAgent();
+
+			// 4. Add to search memory as confirmed
+			addSearch({
+				query: currentSearchQuery,
+				results: currentSuggestions.length > 0 ? currentSuggestions : [updatedResult],
+				context: {
+					mode: isRecording ? "voice" : "manual",
+					intent: currentIntent || "general",
+					confirmed: true,
+				},
+			});
 		},
-		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction, syncToAgent, searchQuery, log]
+		[handleSelect, setAgentLastSearchQuery, queryClient, getPlaceDetailsAction, syncToAgent, searchQuery, log, addSearch, isRecording, currentIntent]
 	);
 
 	const handleRequestAgentState = useCallback(() => {
@@ -359,13 +375,24 @@ export default function AddressFinder() {
 				// 2. Update agent context and cache
 				setAgentLastSearchQuery(query);
 				queryClient.setQueryData(["addressSearch", query], result.suggestions);
+
+				// 3. Add to search memory
+				addSearch({
+					query,
+					results: result.suggestions,
+					context: {
+						mode: isRecording ? "voice" : "manual",
+						intent: currentIntent || "general",
+						confirmed: false,
+					},
+				});
 				// ...rest of logic (e.g., sync, UI updates)...
 			} else {
 				// Optionally handle error (e.g., show error to user)
 				// log('Manual search failed:', result.error);
 			}
 		},
-		[setAgentLastSearchQuery, queryClient, getPlaceSuggestionsAction],
+		[setAgentLastSearchQuery, queryClient, getPlaceSuggestionsAction, addSearch, isRecording, currentIntent],
 	);
 
 	// Defensive checks: if agentLastSearchQuery is null or the cache is empty, do not attempt selection and prompt for a new search.
@@ -382,14 +409,13 @@ export default function AddressFinder() {
 	const [showLowConfidence, setShowLowConfidence] = useState(false);
 
 	// Helper to extract state abbreviation from a string
-	function extractState(str: string): string | null {
+	const extractState = useCallback((str: string): string | null => {
 		const match = str.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
 		return match ? match[1].toUpperCase() : null;
-	}
+	}, []);
 
 	// Auto-select or show search again for conversational flow
 	// extractState is a stable function defined in the component scope and does not change between renders
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(() => {
 		if (
 			isRecording &&
@@ -414,7 +440,7 @@ export default function AddressFinder() {
 		} else {
 			setShowLowConfidence(false);
 		}
-	}, [isRecording, selectedResult, suggestions, isLoading, isError, handleSelectResult, searchQuery]);
+	}, [isRecording, selectedResult, suggestions, isLoading, isError, handleSelectResult, searchQuery, extractState]);
 
 	// Handler for Search Again button
 	const handleSearchAgain = useCallback(() => {
@@ -422,8 +448,37 @@ export default function AddressFinder() {
 		handleClear("user");
 	}, [handleClear]);
 
+	const [showPreviousSearches, setShowPreviousSearches] = useState(false);
+
+	// Centralized hydration handler for recalling a previous search
+	const handleRecallPreviousSearch = useCallback((entry: SearchMemoryEntry) => {
+		// Hydrate all relevant state
+		setSelectedResult(null); // Clear any current selection
+		setCurrentIntent(entry.context.intent as LocationIntent);
+		setAgentLastSearchQuery(entry.query);
+		setApiResults({
+			suggestions: entry.results,
+			isLoading: false,
+			error: null,
+			source: entry.context.mode,
+		});
+		// Optionally set searchQuery if you want to update the input
+		// setSearchQuery(entry.query);
+		// Sync to agent
+		syncToAgent();
+		setShowPreviousSearches(false);
+	}, [setSelectedResult, setCurrentIntent, setAgentLastSearchQuery, setApiResults, syncToAgent]);
+
 	return (
 		<div className="container mx-auto py-8 px-4 max-w-4xl">
+			{showPreviousSearches && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+					<PreviousSearchesPanel
+						onRecall={handleRecallPreviousSearch}
+						onClose={() => setShowPreviousSearches(false)}
+					/>
+				</div>
+			)}
 			<div className="space-y-6">
 				<div className="text-center space-y-2">
 					<h1 className="text-3xl font-bold">Intelligent Address Finder v3</h1>
@@ -448,6 +503,9 @@ export default function AddressFinder() {
 							{agentRequestedManual && " + Manual Input"}
 						</Badge>
 					)}
+					<Button size="sm" variant="outline" onClick={() => setShowPreviousSearches(true)}>
+						Previous Searches
+					</Button>
 				</div>
 
 				{/* Rural Address Confirmation Prompt */}

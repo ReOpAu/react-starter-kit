@@ -773,110 +773,30 @@ If you encounter a "Maximum update depth exceeded" error, follow these steps:
 
 ---
 
-## Conclusion
+## Address Finder: Memory and Recall Pattern (2024 Update)
 
-This comprehensive state management strategy transforms your current dual storage architecture into a unified, reliable, and scalable system that ensures perfect UI-Agent alignment.
+### Session-Local Memory (Zustand)
+- Store the last 7 successful searches (query, results, timestamp, context) in a new `searchMemoryStore` (Zustand).
+- This enables fast UI recall ("what were the options again?") and is session-local.
+- Never clear `apiResults.suggestions` on selection—only clear when a new search is initiated or the user explicitly clears state.
+- When a previous search is recalled, hydrate the UI and agent state using the same unified handler as for new selections.
 
-### 🎯 Core Achievement
+### Long-Term/Agent Memory (Convex)
+- Use Convex only for long-term memory, analytics, or agent recall across sessions/devices.
+- If the agent needs to reference previous searches, sync from Zustand to Convex at session end or on explicit "save to memory" actions.
 
-**Problem:** Agent sees different data than UI, leading to confused interactions and poor user experience.
+### Unified Hydration and State Sync
+- All selection/recall flows (manual, agent, previous search) must use a single, centralized hydration handler.
+- When recalling a previous search, update all relevant state (`selectedResult`, `selectedAddress`, `selectedPlaceId`, `currentIntent`, `hasSelection`) and sync to agent.
+- When clearing, set all selection-related state to `null` (not just remove from UI).
+- Only clear suggestions when a new search is started or the user explicitly requests it.
 
-**Solution:** Single source of truth where ALL API data flows through React Query, with real-time synchronization to agent.
+### UI/Agent Recall Flows
+- UI: "Previous Searches" panel/modal, showing up to 7 recent searches. Selecting a previous search rehydrates the UI and agent state.
+- Agent: Tool to fetch and present previous searches, with selection by number or name. If only one result/manual, agent states this clearly.
 
-**Result:** Perfect alignment between what users see and what the agent knows, enabling sophisticated voice interactions.
-
-### 🚀 Implementation Path
-
-**Week 1-2: Foundation**
-- [ ] Implement unified state architecture
-- [ ] Create `useAgentSync` hook
-- [ ] Update one component as proof of concept
-
-**Week 3-4: Migration**
-- [ ] Complete component migration
-- [ ] Remove all dual storage patterns
-- [ ] Add comprehensive testing
-
-**Week 5: Optimization**
-- [ ] Performance tuning
-- [ ] Documentation and team training
-- [ ] Production deployment
-
-### 🎁 What You Get
-
-**For Users:**
-- ✅ Faster, more responsive voice interactions
-- ✅ Consistent behavior across manual and voice modes
-- ✅ Better error recovery and reliability
-
-**For Developers:**
-- ✅ Predictable, debuggable state management
-- ✅ Clear patterns for new features
-- ✅ Reduced maintenance overhead
-
-**For Business:**
-- ✅ More reliable product
-- ✅ Faster feature development
-- ✅ Reduced technical debt
-
-**This strategy is not just about fixing current problems - it's about building a foundation for sophisticated AI-driven user experiences that will scale with your application's growth.**
-
-### 4. User Action Precedence Pattern (Formerly Conflict Resolution)
-
-**Rule**: User actions on the UI (clicks, form submissions) are definitive and take precedence. They MUST be synchronized programmatically, not communicated conversationally.
-
-```typescript
-// ✅ CORRECT: Programmatic sync is the only source of truth.
-const handleSelectResult = useCallback((result: Suggestion) => {
-  // 1. Manipulate shared state directly. This is the user's explicit choice.
-  setSelectedResult(result);
-  setSearchQuery(result.description);
-  
-  // 2. Programmatically sync the new, definitive state to the agent.
-  //    This is the ONLY required method to inform the agent.
-  //    DO NOT send a conversational message.
-  performReliableSync('user-selection').catch(console.error);
-  
-}, [setSelectedResult, setSearchQuery, performReliableSync]);
-```
-
-### 5. Source Priority Deduplication
-```typescript
-// ✅ REQUIRED - Handle multiple suggestion sources with priority
-const deduplicateSuggestions = <T extends Suggestion & { source: string }>(
-  suggestions: T[],
-  source: string
-): T[] => {
-  const result: T[] = [];
-  const seen = new Set<string>();
-  
-  for (const suggestion of suggestions) {
-    if (!seen.has(suggestion.placeId) && suggestion.source === source) {
-      result.push(suggestion);
-      seen.add(suggestion.placeId);
-    }
-  }
-  
-  return result;
-};
-```
-
-### 6. Conversational Sync (Anti-Pattern)
-```typescript
-// ❌ CRITICAL ANTI-PATTERN: Never use conversational messages for state sync.
-const handleSelectResult = useCallback((result: Suggestion) => {
-  setSelectedResult(result);
-  
-  // ❌ The agent may ignore, misunderstand, or be too slow to process this.
-  if (isRecording) {
-    const message = "Hey agent, just letting you know I clicked a thing."
-    conversation.sendUserMessage?.(message); // UNRELIABLE
-  }
-  
-  // This creates a race condition between unreliable chat and reliable sync.
-  syncToAgent();
-});
-```
+### Legacy Code Management
+- Move any old/unused search memory/recall logic to `old/` folders. Update imports to avoid referencing legacy code.
 
 ## REQUIRED PATTERNS ✅
 
@@ -1011,3 +931,11 @@ Even in hybrid mode, `ManualSearchForm`:
 - **Does not manipulate the shared state** directly
 
 This ensures that the widget remains self-contained and testable, even in the complex hybrid mode.
+
+## Strict AI Agent and UI State Synchronization (2024 Update)
+
+- All critical state (selections, intent, errors, completions) must be explicitly synced to the agent.
+- When clearing selections, all related state (`selectedResult`, `selectedAddress`, `selectedPlaceId`, `currentIntent`, `hasSelection`) must be set to `null`—not just removed from the UI.
+- Never clear `apiResults.suggestions` on selection—only clear when a new search is initiated or the user explicitly clears state.
+- All selection/recall flows (manual, agent, previous search) must use a single, centralized hydration handler.
+- When recalling a previous search, hydrate the UI and agent state using the same unified handler as for new selections.

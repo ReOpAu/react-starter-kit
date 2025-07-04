@@ -87,3 +87,12 @@ By following this pattern, we ensure that a search initiated by the AI agent fol
   - For 'suburb', 'street', or 'address', only results of that type are returned.
   - For 'general', broader results are allowed.
 - This ensures the UI and agent only present results matching the user's classified intent, reducing ambiguity in conversational flows.
+
+## Unified Memory and Recall (2024 Update)
+
+- **Session-local memory**: Use Zustand to store the last 7 successful searches for fast UI recall. This enables the user or agent to revisit previous search options in the current session.
+- **Long-term/agent memory**: Use Convex for persistent memory, analytics, or agent recall across sessions/devices. Only sync from Zustand to Convex when needed.
+- **Unified hydration**: All selection/recall flows (manual, agent, previous search) must use a single, centralized handler to hydrate state and sync to the agent.
+- **Explicit nulling**: When clearing, set all selection-related state to `null` (not just remove from UI).
+- **No premature clearing**: Only clear suggestions when a new search is started or the user explicitly requests it.
+- **UI/agent recall flows**: Both UI and agent can recall previous searches; agent tools must be registered and validated. Selecting a previous search rehydrates all relevant state and syncs to the agent.

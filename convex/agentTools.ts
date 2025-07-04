@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 /**
  * AGENT-ONLY MUTATION TEMPLATE
@@ -21,6 +21,30 @@ export const agentAddTodoItem = mutation({
 		//   author: "AI Agent",
 		// });
 		return { success: false, message: `Not implemented: ${args.item}` };
+	},
+});
+
+/**
+ * AGENT-ONLY QUERY: Get previous searches for conversational recall.
+ *
+ * Returns the last 7 previous searches (stubbed for now; see TODO).
+ *
+ * Register in ElevenLabs clientTools and document intent.
+ */
+export const agentGetPreviousSearches = query({
+	args: {},
+	returns: v.array(
+		v.object({
+			query: v.string(),
+			resultsCount: v.number(),
+			timestamp: v.number(),
+			confirmed: v.boolean(),
+		})
+	),
+	handler: async (ctx, args) => {
+		// TODO: Integrate with Convex long-term memory if/when implemented.
+		// For now, return an empty array (UI/session memory is in Zustand).
+		return [];
 	},
 });
 

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useCallback, useMemo } from "react";
 import {
 	classifyIntent,
@@ -470,6 +470,13 @@ export function useAddressFinderClientTools(
 				const { history: recordedHistory } = useHistoryStore.getState();
 				log("🔧 Returning interaction history. Count:", recordedHistory.length);
 				return JSON.stringify(recordedHistory);
+			},
+
+			getPreviousSearches: async () => {
+				log("🔧 Tool Call: getPreviousSearches (agent-side recall)");
+				// TODO: Integrate with Convex client or expose previous searches via Convex for agent-side recall.
+				// For now, return an empty array (session memory is in Zustand, not accessible to agent).
+				return JSON.stringify([]);
 			},
 		}),
 		[

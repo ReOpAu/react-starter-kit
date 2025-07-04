@@ -280,3 +280,12 @@ Convex generates a nested object for each file and export, so the correct path i
   - If the intent is 'general', broader results are returned as before.
 - This change minimizes ambiguity in conversational UI flows and ensures the user sees only the most relevant results for their query intent.
 - The frontend continues to classify and send intent, but the backend enforces this filter for all API requests.
+
+## Memory and Recall Pattern (2024 Update)
+
+- **Session-local memory**: Store the last 7 successful searches in Zustand for fast recall in the UI and agent.
+- **Long-term/agent memory**: Use Convex for persistent memory and agent recall across sessions/devices.
+- **Unified hydration**: All selection/recall flows (manual, agent, previous search) use a single, centralized handler.
+- **Explicit nulling**: When clearing, set all selection-related state to `null`.
+- **No premature clearing**: Only clear suggestions on new search or explicit clear.
+- **UI/agent recall flows**: UI and agent can recall previous searches; agent tools must be registered and validated. Selecting a previous search rehydrates all relevant state and syncs to the agent.
