@@ -54,6 +54,8 @@ export default function AddressFinder() {
 		agentRequestedManual,
 		isLoggingEnabled,
 		setAgentRequestedManual,
+		selectionAcknowledged,
+		setSelectionAcknowledged,
 	} = useUIStore();
 	const {
 		searchQuery,
@@ -70,6 +72,7 @@ export default function AddressFinder() {
 	const { history, addHistory } = useHistoryStore();
 	const { clearSelectionAndSearch } = useAddressFinderActions();
 	const { addSearch, getMemory } = useSearchMemoryStore();
+	const memory = useSearchMemoryStore((s) => s.memory);
 
 	// Local component state
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -214,9 +217,6 @@ export default function AddressFinder() {
 		return () => clearTimeout(timer);
 	}, [searchQuery, isRecording, debouncedSearchQuery]);
 
-	// --- SELECTION ACKNOWLEDGMENT STATE ---
-	const [selectionAcknowledged, setSelectionAcknowledged] = useState(false);
-
 	// Construct agent state for debugging
 	const agentStateForDebug = useMemo(() => {
 		const timestamp = Date.now();
@@ -263,26 +263,6 @@ export default function AddressFinder() {
 		agentRequestedManual,
 		selectionAcknowledged,
 	]);
-
-	// Listen for selectionAcknowledged from agent state
-	useEffect(() => {
-		if (agentStateForDebug.selection.selectionAcknowledged) {
-			setSelectionAcknowledged(true);
-		}
-	}, [agentStateForDebug.selection.selectionAcknowledged]);
-
-	// Only clear suggestions after selectionAcknowledged is true
-	useEffect(() => {
-		if (selectedResult && selectionAcknowledged) {
-			setApiResults({
-				suggestions: [],
-				isLoading: false,
-				error: null,
-				source: activeSearchSource,
-			});
-			setSelectionAcknowledged(false); // Reset for next cycle
-		}
-	}, [selectedResult, selectionAcknowledged, setApiResults, activeSearchSource]);
 
 	// Event handlers
 	const handleSelectResult = useCallback(
@@ -462,12 +442,14 @@ export default function AddressFinder() {
 			error: null,
 			source: entry.context.mode,
 		});
-		// Optionally set searchQuery if you want to update the input
-		// setSearchQuery(entry.query);
+		// If not in an active AI conversation, update the search query and source for full UI hydration
+		if (!isRecording) {
+			setActiveSearch({ query: entry.query, source: entry.context.mode });
+		}
 		// Sync to agent
 		syncToAgent();
 		setShowPreviousSearches(false);
-	}, [setSelectedResult, setCurrentIntent, setAgentLastSearchQuery, setApiResults, syncToAgent]);
+	}, [setSelectedResult, setCurrentIntent, setAgentLastSearchQuery, setApiResults, setActiveSearch, syncToAgent, isRecording]);
 
 	return (
 		<div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -503,7 +485,12 @@ export default function AddressFinder() {
 							{agentRequestedManual && " + Manual Input"}
 						</Badge>
 					)}
-					<Button size="sm" variant="outline" onClick={() => setShowPreviousSearches(true)}>
+					<Button
+						size="sm"
+						variant="outline"
+						onClick={() => setShowPreviousSearches(true)}
+						disabled={memory.length === 0}
+					>
 						Previous Searches
 					</Button>
 				</div>

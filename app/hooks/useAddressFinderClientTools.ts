@@ -478,6 +478,11 @@ export function useAddressFinderClientTools(
 				// For now, return an empty array (session memory is in Zustand, not accessible to agent).
 				return JSON.stringify([]);
 			},
+
+			setSelectionAcknowledged: async (params: { acknowledged: boolean }) => {
+				useUIStore.getState().setSelectionAcknowledged(params.acknowledged);
+				return JSON.stringify({ status: "ok" });
+			},
 		}),
 		[
 			queryClient,
