@@ -49,19 +49,19 @@ const SuggestionsDisplay: React.FC<SuggestionsDisplayProps> = ({
 	return (
 		<Card>
 			<CardContent className="pt-4">
-				<ul className="space-y-2">
+				<ol className="space-y-2 list-decimal">
 					{suggestions.map((suggestion) => (
 						<li key={suggestion.placeId}>
 							<Button
 								variant="ghost"
-								className="w-full justify-start text-left h-auto"
+								className="block text-left h-auto px-2"
 								onClick={() => onSelect(suggestion)}
 							>
 								{suggestion.description}
 							</Button>
 						</li>
 					))}
-				</ul>
+				</ol>
 			</CardContent>
 		</Card>
 	);

@@ -1,9 +1,7 @@
 ---
 description: Ban the use of the `any` type except for explicit, documented interop with third-party APIs.
-globs: ["**/*.ts", "**/*.tsx"]
-alwaysApply: true
+alwaysApply: false
 ---
-
 # No Explicit `any` Types
 
 - Never use the `any` type in application code.

@@ -1,7 +1,3 @@
----
-description: Tailwind CSS Rule (Frontend)
-alwaysApply: false
----
 # Tailwind CSS Rule (Frontend)
 
 ## 1. **Styling Source of Truth**
@@ -99,5 +95,7 @@ export function MyButton({ className, ...props }) {
 # Violations
 - Inline styles, CSS-in-JS, or direct DOM manipulation for styling are not permitted.
 - All styling must be via Tailwind utilities and the `cn` utility for dynamic cases.
-
-
+description:
+globs:
+alwaysApply: false
+---

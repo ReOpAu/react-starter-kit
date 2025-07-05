@@ -13,6 +13,7 @@ export default [
 	route("success", "routes/success.tsx"),
 	route("subscription-required", "routes/subscription-required.tsx"),
 	route("address-finder", "routes/address-finder.tsx"),
+	route("test-aldi", "routes/test-aldi.tsx"),
 	route("api/validate-address", "routes/api.validate-address.tsx"),
 	layout("routes/dashboard/layout.tsx", [
 		route("dashboard", "routes/dashboard/index.tsx"),

@@ -705,7 +705,7 @@ export default function AddressFinder() {
 					<Card className="border-blue-200 bg-blue-50">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								🤖 AI-Generated Place Suggestions
+								🤖 Place Suggestions
 								<Badge variant="outline" className="bg-blue-100 text-blue-800">
 									{suggestions.length} results
 								</Badge>
