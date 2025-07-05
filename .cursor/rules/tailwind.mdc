@@ -1,0 +1,103 @@
+---
+description: Tailwind CSS Rule (Frontend)
+alwaysApply: false
+---
+# Tailwind CSS Rule (Frontend)
+
+## 1. **Styling Source of Truth**
+- All component and page styling must use Tailwind CSS utility classes.
+- No inline `style={{...}}` or CSS-in-JS libraries are permitted. If a style cannot be expressed in Tailwind, ask the user before proceeding.
+- Use `@apply` only in CSS for base styles, never for component-specific logic.
+
+## 2. **File & Folder Structure**
+- Place `tailwind.config.js` and `postcss.config.js` in the project root.
+- The main CSS entrypoint must be `app/app.css`.
+- Each UI component should live in its own folder under `app/components/ui/ComponentName` following the shadcn/ui convention.
+
+## 3. **Class Name Management**
+- Use the `cn` utility (`app/lib/utils.ts`) for merging and deduplicating class names. This wraps `clsx` and `tailwind-merge` for safe, conflict-free class composition.
+- All conditional or variant-based class logic must use `cn`.
+
+## 4. **Component Patterns**
+- Follow the shadcn/ui pattern: components are built from Radix UI primitives, styled with Tailwind, and organized in their own folders.
+- Never build basic UI primitives (e.g., Dialog, Checkbox) from scratch—compose from existing libraries and style with Tailwind.
+- All component variants must be styled using Tailwind classes and managed via `cva` (class-variance-authority) or similar pattern.
+
+## 5. **No Custom CSS-in-JS**
+- Do not use styled-components, emotion, or other CSS-in-JS solutions.
+- All dynamic styles must be handled via Tailwind utilities and the `cn` utility.
+
+## 6. **Build Integration**
+- Tailwind must be imported in the main CSS entrypoint (`app/app.css`) via `@import "tailwindcss";`.
+- The Vite config must include the `@tailwindcss/vite` plugin.
+- If custom configuration is needed, add or update `tailwind.config.js` in the project root.
+
+## 7. **Content Paths (Purge)**
+- Ensure all relevant file types (tsx, ts, js, jsx, mdx, etc.) are included in the `content` array in `tailwind.config.js` to enable purging of unused styles.
+
+## 8. **Customization**
+- To add custom colors, spacing, or plugins, update `tailwind.config.js` and document changes in the PR.
+- Notify the team of significant theme or plugin changes.
+
+## 9. **Responsive, State, and Dark Mode Utilities**
+- Use Tailwind's responsive (`sm:`, `md:`, etc.), state (`hover:`, `focus:`, etc.), and dark mode (`dark:`) utilities for all adaptive and interactive styling.
+
+## 10. **Prettier and Class Sorting**
+- Use the Prettier Tailwind plugin to automatically sort utility classes in a consistent order.
+- Add `prettier-plugin-tailwindcss` to your devDependencies and configure Prettier if not already present.
+
+## 11. **IntelliSense and Tooling**
+- The VS Code Tailwind CSS IntelliSense extension is recommended for class name autocompletion and error checking.
+- Ensure your CSS entrypoint and config are discoverable by the extension.
+
+## 12. **Accessibility**
+- Use Tailwind's `sr-only`, `focus-visible`, and ARIA attributes for accessible UI.
+- All interactive elements must be keyboard accessible.
+
+## 13. **Performance**
+- Avoid unnecessary className computation and keep class lists concise and relevant.
+- Use Tailwind's purging and tree-shaking features to minimize CSS bundle size.
+
+## 14. **Branding and Icons**
+- Use the `TailwindIcon` component for Tailwind branding where needed.
+- All icons should come from `lucide-react` or `@tabler/icons-react`.
+
+## 15. **Migration/Deprecation**
+- If migrating Tailwind versions or deprecating patterns, document the process and update this rule accordingly.
+
+## 16. **Rule Enforcement**
+- This rule is always applied. All PRs and new code must follow these conventions.
+- See also: [react-and-ui.mdc](mdc:.cursor/rules/react-and-ui.mdc)
+
+## 17. **Cross-References**
+- See also: [app/components](mdc:.cursor/rules/app/components), [app/hook-architecture-patterns](mdc:.cursor/rules/app/hook-architecture-patterns)
+
+# Example Usage
+
+```tsx
+import { cn } from "app/lib/utils";
+
+export function MyButton({ className, ...props }) {
+  return (
+    <button className={cn("bg-primary text-white px-4 py-2 rounded", className)} {...props} />
+  );
+}
+```
+
+# Quick Reference Table
+
+| Do                                  | Don't                                 |
+|--------------------------------------|---------------------------------------|
+| Use Tailwind utility classes         | Use inline `style={{...}}`            |
+| Use `cn` for dynamic class merging   | Use CSS-in-JS or styled-components    |
+| Organize components in `ui/` folders | Write custom primitives from scratch  |
+| Use Prettier Tailwind plugin         | Leave classes unsorted                |
+| Use `@apply` for base styles only    | Use `@apply` for component logic      |
+| Use accessibility utilities          | Ignore keyboard accessibility         |
+| Update `tailwind.config.js` for theme| Hardcode custom colors in components  |
+
+# Violations
+- Inline styles, CSS-in-JS, or direct DOM manipulation for styling are not permitted.
+- All styling must be via Tailwind utilities and the `cn` utility for dynamic cases.
+
+

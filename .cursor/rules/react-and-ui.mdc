@@ -1,7 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: false
+description: React and UI Component Guidelines
+alwaysApply: false  
 ---
 # React and UI Component Guidelines
 

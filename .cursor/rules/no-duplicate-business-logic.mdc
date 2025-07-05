@@ -1,6 +1,5 @@
 ---
-description: 
-globs: 
+description: DRY Principle for Business Logic and Validation
 alwaysApply: false
 ---
 # DRY Principle for Business Logic and Validation

@@ -1,7 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description: Enforce Unified Action-Handler Framework
+alwaysApply: false
 ---
 # Enforce Unified Action-Handler
 

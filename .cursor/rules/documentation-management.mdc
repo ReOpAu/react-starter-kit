@@ -1,7 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description: Documentation Management
+alwaysApply: false
 ---
 # Documentation Update Protocol
 

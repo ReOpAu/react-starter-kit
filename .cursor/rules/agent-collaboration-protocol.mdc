@@ -1,7 +1,6 @@
 ---
-description: 
-globs: 
-alwaysApply: true
+description: AI Agent Collaboration Protocol
+alwaysApply: false
 ---
 # AI Agent Collaboration Protocol
 

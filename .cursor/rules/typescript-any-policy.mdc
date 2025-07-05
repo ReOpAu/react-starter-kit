@@ -43,4 +43,3 @@ const foo: any = getDynamicData();
 
 ---
 
-**Would you like me to add the Cursor rule above to your project and check your biome config for the linter rule?**
