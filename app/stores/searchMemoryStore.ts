@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { Suggestion } from './types';
 
+// Previous Searches memory now stores any search with >1 result (not just confirmed). See: docs/ADDRESS_FINDER_V3_DOCUMENTATION.md, docs/UNIFIED_ADDRESS_SYSTEM.md
+
 export interface SearchMemoryEntry {
   id: string; // uuid
   query: string;

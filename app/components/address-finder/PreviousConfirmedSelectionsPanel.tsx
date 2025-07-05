@@ -22,7 +22,7 @@ export const PreviousConfirmedSelectionsPanel: React.FC<PreviousConfirmedSelecti
   return (
     <div className="bg-white border rounded-lg shadow p-4 max-w-md mx-auto">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-lg font-semibold">Previous Confirmed Selections</h2>
+        <h2 className="text-lg font-semibold">Previous Selections</h2>
         {onClose && (
           <Button size="sm" variant="ghost" onClick={onClose}>
             Close

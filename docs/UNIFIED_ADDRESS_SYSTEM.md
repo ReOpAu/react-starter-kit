@@ -108,3 +108,19 @@ See also: [state-management-strategy.md](state-management-strategy.md)
 When a user recalls a previous search from the Previous Searches modal, that search must **not** be re-added to the session memory. This is enforced by a recall suppression mechanism (`isRecallMode` flag) in the AddressFinder component, which prevents the next search or selection from being added to memory if it was triggered by a recall. This ensures the memory only contains true user-initiated searches and avoids duplicates or replayed entries.
 
 - See also: ADDRESS_FINDER_V3_DOCUMENTATION.md (Recall Suppression Logic)
+
+## Memory Store Contracts (Updated)
+
+### Previous Searches Store
+- Accepts any search with more than one result (not auto-selected).
+- Deduplicates by query and placeId.
+- Capped at 7 entries.
+- Used for recall and re-running searches.
+
+### Confirmed Selections Store
+- Only accepts explicit user confirmations.
+- Used for recall of previously confirmed addresses.
+
+### Recall Handlers
+- Previous Searches recall clears selection and triggers a new search for the query.
+- Confirmed Selections recall restores the selected result directly.

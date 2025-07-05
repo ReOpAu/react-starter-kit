@@ -4,6 +4,8 @@ import type { SearchMemoryEntry } from "~/stores/searchMemoryStore";
 import { Button } from "../ui/button";
 import { useIntentStore } from "~/stores/intentStore";
 
+// Previous Searches memory now stores any search with >1 result (not just confirmed). See: docs/ADDRESS_FINDER_V3_DOCUMENTATION.md, docs/UNIFIED_ADDRESS_SYSTEM.md
+
 interface PreviousSearchesPanelProps {
   onRecall: (entry: SearchMemoryEntry) => void;
   onClose?: () => void;

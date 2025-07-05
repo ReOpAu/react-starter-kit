@@ -548,7 +548,7 @@ export default function AddressFinder() {
 						disabled={confirmedSelections.length === 0}
 						className="relative"
 					>
-						Previous Confirmed Selections
+						Previous Selections
 						<span className="ml-2">
 							<Badge variant="secondary" className="px-2 py-0.5 text-xs">
 								{confirmedSelections.length}

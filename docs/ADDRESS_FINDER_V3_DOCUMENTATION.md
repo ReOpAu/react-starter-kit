@@ -281,14 +281,21 @@ Convex generates a nested object for each file and export, so the correct path i
 - This change minimizes ambiguity in conversational UI flows and ensures the user sees only the most relevant results for their query intent.
 - The frontend continues to classify and send intent, but the backend enforces this filter for all API requests.
 
-## Memory and Recall Pattern (2024 Update)
+## Search Memory & Recall System (Updated)
 
-- **Session-local memory**: Store the last 7 successful searches in Zustand for fast recall in the UI and agent. **The current (most recent) search should not be included in the 'Previous Searches' modal or recall list.**
-- **Long-term/agent memory**: Use Convex for persistent memory and agent recall across sessions/devices.
-- **Unified hydration**: All selection/recall flows (manual, agent, previous search) use a single, centralized handler.
-- **Explicit nulling**: When clearing, set all selection-related state to `null`.
-- **No premature clearing**: Only clear suggestions on new search or explicit clear.
-- **UI/agent recall flows**: UI and agent can recall previous searches; agent tools must be registered and validated. Selecting a previous search rehydrates all relevant state and syncs to the agent.
+### Previous Searches
+- Stores any search that returns more than one result (i.e., not auto-selected), regardless of whether the user confirmed a selection.
+- Allows users to recall prior search contexts and re-run those searches, displaying the latest suggestions for the original query.
+- Deduplicates by query and placeId; capped at 7 entries.
+- When recalled, clears any current selection and triggers a fresh search for the recalled query.
+- The button is enabled if there is at least one qualifying search; badge shows the count.
+
+### Previous Confirmed Selections
+- Stores only those addresses that the user has explicitly confirmed by selecting a suggestion (via click or keyboard).
+- Provides a history of all confirmed addresses for quick recall and reuse.
+- Only explicit user confirmations are stored; unconfirmed, multi-result searches do not appear in this list.
+- When recalled, restores the confirmed address as the selected result.
+- The button is enabled if there is at least one confirmed selection; badge shows the count.
 
 ## Recall Suppression Logic for Previous Searches
 
