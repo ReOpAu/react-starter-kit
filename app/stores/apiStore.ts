@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { Suggestion, Mode } from "~/stores/types";
+import type { Mode, Suggestion } from "~/stores/types";
 
 interface ApiState {
 	apiResults: {

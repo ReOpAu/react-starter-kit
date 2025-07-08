@@ -1,6 +1,6 @@
+import { StateDebugPanel } from "~/components/address-finder";
 import AgentDebugCopyPanel from "~/components/address-finder/AgentDebugCopyPanel";
 import AgentStatePanel from "~/components/address-finder/AgentStatePanel";
-import { StateDebugPanel } from "~/components/address-finder";
 import { Button } from "~/components/ui/button";
 import type { AddressFinderBrainState } from "./AddressFinderBrain";
 

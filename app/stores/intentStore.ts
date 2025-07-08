@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { LocationIntent, Suggestion, Mode } from "~/stores/types";
+import type { LocationIntent, Mode, Suggestion } from "~/stores/types";
 
 interface IntentState {
 	searchQuery: string;

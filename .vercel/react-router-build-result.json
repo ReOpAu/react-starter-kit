@@ -17,6 +17,7 @@
       "routes/success": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/subscription-required": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/address-finder": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/test-aldi": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/api.validate-address": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
@@ -88,6 +89,15 @@
         "parentId": "root",
         "file": "app/routes/address-finder.tsx",
         "path": "address-finder",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/test-aldi": {
+        "id": "routes/test-aldi",
+        "parentId": "root",
+        "file": "app/routes/test-aldi.tsx",
+        "path": "test-aldi",
         "config": {
           "runtime": "nodejs"
         }
@@ -194,6 +204,12 @@
         "parentId": "root",
         "file": "routes/address-finder.tsx",
         "path": "address-finder"
+      },
+      "routes/test-aldi": {
+        "id": "routes/test-aldi",
+        "parentId": "root",
+        "file": "routes/test-aldi.tsx",
+        "path": "test-aldi"
       },
       "routes/api.validate-address": {
         "id": "routes/api.validate-address",

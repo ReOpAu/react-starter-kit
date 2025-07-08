@@ -43,7 +43,9 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-2 bg-purple-100/40 rounded p-3">
 						{result.resultType && (
 							<div>
-								<span className="font-semibold text-purple-800">Result Type: </span>
+								<span className="font-semibold text-purple-800">
+									Result Type:{" "}
+								</span>
 								<span className="text-purple-700">{result.resultType}</span>
 							</div>
 						)}
@@ -56,13 +58,19 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 						{result.types && result.types.length > 0 && (
 							<div className="md:col-span-2">
 								<span className="font-semibold text-purple-800">Types: </span>
-								<span className="text-purple-700">{result.types.join(", ")}</span>
+								<span className="text-purple-700">
+									{result.types.join(", ")}
+								</span>
 							</div>
 						)}
-						{(lat !== undefined && lng !== undefined) && (
+						{lat !== undefined && lng !== undefined && (
 							<div className="md:col-span-2">
-								<span className="font-semibold text-purple-800">Coordinates: </span>
-								<span className="text-purple-700">{lat}, {lng}</span>
+								<span className="font-semibold text-purple-800">
+									Coordinates:{" "}
+								</span>
+								<span className="text-purple-700">
+									{lat}, {lng}
+								</span>
 							</div>
 						)}
 					</div>

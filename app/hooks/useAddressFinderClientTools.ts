@@ -21,9 +21,15 @@ export function useAddressFinderClientTools(
 	onSelectResult?: (suggestion: Suggestion) => Promise<unknown>,
 ) {
 	const queryClient = useQueryClient();
-	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
-	const validateAddressAction = useAction(api.address.validateAddress.validateAddress);
-	const getPlaceDetailsAction = useAction(api.address.getPlaceDetails.getPlaceDetails);
+	const getPlaceSuggestionsAction = useAction(
+		api.address.getPlaceSuggestions.getPlaceSuggestions,
+	);
+	const validateAddressAction = useAction(
+		api.address.validateAddress.validateAddress,
+	);
+	const getPlaceDetailsAction = useAction(
+		api.address.getPlaceDetails.getPlaceDetails,
+	);
 
 	// ✅ FIX: All required state values and setters are destructured at the top level.
 	const { isRecording, setAgentRequestedManual } = useUIStore();
@@ -205,10 +211,13 @@ export function useAddressFinderClientTools(
 					placeId = params;
 				} else if (params && typeof params === "object") {
 					const paramObj = params as Record<string, unknown>;
-					placeId = (paramObj.placeId || paramObj.place_id) as string | undefined;
+					placeId = (paramObj.placeId || paramObj.place_id) as
+						| string
+						| undefined;
 				}
 				if (typeof placeId !== "string" || !placeId.trim()) {
-					const errorMessage = "Invalid or missing 'placeId' or 'place_id' parameter for selectSuggestion tool.";
+					const errorMessage =
+						"Invalid or missing 'placeId' or 'place_id' parameter for selectSuggestion tool.";
 					log(`Tool selectSuggestion failed: ${errorMessage}`, { params });
 					return JSON.stringify({ status: "error", error: errorMessage });
 				}
@@ -222,16 +231,25 @@ export function useAddressFinderClientTools(
 
 				let selection: Suggestion | undefined = undefined;
 				if (agentLastSearchQueryFromState) {
-					const suggestionsFromAgentSearch = queryClient.getQueryData<Suggestion[]>(["addressSearch", agentLastSearchQueryFromState]);
+					const suggestionsFromAgentSearch = queryClient.getQueryData<
+						Suggestion[]
+					>(["addressSearch", agentLastSearchQueryFromState]);
 					if (suggestionsFromAgentSearch) {
-						selection = suggestionsFromAgentSearch.find((s) => s.placeId === placeId);
+						selection = suggestionsFromAgentSearch.find(
+							(s) => s.placeId === placeId,
+						);
 					}
 				}
 
 				if (selection) {
 					let updatedSelection = selection;
-					if ((selection.lat === undefined || selection.lng === undefined) && selection.placeId) {
-						const detailsRes = await getPlaceDetailsAction({ placeId: selection.placeId });
+					if (
+						(selection.lat === undefined || selection.lng === undefined) &&
+						selection.placeId
+					) {
+						const detailsRes = await getPlaceDetailsAction({
+							placeId: selection.placeId,
+						});
 						if (detailsRes.success && detailsRes.details?.geometry?.location) {
 							updatedSelection = {
 								...selection,
@@ -253,8 +271,14 @@ export function useAddressFinderClientTools(
 					const intent = classifySelectedResult(updatedSelection);
 					setCurrentIntent(intent);
 					setSelectedResult(updatedSelection);
-					setActiveSearch({ query: updatedSelection.description, source: "voice" });
-					addHistory({ type: "agent", text: `Agent selected: "${updatedSelection.description}" (${intent})` });
+					setActiveSearch({
+						query: updatedSelection.description,
+						source: "voice",
+					});
+					addHistory({
+						type: "agent",
+						text: `Agent selected: "${updatedSelection.description}" (${intent})`,
+					});
 					clearSessionToken();
 					setAgentLastSearchQuery(null);
 					return JSON.stringify({
@@ -271,9 +295,9 @@ export function useAddressFinderClientTools(
 					useIntentStore.getState().agentLastSearchQuery;
 				const suggestionsFromAgentSearch = agentLastSearchQueryFromStateForError
 					? queryClient.getQueryData<Suggestion[]>([
-						"addressSearch",
-						agentLastSearchQueryFromStateForError,
-					])
+							"addressSearch",
+							agentLastSearchQueryFromStateForError,
+						])
 					: [];
 				log(
 					"Available suggestions in agent context:",
@@ -287,14 +311,16 @@ export function useAddressFinderClientTools(
 				// See UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md for rationale.
 				const currentSelection = useIntentStore.getState().selectedResult;
 				if (currentSelection && currentSelection.placeId === placeId) {
-					log("✅ Defensive: Confirming selection from selectedResult, not suggestions array.");
+					log(
+						"✅ Defensive: Confirming selection from selectedResult, not suggestions array.",
+					);
 					const intent = useIntentStore.getState().currentIntent;
 					return JSON.stringify({
 						status: "confirmed",
 						selection: currentSelection,
 						intent,
 						timestamp: Date.now(),
-						confirmationMessage: `Confirmed selection of \"${currentSelection.description}\" as ${intent} (defensive path)`
+						confirmationMessage: `Confirmed selection of \"${currentSelection.description}\" as ${intent} (defensive path)`,
 					});
 				}
 
@@ -511,7 +537,7 @@ export function useAddressFinderClientTools(
 			clearSelectionAndSearch,
 			onSelectResult,
 			currentIntent,
-		]
+		],
 	);
 
 	return clientTools;

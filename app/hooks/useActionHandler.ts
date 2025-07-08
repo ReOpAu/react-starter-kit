@@ -44,7 +44,9 @@ export function useActionHandler({
 	const [validationError, setValidationError] = useState<string | null>(null);
 	const [pendingRuralConfirmation, setPendingRuralConfirmation] =
 		useState<null | { result: Suggestion; validation: any }>(null);
-	const validateAddressAction = useAction(api.address.validateAddress.validateAddress);
+	const validateAddressAction = useAction(
+		api.address.validateAddress.validateAddress,
+	);
 	const { performReliableSync } = useReliableSync();
 
 	const handleSelect = useCallback(

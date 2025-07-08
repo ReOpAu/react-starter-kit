@@ -35,10 +35,11 @@ const renderHighlightedText = (
 interface ManualSearchFormProps {
 	onSelect: (suggestion: Suggestion) => void;
 	disabled?: boolean;
+	onTyping?: (query: string) => void;
 }
 
 const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
-	({ onSelect, disabled = false }) => {
+	({ onSelect, disabled = false, onTyping }) => {
 		const [inputValue, setInputValue] = useState("");
 		const [selectedIndex, setSelectedIndex] = useState(-1);
 		const [showSuggestions, setShowSuggestions] = useState(false);
@@ -150,7 +151,10 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 				setHasMinimumChars(meetsMinimum);
 				setIsAddressSelected(false);
 
-				// Debounced internal query update for autocomplete
+				// Sync typing with global Brain state for intent updates
+			onTyping?.(query);
+
+			// Debounced internal query update for autocomplete
 				const timer = setTimeout(() => {
 					if (meetsMinimum) {
 						setInternalQuery(query);
@@ -163,7 +167,7 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 
 				return () => clearTimeout(timer);
 			},
-			[],
+			[onTyping],
 		);
 
 		const handleSelect = useCallback(

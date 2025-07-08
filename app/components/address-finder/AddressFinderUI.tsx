@@ -6,8 +6,8 @@ import {
 	SuggestionsDisplay,
 	VoiceInputController,
 } from "~/components/address-finder";
-import { PreviousSearchesPanel } from "~/components/address-finder/PreviousSearchesPanel";
 import { PreviousConfirmedSelectionsPanel } from "~/components/address-finder/PreviousConfirmedSelectionsPanel";
+import { PreviousSearchesPanel } from "~/components/address-finder/PreviousSearchesPanel";
 import SuburbBoundaryMap from "~/components/address-finder/SuburbBoundaryMap";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -35,8 +35,8 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 		isValidating,
 		validationError,
 		pendingRuralConfirmation,
-		memory,
-		confirmedSelections,
+		searchHistory,
+		addressSelections,
 		handleSelectResult,
 		handleStartRecording,
 		handleStopRecording,
@@ -44,6 +44,7 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 		handleAcceptRuralAddress,
 		handleRecallPreviousSearch,
 		handleRecallConfirmedSelection,
+		handleManualTyping,
 		shouldShowSuggestions,
 		shouldShowManualForm,
 		shouldShowSelectedResult,
@@ -115,13 +116,13 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 						size="sm"
 						variant="outline"
 						onClick={() => setShowPreviousSearches(true)}
-						disabled={memory.length <= 1}
+						disabled={searchHistory.length === 0}
 						className="relative"
 					>
 						Previous Searches
 						<span className="ml-2">
 							<Badge variant="secondary" className="px-2 py-0.5 text-xs">
-								{Math.max(0, memory.length - 1)}
+								{searchHistory.length}
 							</Badge>
 						</span>
 					</Button>
@@ -129,13 +130,13 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 						size="sm"
 						variant="outline"
 						onClick={() => setShowConfirmedSelections(true)}
-						disabled={confirmedSelections.length === 0}
+						disabled={addressSelections.length === 0}
 						className="relative"
 					>
 						Previous Selections
 						<span className="ml-2">
 							<Badge variant="secondary" className="px-2 py-0.5 text-xs">
-								{confirmedSelections.length}
+								{addressSelections.length}
 							</Badge>
 						</span>
 					</Button>
@@ -173,10 +174,7 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 								<Button onClick={handleAcceptRuralAddress}>
 									Accept Anyway
 								</Button>
-								<Button
-									variant="outline"
-									onClick={() => handleClear("user")}
-								>
+								<Button variant="outline" onClick={() => handleClear("user")}>
 									Cancel
 								</Button>
 							</div>
@@ -223,6 +221,7 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 								<ManualSearchForm
 									onSelect={handleSelectResult}
 									disabled={isValidating}
+									onTyping={handleManualTyping}
 								/>
 							</div>
 						) : (
@@ -316,7 +315,8 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 						<CardContent className="space-y-4">
 							<div className="text-yellow-800">
 								<p>
-									I found one possible match, but I'm not confident it's correct:
+									I found one possible match, but I'm not confident it's
+									correct:
 								</p>
 								<button
 									type="button"
@@ -325,10 +325,16 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 								>
 									{suggestions[0]?.description}
 								</button>
-								<p className="text-xs">(Confidence: {Math.round((suggestions[0]?.confidence ?? 0) * 100)}%)</p>
+								<p className="text-xs">
+									(Confidence:{" "}
+									{Math.round((suggestions[0]?.confidence ?? 0) * 100)}%)
+								</p>
 							</div>
 							<div className="flex gap-2">
-								<Button onClick={() => handleSelectResult(suggestions[0])} className="bg-green-600 hover:bg-green-700">
+								<Button
+									onClick={() => handleSelectResult(suggestions[0])}
+									className="bg-green-600 hover:bg-green-700"
+								>
 									Confirm This Result
 								</Button>
 								<Button onClick={handleSearchAgain} variant="outline">

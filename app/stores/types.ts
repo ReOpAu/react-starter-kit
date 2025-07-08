@@ -27,7 +27,7 @@ export interface HistoryItem {
 }
 
 // Update mode type to include 'agent'
-export type Mode = 'manual' | 'voice' | 'agent';
+export type Mode = "manual" | "voice" | "agent";
 
 // Update any interfaces that use mode
 export interface ActiveSearch {

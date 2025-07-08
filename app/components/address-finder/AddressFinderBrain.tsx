@@ -3,21 +3,22 @@ import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActionHandler } from "~/hooks/useActionHandler";
+import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressFinderClientTools } from "~/hooks/useAddressFinderClientTools";
 import { useAgentSync } from "~/hooks/useAgentSync";
 import { useAudioManager } from "~/hooks/useAudioManager";
 import { useConversationManager } from "~/hooks/useConversationManager";
-import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
+import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
+import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
 import { useIntentStore } from "~/stores/intentStore";
-import { useUIStore } from "~/stores/uiStore";
-import { useSearchMemoryStore } from "~/stores/searchMemoryStore";
-import { useConfirmedSelectionsStore } from "~/stores/confirmedSelectionsStore";
+import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
+import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { Suggestion } from "~/stores/types";
-import type { SearchMemoryEntry } from "~/stores/searchMemoryStore";
-import type { ConfirmedSelectionEntry } from "~/stores/confirmedSelectionsStore";
 import type { LocationIntent, Mode } from "~/stores/types";
+import { useUIStore } from "~/stores/uiStore";
+import { classifyIntent, classifySelectedResult } from "~/utils/addressFinderUtils";
 
 interface AddressFinderBrainProps {
 	children: (brainState: AddressFinderBrainState) => React.ReactNode;
@@ -33,7 +34,7 @@ export interface AddressFinderBrainState {
 	searchQuery: string;
 	currentIntent: LocationIntent | null;
 	debouncedSearchQuery: string;
-	
+
 	// UI state
 	isRecording: boolean;
 	isVoiceActive: boolean;
@@ -42,32 +43,33 @@ export interface AddressFinderBrainState {
 	isValidating: boolean;
 	validationError: string | null;
 	pendingRuralConfirmation: null | { result: Suggestion; validation: any };
-	
+
 	// Memory state
-	memory: SearchMemoryEntry[];
-	confirmedSelections: ConfirmedSelectionEntry[];
-	
+	searchHistory: SearchHistoryEntry[];
+	addressSelections: AddressSelectionEntry[];
+
 	// Handlers
 	handleSelectResult: (result: Suggestion) => void;
 	handleStartRecording: () => void;
 	handleStopRecording: () => void;
 	handleClear: (source: "user" | "agent") => void;
 	handleAcceptRuralAddress: () => void;
-	handleRecallPreviousSearch: (entry: SearchMemoryEntry) => void;
-	handleRecallConfirmedSelection: (entry: ConfirmedSelectionEntry) => void;
+	handleRecallPreviousSearch: (entry: SearchHistoryEntry) => void;
+	handleRecallConfirmedSelection: (entry: AddressSelectionEntry) => void;
 	handleRequestAgentState: () => void;
-	
+	handleManualTyping: (query: string) => void;
+
 	// Computed state
 	shouldShowSuggestions: boolean;
 	shouldShowManualForm: boolean;
 	shouldShowSelectedResult: boolean;
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
-	
+
 	// Session management
 	sessionToken: string | null;
 	conversationStatus: string;
-	
+
 	// Debug state
 	agentStateForDebug: any;
 	history: any[];
@@ -76,7 +78,7 @@ export interface AddressFinderBrainState {
 export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const queryClient = useQueryClient();
 	const { syncToAgent } = useAgentSync();
-	
+
 	// State from pillar-aligned stores
 	const {
 		isRecording,
@@ -87,7 +89,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		selectionAcknowledged,
 		setSelectionAcknowledged,
 	} = useUIStore();
-	
+
 	const {
 		searchQuery,
 		selectedResult,
@@ -99,30 +101,35 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		setAgentLastSearchQuery,
 		agentLastSearchQuery,
 	} = useIntentStore();
-	
+
 	const { setApiResults } = useApiStore();
 	const { history, addHistory } = useHistoryStore();
 	const { clearSelectionAndSearch } = useAddressFinderActions();
-	const { addOrUpdateSearch, getMemory } = useSearchMemoryStore();
-	const memory = useSearchMemoryStore((s) => s.memory);
-	const confirmedSelections = useConfirmedSelectionsStore((s) => s.selections);
-	const addConfirmedSelection = useConfirmedSelectionsStore((s) => s.addConfirmedSelection);
-	
+	const { addSearchToHistory } = useSearchHistoryStore();
+	const searchHistory = useSearchHistoryStore((s) => s.searchHistory);
+	const addressSelections = useAddressSelectionStore(
+		(s) => s.addressSelections,
+	);
+	const addAddressSelection = useAddressSelectionStore(
+		(s) => s.addAddressSelection,
+	);
+
 	// Local component state
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 	const [isRecallMode, setIsRecallMode] = useState(false);
 	const [showLowConfidence, setShowLowConfidence] = useState(false);
-	
+	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(null);
+
 	// Session token management
 	const sessionTokenRef = useRef<string | null>(null);
-	
+
 	// Logging utility
 	const log = useCallback((...args: unknown[]) => {
 		if (useUIStore.getState().isLoggingEnabled) {
 			console.log("[AddressFinderBrain]", ...args);
 		}
 	}, []);
-	
+
 	// Session token functions
 	const getSessionToken = useCallback(() => {
 		if (!sessionTokenRef.current) {
@@ -131,17 +138,19 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		}
 		return sessionTokenRef.current;
 	}, [log]);
-	
+
 	const clearSessionToken = useCallback(() => {
 		if (sessionTokenRef.current) {
 			log("Clearing session token:", sessionTokenRef.current);
 			sessionTokenRef.current = null;
 		}
 	}, [log]);
-	
+
 	// Conversation management
-	const conversationRef = useRef<ReturnType<typeof useConversationManager>["conversation"] | null>(null);
-	
+	const conversationRef = useRef<
+		ReturnType<typeof useConversationManager>["conversation"] | null
+	>(null);
+
 	const {
 		handleSelect,
 		isValidating,
@@ -163,17 +172,26 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		queryClient,
 		clearSelectionAndSearch,
 	});
-	
+
 	// API actions
-	const getPlaceDetailsAction = useAction(api.address.getPlaceDetails.getPlaceDetails);
-	const getPlaceSuggestionsAction = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
-	
+	const getPlaceDetailsAction = useAction(
+		api.address.getPlaceDetails.getPlaceDetails,
+	);
+	const getPlaceSuggestionsAction = useAction(
+		api.address.getPlaceSuggestions.getPlaceSuggestions,
+	);
+
 	// Result selection handler
 	const handleSelectResult = useCallback(
 		async (result: Suggestion) => {
 			let updatedResult = result;
-			if ((result.lat === undefined || result.lng === undefined) && result.placeId) {
-				const detailsRes = await getPlaceDetailsAction({ placeId: result.placeId });
+			if (
+				(result.lat === undefined || result.lng === undefined) &&
+				result.placeId
+			) {
+				const detailsRes = await getPlaceDetailsAction({
+					placeId: result.placeId,
+				});
 				if (detailsRes.success && detailsRes.details?.geometry?.location) {
 					updatedResult = {
 						...result,
@@ -183,22 +201,34 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				}
 			}
 			const currentSearchQuery = searchQuery || result.description;
-			const currentSuggestions = queryClient.getQueryData<Suggestion[]>([
-				"addressSearch",
-				currentSearchQuery
-			]) || [];
-			if (!currentSuggestions.find(s => s.placeId === result.placeId)) {
+			const currentSuggestions =
+				queryClient.getQueryData<Suggestion[]>([
+					"addressSearch",
+					currentSearchQuery,
+				]) || [];
+			if (!currentSuggestions.find((s) => s.placeId === result.placeId)) {
 				const updatedSuggestions = [...currentSuggestions, updatedResult];
 				queryClient.setQueryData(
 					["addressSearch", currentSearchQuery],
-					updatedSuggestions
+					updatedSuggestions,
 				);
 				log("🔧 Context sync: Added selection to agent's suggestions array");
 			}
 			handleSelect(updatedResult);
-			addConfirmedSelection({
-				query: updatedResult.description,
-				selectedResult: updatedResult,
+			
+			// Preserve intent if this is a recall, otherwise update based on selection
+			if (preserveIntent) {
+				setCurrentIntent(preserveIntent);
+				setPreserveIntent(null);
+			} else {
+				// Update intent based on the selected result
+				const resultIntent = classifySelectedResult(updatedResult);
+				setCurrentIntent(resultIntent);
+			}
+			
+			addAddressSelection({
+				originalQuery: currentSearchQuery,
+				selectedAddress: updatedResult,
 				context: {
 					mode: isRecording ? "voice" : "manual",
 					intent: currentIntent ?? "general",
@@ -210,25 +240,8 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				exact: true,
 			});
 			syncToAgent();
-			if (!isRecallMode) {
-				const entry = {
-					query: currentSearchQuery,
-					results: currentSuggestions.length > 0 ? currentSuggestions : [updatedResult],
-					context: {
-						mode: (isRecording ? "voice" : "manual") as 'manual' | 'voice',
-						intent: (currentIntent ?? "general"),
-						confirmed: true,
-					},
-					placeId: updatedResult.placeId,
-				};
-				console.log('[addOrUpdateSearch] handleSelectResult', {
-					query: entry.query,
-					placeId: entry.placeId,
-					firstResult: entry.results?.[0]?.description,
-					context: entry.context,
-				});
-				addOrUpdateSearch(entry);
-			}
+			// Note: Don't add selections to search history
+			// Only the useEffect below adds searches with multiple results to history
 			setIsRecallMode(false);
 		},
 		[
@@ -238,15 +251,17 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			syncToAgent,
 			searchQuery,
 			log,
-			addOrUpdateSearch,
 			isRecording,
 			currentIntent,
 			getPlaceDetailsAction,
 			isRecallMode,
-			addConfirmedSelection,
-		]
+			addAddressSelection,
+			preserveIntent,
+			setPreserveIntent,
+			classifySelectedResult,
+		],
 	);
-	
+
 	// Audio and conversation management
 	const clientTools = useAddressFinderClientTools(
 		getSessionToken,
@@ -254,21 +269,21 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		handleSelectResult,
 	);
 	const { conversation } = useConversationManager(clientTools);
-	
+
 	useEffect(() => {
 		conversationRef.current = conversation;
 	}, [conversation]);
-	
+
 	const { startRecording, stopRecording } = useAudioManager();
-	
+
 	const handleStartRecording = useCallback(() => {
 		startRecording(conversation);
 	}, [startRecording, conversation]);
-	
+
 	const handleStopRecording = useCallback(() => {
 		stopRecording(conversation);
 	}, [stopRecording, conversation]);
-	
+
 	// Query management
 	const {
 		data: suggestions = [],
@@ -291,7 +306,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 	});
-	
+
 	// Sync React Query state to stores
 	useEffect(() => {
 		const suggestionsFromCache =
@@ -303,23 +318,19 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			error: error ? (error as Error).message : null,
 			source: activeSearchSource,
 		});
-		
-		if (
-			searchQuery &&
-			suggestionsFromCache.length > 1 &&
-			!isRecallMode
-		) {
-			addOrUpdateSearch({
+
+		// Add searches with multiple results to search history
+		if (searchQuery && suggestionsFromCache.length >= 2 && !isRecallMode) {
+			addSearchToHistory({
 				query: searchQuery,
-				results: suggestionsFromCache,
+				resultCount: suggestionsFromCache.length,
 				context: {
-					mode: activeSearchSource === 'voice' ? 'voice' : 'manual',
+					mode: activeSearchSource === "voice" ? "voice" : "manual",
 					intent: currentIntent ?? "general",
-					confirmed: false,
 				},
 			});
 		}
-		
+
 		syncToAgent();
 	}, [
 		isLoading,
@@ -329,11 +340,11 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		setApiResults,
 		syncToAgent,
 		queryClient,
-		addOrUpdateSearch,
+		addSearchToHistory,
 		isRecallMode,
 		currentIntent,
 	]);
-	
+
 	// Debounced search query effect
 	useEffect(() => {
 		const timer = setTimeout(() => {
@@ -343,13 +354,29 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		}, 300);
 		return () => clearTimeout(timer);
 	}, [searchQuery, isRecording, debouncedSearchQuery]);
-	
+
+	// Dynamic intent classification based on user typing
+	useEffect(() => {
+		if (
+			searchQuery &&
+			searchQuery.length >= 2 &&
+			!isRecallMode &&
+			!selectedResult &&
+			!isRecording
+		) {
+			const detectedIntent = classifyIntent(searchQuery);
+			if (detectedIntent !== currentIntent) {
+				setCurrentIntent(detectedIntent);
+			}
+		}
+	}, [searchQuery, isRecallMode, selectedResult, isRecording, currentIntent, setCurrentIntent]);
+
 	// Helper functions
 	const extractState = useCallback((str: string): string | null => {
 		const match = str.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
 		return match ? match[1].toUpperCase() : null;
 	}, []);
-	
+
 	// Auto-select logic
 	useEffect(() => {
 		if (
@@ -362,10 +389,11 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			const suggestion = suggestions[0];
 			const userState = extractState(searchQuery);
 			const resultState = extractState(suggestion.description);
-			
-			const highConfidence = (suggestion.confidence ?? 1) >= 0.8;
-			const stateMatches = !userState || !resultState || userState === resultState;
-			
+
+			const highConfidence = (suggestion.confidence ?? 0.5) >= 0.7;
+			const stateMatches =
+				!userState || !resultState || userState === resultState;
+
 			if (highConfidence && stateMatches) {
 				handleSelectResult(suggestion);
 				setShowLowConfidence(false);
@@ -375,50 +403,100 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		} else {
 			setShowLowConfidence(false);
 		}
-	}, [isRecording, selectedResult, suggestions, isLoading, isError, handleSelectResult, searchQuery, extractState]);
-	
+	}, [
+		isRecording,
+		selectedResult,
+		suggestions,
+		isLoading,
+		isError,
+		handleSelectResult,
+		searchQuery,
+		extractState,
+	]);
+
 	// Recall handlers
-	const handleRecallPreviousSearch = useCallback(async (entry: SearchMemoryEntry) => {
-		setActiveSearch({ query: entry.query, source: entry.context.mode });
-		setCurrentIntent(entry.context.intent as LocationIntent);
-		setAgentLastSearchQuery(entry.query);
-		setSelectedResult(null);
-		setDebouncedSearchQuery(entry.query);
-		setIsRecallMode(true);
-		
-		const newResults = await getPlaceSuggestionsAction({
-			query: entry.query,
-			intent: entry.context.intent as 'general' | 'suburb' | 'street' | 'address' | undefined,
-			isAutocomplete: false,
-			sessionToken: undefined,
-		});
-		setApiResults({
-			suggestions: newResults.success ? newResults.suggestions : [],
-			isLoading: false,
-			error: newResults.success ? null : newResults.error,
-			source: entry.context.mode,
-		});
-		queryClient.setQueryData(["addressSearch", entry.query], newResults.success ? newResults.suggestions : []);
-		syncToAgent();
-	}, [setActiveSearch, setCurrentIntent, setAgentLastSearchQuery, setApiResults, setSelectedResult, syncToAgent, queryClient, getPlaceSuggestionsAction]);
-	
-	const handleRecallConfirmedSelection = useCallback((entry: ConfirmedSelectionEntry) => {
-		setActiveSearch({ query: entry.query, source: entry.context.mode as Mode });
-		setCurrentIntent(entry.context.intent as LocationIntent);
-		setAgentLastSearchQuery(entry.query);
-		setApiResults({
-			suggestions: [entry.selectedResult],
-			isLoading: false,
-			error: null,
-			source: entry.context.mode as Mode,
-		});
-		setSelectedResult(entry.selectedResult);
-		queryClient.setQueryData(["addressSearch", entry.query], [entry.selectedResult]);
-		setDebouncedSearchQuery(entry.query);
-		syncToAgent();
-		setIsRecallMode(true);
-	}, [setActiveSearch, setCurrentIntent, setAgentLastSearchQuery, setApiResults, setSelectedResult, syncToAgent, queryClient]);
-	
+	const handleRecallPreviousSearch = useCallback(
+		async (entry: SearchHistoryEntry) => {
+			setActiveSearch({ query: entry.query, source: entry.context.mode });
+			setAgentLastSearchQuery(entry.query);
+			setSelectedResult(null);
+			setDebouncedSearchQuery(entry.query);
+			setIsRecallMode(true);
+
+			const newResults = await getPlaceSuggestionsAction({
+				query: entry.query,
+				intent: entry.context.intent as
+					| "general"
+					| "suburb"
+					| "street"
+					| "address"
+					| undefined,
+				isAutocomplete: false,
+				sessionToken: undefined,
+			});
+			setApiResults({
+				suggestions: newResults.success ? newResults.suggestions : [],
+				isLoading: false,
+				error: newResults.success ? null : newResults.error,
+				source: entry.context.mode,
+			});
+			queryClient.setQueryData(
+				["addressSearch", entry.query],
+				newResults.success ? newResults.suggestions : [],
+			);
+			
+			// Set intent AFTER API results to ensure it sticks
+			setCurrentIntent(entry.context.intent as LocationIntent);
+			syncToAgent();
+		},
+		[
+			setActiveSearch,
+			setCurrentIntent,
+			setAgentLastSearchQuery,
+			setApiResults,
+			setSelectedResult,
+			syncToAgent,
+			queryClient,
+			getPlaceSuggestionsAction,
+		],
+	);
+
+	const handleRecallConfirmedSelection = useCallback(
+		(entry: AddressSelectionEntry) => {
+			setActiveSearch({
+				query: entry.originalQuery,
+				source: entry.context.mode as Mode,
+			});
+			setPreserveIntent(entry.context.intent as LocationIntent);
+			setCurrentIntent(entry.context.intent as LocationIntent);
+			setAgentLastSearchQuery(entry.originalQuery);
+			setApiResults({
+				suggestions: [entry.selectedAddress],
+				isLoading: false,
+				error: null,
+				source: entry.context.mode as Mode,
+			});
+			setSelectedResult(entry.selectedAddress);
+			queryClient.setQueryData(
+				["addressSearch", entry.originalQuery],
+				[entry.selectedAddress],
+			);
+			setDebouncedSearchQuery(entry.originalQuery);
+			syncToAgent();
+			setIsRecallMode(true);
+		},
+		[
+			setActiveSearch,
+			setCurrentIntent,
+			setAgentLastSearchQuery,
+			setApiResults,
+			setSelectedResult,
+			syncToAgent,
+			queryClient,
+			setPreserveIntent,
+		],
+	);
+
 	const handleRequestAgentState = useCallback(() => {
 		if (conversation.status === "connected") {
 			const prompt =
@@ -434,13 +512,21 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			});
 		}
 	}, [conversation, addHistory, log]);
-	
+
+	// Handle typing in manual search form
+	const handleManualTyping = useCallback((query: string) => {
+		if (!isRecallMode && !selectedResult) {
+			setActiveSearch({ query, source: "manual" });
+		}
+	}, [setActiveSearch, isRecallMode, selectedResult]);
+
 	// Computed state
-	const shouldShowSuggestions = suggestions.length > 0 && !selectedResult && !isLoading;
+	const shouldShowSuggestions =
+		suggestions.length > 0 && !selectedResult && !isLoading;
 	const shouldShowManualForm = !isRecording || agentRequestedManual;
 	const shouldShowSelectedResult = Boolean(selectedResult && !isValidating);
 	const shouldShowValidationStatus = Boolean(isValidating || validationError);
-	
+
 	// Debug state
 	const agentStateForDebug = {
 		ui: {
@@ -473,7 +559,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			dataFlow: "API → React Query → Pillar Stores → Agent",
 		},
 	};
-	
+
 	const brainState: AddressFinderBrainState = {
 		// Core state
 		suggestions,
@@ -484,7 +570,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		searchQuery,
 		currentIntent,
 		debouncedSearchQuery,
-		
+
 		// UI state
 		isRecording,
 		isVoiceActive,
@@ -493,11 +579,11 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		isValidating,
 		validationError,
 		pendingRuralConfirmation,
-		
+
 		// Memory state
-		memory,
-		confirmedSelections,
-		
+		searchHistory,
+		addressSelections,
+
 		// Handlers
 		handleSelectResult,
 		handleStartRecording,
@@ -507,22 +593,23 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		handleRecallPreviousSearch,
 		handleRecallConfirmedSelection,
 		handleRequestAgentState,
-		
+		handleManualTyping,
+
 		// Computed state
 		shouldShowSuggestions,
 		shouldShowManualForm,
 		shouldShowSelectedResult,
 		shouldShowValidationStatus,
 		showLowConfidence,
-		
+
 		// Session management
 		sessionToken: sessionTokenRef.current,
 		conversationStatus: conversation.status,
-		
+
 		// Debug state
 		agentStateForDebug,
 		history,
 	};
-	
+
 	return <>{children(brainState)}</>;
 }

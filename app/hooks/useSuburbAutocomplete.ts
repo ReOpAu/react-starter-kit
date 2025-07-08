@@ -42,8 +42,12 @@ export function useSuburbAutocomplete() {
 	const [enhancedResult, setEnhancedResult] =
 		useState<EnhancedSuburbResult | null>(null);
 
-	const getPlaceSuggestions = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
-	const validateAddress = useAction(api.address.validateAddress.validateAddress);
+	const getPlaceSuggestions = useAction(
+		api.address.getPlaceSuggestions.getPlaceSuggestions,
+	);
+	const validateAddress = useAction(
+		api.address.validateAddress.validateAddress,
+	);
 
 	// Legacy functions for conversation interface (simplified versions)
 	const lookupSuburb = async (suburbInput: string) => {
@@ -210,15 +214,23 @@ export function useSuburbAutocomplete() {
 			// See UNIFIED_ADDRESS_SYSTEM.md for rationale.
 			if ((intent ?? "suburb") === "suburb" && result.success) {
 				const hasSuburb = result.suggestions.some(
-					s => s.resultType === "suburb" || s.types?.includes("locality")
+					(s) => s.resultType === "suburb" || s.types?.includes("locality"),
 				);
 				if (!hasSuburb) {
 					if (result.suggestions.length > 0) {
-						setError("No suburb found, but here are some other results you may select, or try a different suburb.");
+						setError(
+							"No suburb found, but here are some other results you may select, or try a different suburb.",
+						);
 						setSuggestions(result.suggestions); // Show suggestions, but do not auto-select
-						return { success: true, suggestions: result.suggestions, detectedIntent: result.detectedIntent };
+						return {
+							success: true,
+							suggestions: result.suggestions,
+							detectedIntent: result.detectedIntent,
+						};
 					}
-					setError("No suburb found for this query. Please try a different suburb.");
+					setError(
+						"No suburb found for this query. Please try a different suburb.",
+					);
 					setSuggestions([]);
 					return { success: false, error: "No suburb found for this query." };
 				}

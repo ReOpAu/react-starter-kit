@@ -37,7 +37,8 @@ export const useUIStore = create<UIState>()(
 				set({ isLoggingEnabled: enabled }),
 			setAgentRequestedManual: (requested: boolean) =>
 				set({ agentRequestedManual: requested }),
-			setSelectionAcknowledged: (ack: boolean) => set({ selectionAcknowledged: ack }),
+			setSelectionAcknowledged: (ack: boolean) =>
+				set({ selectionAcknowledged: ack }),
 			resetUiState: () => set(initialUiState),
 		}),
 		{ name: "UIStore" },

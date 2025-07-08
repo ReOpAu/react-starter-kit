@@ -1,6 +1,6 @@
 import { AddressFinderBrain } from "~/components/address-finder/AddressFinderBrain";
-import { AddressFinderUI } from "~/components/address-finder/AddressFinderUI";
 import { AddressFinderDebug } from "~/components/address-finder/AddressFinderDebug";
+import { AddressFinderUI } from "~/components/address-finder/AddressFinderUI";
 
 export default function AddressFinder() {
 	return (

@@ -93,7 +93,7 @@ export const getIntentColor = (intent: LocationIntent): string => {
 	}
 };
 
-// Street indicators
+// Street indicators - comprehensive Australian street types
 const streetKeywords = [
 	"street",
 	"st",
@@ -129,6 +129,39 @@ const streetKeywords = [
 	"sq",
 	"esplanade",
 	"esp",
+	"highway",
+	"hwy",
+	"parkway",
+	"pkwy",
+	"reserve",
+	"res",
+	"rise",
+	"ridge",
+	"retreat",
+	"gardens",
+	"gdns",
+	"green",
+	"grn",
+	"heights",
+	"hts",
+	"hill",
+	"outlook",
+	"vista",
+	"promenade",
+	"prom",
+	"strand",
+	"quay",
+	"wharf",
+	"pier",
+	"mall",
+	"plaza",
+	"link",
+	"loop",
+	"bend",
+	"corner",
+	"crossing",
+	"cir",
+	"circle",
 ];
 
 // Pre-compile regex patterns for street keywords (word boundaries)
@@ -161,17 +194,31 @@ const ruralKeywordRegexes = ruralKeywords.map(
 export function classifyIntent(query: string): LocationIntent {
 	const lowerQuery = query.toLowerCase().trim();
 
+	// Special handling for common Australian place names that contain street-like words
+	const specialCases = [
+		/^st\s+kilda/i,           // St Kilda (suburb)
+		/^mt\s+/i,                // Mount suburbs (Mt Eliza, Mt Waverley)
+		/^port\s+/i,              // Port suburbs (Port Melbourne)
+		/^glen\s+/i,              // Glen suburbs (Glen Waverley)
+		/^box\s+hill/i,           // Box Hill
+		/^st\s+albans/i,          // St Albans
+		/^point\s+/i,             // Point suburbs
+	];
+
+	const isSpecialSuburb = specialCases.some(pattern => pattern.test(lowerQuery));
+
 	// Check if query has street type indicator
 	const hasStreetType = streetKeywordRegexes.some((regex) =>
 		regex.test(lowerQuery),
 	);
 
-	// Check for house number at the beginning (true address)
-	const hasHouseNumber = /^\d+[a-z]?\s+/.test(lowerQuery);
+	// Enhanced house number patterns - covers more Australian formats
+	const hasHouseNumber = /^(\d+[a-z]?([/-]\d+[a-z]?)*)\s+/.test(lowerQuery);
 
-	// Check for unit/apartment patterns at the beginning
+	// Enhanced unit/apartment patterns - covers more variations
 	const hasUnitNumber =
-		/^(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery);
+		/^(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*[,\s]/i.test(lowerQuery) ||
+		/^[a-z]?\d+([/-]\d+[a-z]?)*[,/]\s*\d+\s+/.test(lowerQuery);
 
 	// Rural address pattern: house number + rural keyword
 	const hasRuralType = ruralKeywordRegexes.some((regex) =>
@@ -186,9 +233,10 @@ export function classifyIntent(query: string): LocationIntent {
 		return "street";
 	}
 
-	// Unit/apartment patterns anywhere in the query (fallback)
+	// Enhanced unit/apartment patterns anywhere in the query (fallback)
 	if (
-		/\b(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery)
+		/\b(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*\b/i.test(lowerQuery) ||
+		/\b\d+[a-z]?[/]\d+\s+/.test(lowerQuery)
 	) {
 		return "address";
 	}
@@ -196,31 +244,60 @@ export function classifyIntent(query: string): LocationIntent {
 	// Check for postcode patterns (4 digits) - these are usually suburbs
 	const hasPostcode = /\b\d{4}\b/.test(lowerQuery);
 
-	// Check for Australian state abbreviations
+	// Enhanced Australian state abbreviations and full names
 	const hasAustralianState =
-		/\b(vic|nsw|qld|wa|sa|tas|nt|act|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(
+		/\b(vic|nsw|qld|wa|sa|tas|nt|act|australia|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(
 			lowerQuery,
 		);
 
-	// If it has postcode or state but no street indicators, likely a suburb
-	if ((hasPostcode || hasAustralianState) && !hasStreetType && !hasRuralType) {
+	// Common Australian suburb patterns
+	const hasSuburbIndicators = 
+		/\b(north|south|east|west|upper|lower|mount|mt|saint|st|port|glen|box|point|new|old)\s+[a-z]/i.test(lowerQuery) ||
+		/\b(heights|gardens|valley|beach|park|creek|hill|ridge|bay|cove|grove|lakes|springs|falls)\b/i.test(lowerQuery);
+
+	// Handle special suburb cases first
+	if (isSpecialSuburb) {
+		// For special suburbs, only consider it a street/address if it has additional street indicators
+		// beyond the special suburb name itself
+		const withoutSpecialPrefix = lowerQuery.replace(/^(st|mt|port|glen|point)\s+/i, "");
+		const hasAdditionalStreetType = streetKeywordRegexes.some((regex) =>
+			regex.test(withoutSpecialPrefix),
+		);
+		
+		// Check if it's a street in a special suburb (e.g., "St Kilda Road")
+		if (hasAdditionalStreetType && !hasHouseNumber && !hasUnitNumber) {
+			return "street";
+		}
+		// Check if it's an address in special suburb (e.g., "123 St Kilda Road")
+		if ((hasHouseNumber || hasUnitNumber) && hasAdditionalStreetType) {
+			return "address";
+		}
+		// Otherwise it's just the suburb name
 		return "suburb";
 	}
 
-	// Suburb patterns (simple text without numbers or street types)
-	const isSimpleText = /^[a-z\s\-']+$/i.test(lowerQuery);
+	// If it has postcode, state, or suburb indicators but no street indicators, likely a suburb
+	if ((hasPostcode || hasAustralianState || hasSuburbIndicators) && !hasStreetType && !hasRuralType) {
+		return "suburb";
+	}
 
-	// If it's just simple text without street indicators, assume suburb
-	if (isSimpleText && !hasStreetType && !hasRuralType) {
+	// Enhanced simple text pattern - allows for apostrophes, hyphens, and numbers in suburb names
+	const isSuburbLikeText = /^[a-z0-9\s\-'&]+$/i.test(lowerQuery) && !/^\d+$/.test(lowerQuery);
+
+	// If it's just suburb-like text without street indicators, assume suburb
+	if (isSuburbLikeText && !hasStreetType && !hasRuralType && lowerQuery.length > 2) {
 		return "suburb";
 	}
 
 	return "general";
 }
 
-export async function fetchLatLngForPlaceId(placeId: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
+export async function fetchLatLngForPlaceId(
+	placeId: string,
+	apiKey: string,
+): Promise<{ lat: number; lng: number } | null> {
 	const res = await fetch(
-		`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${apiKey}`
+		`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${apiKey}`,
 	);
 	const data = await res.json();
 	if (data.result?.geometry?.location) {

@@ -39,7 +39,7 @@ export const agentGetPreviousSearches = query({
 			resultsCount: v.number(),
 			timestamp: v.number(),
 			confirmed: v.boolean(),
-		})
+		}),
 	),
 	handler: async (ctx, args) => {
 		// TODO: Integrate with Convex long-term memory if/when implemented.

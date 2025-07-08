@@ -25,7 +25,7 @@ export interface HistoryItem {
 	timestamp?: number;
 }
 
-export type Mode = 'manual' | 'voice' | 'agent';
+export type Mode = "manual" | "voice" | "agent";
 
 // Street indicators
 const streetKeywords = [

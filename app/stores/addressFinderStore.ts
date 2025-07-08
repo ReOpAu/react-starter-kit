@@ -106,7 +106,7 @@ export const useAddressFinderStore = create<AddressFinderState>()(
 			},
 			setSelectedResult: (result: Suggestion | null) =>
 				set((state) => ({
-					selectedResult: result
+					selectedResult: result,
 				})),
 			setIsRecording: (recording: boolean) => set({ isRecording: recording }),
 			setIsVoiceActive: (active: boolean) => set({ isVoiceActive: active }),
