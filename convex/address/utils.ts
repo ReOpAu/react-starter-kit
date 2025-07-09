@@ -209,53 +209,248 @@ function calculateConfidence(
 	prediction: any,
 	detectedIntent: LocationIntent,
 	resultType: "suburb" | "street" | "address" | "general",
+	searchQuery?: string,
+	position?: number,
 ): number {
-	// Start with dynamic base score based on Google's ranking position
-	let confidence = 0.3;
+	// === SOPHISTICATED CONFIDENCE SCORING SYSTEM ===
+	// Leverages all available Google Places API data for optimal user experience
 
-	// Primary intent match bonus (stronger weighting)
+	// 1. DYNAMIC BASE SCORE - Google's ranking indicates relevance
+	// First result gets highest base score, decreasing for subsequent results
+	let confidence =
+		position !== undefined
+			? Math.max(0.6 - position * 0.08, 0.25) // 60% -> 52% -> 44% -> 36% -> 28%
+			: 0.4; // Default if position unknown
+
+	// 2. INTENT ALIGNMENT SCORING (Primary Factor: +35%)
+	// Strong bonus for results that match what user is looking for
 	if (doesResultMatchIntent(resultType, detectedIntent)) {
-		confidence += 0.4;
+		confidence += 0.35;
+
+		// Extra precision bonus for exact Google Places type alignment
+		if (
+			(detectedIntent === "suburb" && prediction.types.includes("locality")) ||
+			(detectedIntent === "street" && prediction.types.includes("route")) ||
+			(detectedIntent === "address" &&
+				prediction.types.includes("street_address"))
+		) {
+			confidence += 0.15; // Total +50% for perfect alignment
+		}
+	} else {
+		// Moderate penalty for intent mismatch, but not too harsh
+		confidence -= 0.1;
 	}
 
-	// Exact Google Places type match bonus
+	// 3. QUERY SIMILARITY ANALYSIS (+20% max)
+	// Measures how well the result description matches the user's input
+	if (searchQuery && prediction.description) {
+		const similarity = calculateStringSimilarity(
+			searchQuery.toLowerCase().trim(),
+			prediction.description.toLowerCase(),
+		);
+		confidence += similarity * 0.2;
+	}
+
+	// 4. AUSTRALIAN GEOLOCATION RELEVANCE (+15%)
+	// Enhanced detection of Australian address patterns
+	const australianRelevance = calculateAustralianRelevance(
+		prediction.description,
+	);
+	confidence += australianRelevance * 0.15;
+
+	// 5. GOOGLE PLACES QUALITY INDICATORS (+10%)
+	// Leverage Google's internal quality signals
+	const qualityScore = calculateGoogleQualityScore(prediction);
+	confidence += qualityScore * 0.1;
+
+	// 6. STRUCTURED FORMATTING BONUS (+8%)
+	// Well-formatted results from Google are typically more reliable
+	if (prediction.structured_formatting) {
+		const mainText = prediction.structured_formatting.main_text || "";
+		const secondaryText = prediction.structured_formatting.secondary_text || "";
+
+		// Bonus for having both main and secondary text (complete address formatting)
+		if (mainText.length > 0 && secondaryText.length > 0) {
+			confidence += 0.08;
+		} else if (mainText.length > 0) {
+			confidence += 0.04;
+		}
+	}
+
+	// 7. ESTABLISHMENT RELEVANCE ADJUSTMENT (-15% to +5%)
+	// Smart penalty/bonus based on whether establishments are relevant to the intent
+	const establishmentScore = calculateEstablishmentRelevance(
+		prediction.types,
+		detectedIntent,
+	);
+	confidence += establishmentScore;
+
+	// 8. MATCHED SUBSTRINGS PRECISION (+5%)
+	// Google provides match highlighting - use this signal
 	if (
-		(detectedIntent === "suburb" && prediction.types.includes("locality")) ||
-		(detectedIntent === "street" && prediction.types.includes("route")) ||
-		(detectedIntent === "address" &&
-			prediction.types.includes("street_address"))
+		prediction.matched_substrings &&
+		prediction.matched_substrings.length > 0
 	) {
-		confidence += 0.2;
+		const totalMatched = prediction.matched_substrings.reduce(
+			(sum: number, match: any) => sum + match.length,
+			0,
+		);
+		const matchRatio = Math.min(totalMatched / (searchQuery?.length || 1), 1);
+		confidence += matchRatio * 0.05;
 	}
 
-	// Smart establishment penalty (only for irrelevant establishments)
+	// 9. ADDRESS COMPLETENESS FACTOR (+3%)
+	// More complete addresses are generally more reliable
+	const completeness = calculateAddressCompleteness(prediction.description);
+	confidence += completeness * 0.03;
+
+	// 10. FINAL BOUNDS AND NORMALIZATION
+	// Ensure confidence stays within valid bounds
+	return Math.max(0.05, Math.min(0.98, confidence));
+}
+
+// === HELPER FUNCTIONS FOR SOPHISTICATED SCORING ===
+
+function calculateStringSimilarity(query: string, result: string): number {
+	// Simple but effective similarity using common substring ratio
+	if (!query || !result) return 0;
+
+	const queryWords = query.split(/\s+/).filter((w) => w.length > 0);
+	const resultLower = result.toLowerCase();
+
+	let matchedWords = 0;
+	for (const word of queryWords) {
+		if (resultLower.includes(word.toLowerCase())) {
+			matchedWords++;
+		}
+	}
+
+	return queryWords.length > 0 ? matchedWords / queryWords.length : 0;
+}
+
+function calculateAustralianRelevance(description: string): number {
+	let relevance = 0;
+
+	// Australian state codes (strong signal)
+	if (/(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i.test(description)) {
+		relevance += 0.4;
+	}
+
+	// Australian postcodes (4 digits, not starting with 0)
+	if (/\b[1-9]\d{3}\b/.test(description)) {
+		relevance += 0.3;
+	}
+
+	// Australia country reference
+	if (/\bAustralia\b/i.test(description)) {
+		relevance += 0.2;
+	}
+
+	// Common Australian address terms
 	if (
-		(detectedIntent === "suburb" || detectedIntent === "street") &&
-		prediction.types.some((type: string) =>
-			[
-				"restaurant",
-				"gas_station",
-				"hospital",
-				"school",
-				"shopping_mall",
-				"store",
-				"point_of_interest",
-				"tourist_attraction",
-			].includes(type),
-		) &&
-		!prediction.types.some((type: string) =>
-			["locality", "route", "street_address", "sublocality"].includes(type),
+		/(Street|Road|Avenue|Lane|Drive|Court|Place|Terrace|Crescent|Circuit)\b/i.test(
+			description,
 		)
 	) {
-		confidence -= 0.2;
+		relevance += 0.1;
 	}
 
-	// Australian context bonus
-	if (/(VIC|NSW|QLD|WA|SA|TAS|NT|ACT|Australia)/.test(prediction.description)) {
-		confidence += 0.1;
+	return Math.min(relevance, 1.0);
+}
+
+function calculateGoogleQualityScore(prediction: any): number {
+	let quality = 0;
+
+	// Multiple types indicate richer data
+	if (prediction.types && prediction.types.length > 1) {
+		quality += 0.3;
 	}
 
-	return Math.max(0, Math.min(1, confidence));
+	// Presence of place_id indicates verified place
+	if (prediction.place_id && prediction.place_id.length > 10) {
+		quality += 0.4;
+	}
+
+	// Well-structured description format
+	if (prediction.description && prediction.description.includes(",")) {
+		quality += 0.3;
+	}
+
+	return Math.min(quality, 1.0);
+}
+
+function calculateEstablishmentRelevance(
+	types: string[],
+	intent: LocationIntent,
+): number {
+	if (!types || !Array.isArray(types)) return 0;
+
+	const establishmentTypes = [
+		"restaurant",
+		"gas_station",
+		"hospital",
+		"school",
+		"shopping_mall",
+		"store",
+		"point_of_interest",
+		"tourist_attraction",
+		"bank",
+		"pharmacy",
+	];
+
+	const geographicTypes = [
+		"locality",
+		"sublocality",
+		"route",
+		"street_address",
+		"administrative_area_level_1",
+		"administrative_area_level_2",
+	];
+
+	const hasEstablishment = types.some((type) =>
+		establishmentTypes.includes(type),
+	);
+	const hasGeographic = types.some((type) => geographicTypes.includes(type));
+
+	// For suburb/street/address intents, geographic types are preferred
+	if (intent !== "general" && intent !== null) {
+		if (hasGeographic && !hasEstablishment) {
+			return 0.05; // Pure geographic - good
+		} else if (hasGeographic && hasEstablishment) {
+			return 0; // Mixed - neutral
+		} else if (hasEstablishment) {
+			return -0.15; // Pure establishment - penalty
+		}
+	}
+
+	// For general intent, establishments can be relevant
+	if (intent === "general" && hasEstablishment) {
+		return 0.02; // Small bonus for general searches
+	}
+
+	return 0;
+}
+
+function calculateAddressCompleteness(description: string): number {
+	if (!description) return 0;
+
+	let completeness = 0;
+	const parts = description.split(",").map((p) => p.trim());
+
+	// More comma-separated parts indicate more complete address
+	completeness += Math.min(parts.length * 0.2, 0.6);
+
+	// Presence of numbers (house numbers, postcodes)
+	if (/\d/.test(description)) {
+		completeness += 0.2;
+	}
+
+	// Reasonable length indicates detailed description
+	if (description.length > 20 && description.length < 100) {
+		completeness += 0.2;
+	}
+
+	return Math.min(completeness, 1.0);
 }
 
 function doesResultMatchIntent(
@@ -471,7 +666,8 @@ export async function getPlacesApiSuggestions(
 	const response = await fetch(url);
 	const data = await response.json();
 	if (data.status === "OK" && data.predictions) {
-		for (const prediction of data.predictions) {
+		for (let i = 0; i < data.predictions.length; i++) {
+			const prediction = data.predictions[i];
 			const resultType = classifyResultType(
 				prediction.types,
 				prediction.description,
@@ -480,6 +676,8 @@ export async function getPlacesApiSuggestions(
 				prediction,
 				actualIntent,
 				resultType,
+				query, // Pass the search query for similarity analysis
+				i, // Pass the position for ranking-based scoring
 			);
 			if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
 				const tempSuggestion: PlaceSuggestion = {

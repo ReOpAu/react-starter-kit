@@ -65,7 +65,9 @@ export const useSpellingAutocomplete = (
 		sessionTokenRef.current = null;
 	};
 
-	const autocompleteAction = useAction(api.autocomplete.autocompleteAddresses);
+	const autocompleteAction = useAction(
+		api.address.getPlaceSuggestions.getPlaceSuggestions,
+	);
 	const debounceTimerRef = useRef<NodeJS.Timeout>(undefined);
 
 	const getSuggestions = async (input: string) => {
@@ -82,15 +84,19 @@ export const useSpellingAutocomplete = (
 			const sessionToken = getSessionToken();
 
 			const args: {
-				partialInput: string;
+				query: string;
+				intent?: "suburb" | "street" | "address" | "general";
 				maxResults: number;
 				sessionToken: string;
 				location?: { lat: number; lng: number };
 				radius?: number;
+				isAutocomplete: boolean;
 			} = {
-				partialInput: input,
+				query: input,
+				intent: "general",
 				maxResults: 8,
 				sessionToken,
+				isAutocomplete: true,
 			};
 
 			// Add location biasing if provided
@@ -99,12 +105,21 @@ export const useSpellingAutocomplete = (
 				args.radius = radius;
 			}
 
-			const results = await autocompleteAction(args);
-			// Validate that results is an array before setting
-			if (Array.isArray(results)) {
-				setSuggestions(results);
+			const result = await autocompleteAction(args);
+			// Handle the new API response format
+			if (result.success && Array.isArray(result.suggestions)) {
+				// Convert the new format to the expected format
+				const convertedSuggestions = result.suggestions.map((suggestion) => ({
+					address: suggestion.description,
+					confidence: suggestion.confidence || 0.5,
+					matchType: suggestion.resultType || "general",
+					placeId: suggestion.placeId,
+					addressType: suggestion.types?.[0] || "establishment",
+					sessionToken,
+				}));
+				setSuggestions(convertedSuggestions);
 			} else {
-				console.warn("Unexpected API response format:", results);
+				console.warn("API response error:", result);
 				setSuggestions([]);
 			}
 		} catch (err) {

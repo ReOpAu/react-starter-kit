@@ -28,7 +28,9 @@ import type * as suburb_lookupSuburbEnhanced from "../suburb/lookupSuburbEnhance
 import type * as suburb_lookupSuburbMultiple from "../suburb/lookupSuburbMultiple.js";
 import type * as suburb_utils from "../suburb/utils.js";
 import type * as suburbLookup from "../suburbLookup.js";
-import type * as suburbLookup_updated from "../suburbLookup_updated.js";
+import type * as testing_runValidationTests from "../testing/runValidationTests.js";
+import type * as testing_transcriptionSimulator from "../testing/transcriptionSimulator.js";
+import type * as testing_validationTestCases from "../testing/validationTestCases.js";
 import type * as users from "../users.js";
 import type * as utils_logger from "../utils/logger.js";
 
@@ -67,7 +69,9 @@ declare const fullApi: ApiFromModules<{
   "suburb/lookupSuburbMultiple": typeof suburb_lookupSuburbMultiple;
   "suburb/utils": typeof suburb_utils;
   suburbLookup: typeof suburbLookup;
-  suburbLookup_updated: typeof suburbLookup_updated;
+  "testing/runValidationTests": typeof testing_runValidationTests;
+  "testing/transcriptionSimulator": typeof testing_transcriptionSimulator;
+  "testing/validationTestCases": typeof testing_validationTestCases;
   users: typeof users;
   "utils/logger": typeof utils_logger;
 }>;

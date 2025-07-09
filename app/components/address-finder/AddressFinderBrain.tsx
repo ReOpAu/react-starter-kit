@@ -18,7 +18,10 @@ import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { Suggestion } from "~/stores/types";
 import type { LocationIntent, Mode } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
-import { classifyIntent, classifySelectedResult } from "~/utils/addressFinderUtils";
+import {
+	classifyIntent,
+	classifySelectedResult,
+} from "~/utils/addressFinderUtils";
 
 interface AddressFinderBrainProps {
 	children: (brainState: AddressFinderBrainState) => React.ReactNode;
@@ -65,6 +68,20 @@ export interface AddressFinderBrainState {
 	shouldShowSelectedResult: boolean;
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
+	
+	// Auto-correction state
+	autoCorrection: {
+		hasCorrection: boolean;
+		suburbChanged: boolean;
+		postcodeChanged: boolean;
+		stateChanged: boolean;
+		originalSuburb: string | null;
+		correctedSuburb: string | null;
+		originalPostcode: string | null;
+		correctedPostcode: string | null;
+		originalState: string | null;
+		correctedState: string | null;
+	} | null;
 
 	// Session management
 	sessionToken: string | null;
@@ -118,7 +135,21 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 	const [isRecallMode, setIsRecallMode] = useState(false);
 	const [showLowConfidence, setShowLowConfidence] = useState(false);
-	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(null);
+	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(
+		null,
+	);
+	const [currentAutoCorrection, setCurrentAutoCorrection] = useState<{
+		hasCorrection: boolean;
+		suburbChanged: boolean;
+		postcodeChanged: boolean;
+		stateChanged: boolean;
+		originalSuburb: string | null;
+		correctedSuburb: string | null;
+		originalPostcode: string | null;
+		correctedPostcode: string | null;
+		originalState: string | null;
+		correctedState: string | null;
+	} | null>(null);
 
 	// Session token management
 	const sessionTokenRef = useRef<string | null>(null);
@@ -215,7 +246,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				log("🔧 Context sync: Added selection to agent's suggestions array");
 			}
 			handleSelect(updatedResult);
-			
+
 			// Preserve intent if this is a recall, otherwise update based on selection
 			if (preserveIntent) {
 				setCurrentIntent(preserveIntent);
@@ -225,7 +256,8 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				const resultIntent = classifySelectedResult(updatedResult);
 				setCurrentIntent(resultIntent);
 			}
-			
+
+			log(`🔧 Storing selection - originalQuery: "${currentSearchQuery}", selectedAddress.description: "${updatedResult.description}", selectedAddress.displayText: "${updatedResult.displayText}"`);
 			addAddressSelection({
 				originalQuery: currentSearchQuery,
 				selectedAddress: updatedResult,
@@ -369,7 +401,14 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				setCurrentIntent(detectedIntent);
 			}
 		}
-	}, [searchQuery, isRecallMode, selectedResult, isRecording, currentIntent, setCurrentIntent]);
+	}, [
+		searchQuery,
+		isRecallMode,
+		selectedResult,
+		isRecording,
+		currentIntent,
+		setCurrentIntent,
+	]);
 
 	// Helper functions
 	const extractState = useCallback((str: string): string | null => {
@@ -377,7 +416,68 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		return match ? match[1].toUpperCase() : null;
 	}, []);
 
-	// Auto-select logic
+	const extractSuburb = useCallback((str: string): string | null => {
+		const parts = str.split(',');
+		if (parts.length >= 2) {
+			// Get the part before the state/postcode
+			const suburbPart = parts[1].trim();
+			const suburbMatch = suburbPart.split(' ')[0]; // First word after comma
+			return suburbMatch || null;
+		}
+		return null;
+	}, []);
+
+	const extractPostcode = useCallback((str: string): string | null => {
+		const match = str.match(/\b\d{4}\b/);
+		return match ? match[0] : null;
+	}, []);
+
+	const detectAutoCorrection = useCallback((input: string, output: string) => {
+		const inputSuburb = extractSuburb(input);
+		const outputSuburb = extractSuburb(output);
+		const inputPostcode = extractPostcode(input);
+		const outputPostcode = extractPostcode(output);
+		const inputState = extractState(input);
+		const outputState = extractState(output);
+
+		// Check for suburb changes (low consequence)
+		const suburbChanged = Boolean(inputSuburb && outputSuburb && 
+			inputSuburb.toLowerCase() !== outputSuburb.toLowerCase());
+
+		// Check for postcode changes (medium consequence)  
+		const postcodeChanged = Boolean(inputPostcode && outputPostcode && 
+			inputPostcode !== outputPostcode);
+
+		// Check for state changes (high consequence)
+		const stateChanged = Boolean(inputState && outputState && 
+			inputState !== outputState);
+
+		// Check for significant address reformatting
+		const inputWords = input.toLowerCase().split(/\s+/);
+		const outputWords = output.toLowerCase().split(/\s+/);
+		const sharedWords = inputWords.filter(word => 
+			outputWords.some(outWord => outWord.includes(word) || word.includes(outWord))
+		);
+		const similarityRatio = sharedWords.length / Math.max(inputWords.length, 1);
+		const significantReformatting = similarityRatio < 0.6;
+
+		return {
+			hasCorrection: suburbChanged || postcodeChanged || stateChanged || significantReformatting,
+			suburbChanged,
+			postcodeChanged,
+			stateChanged,
+			significantReformatting,
+			originalSuburb: inputSuburb,
+			correctedSuburb: outputSuburb,
+			originalPostcode: inputPostcode,
+			correctedPostcode: outputPostcode,
+			originalState: inputState,
+			correctedState: outputState,
+			similarityRatio,
+		};
+	}, [extractSuburb, extractPostcode, extractState]);
+
+	// Enhanced auto-select logic with auto-correction detection
 	useEffect(() => {
 		if (
 			isRecording &&
@@ -390,18 +490,107 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			const userState = extractState(searchQuery);
 			const resultState = extractState(suggestion.description);
 
-			const highConfidence = (suggestion.confidence ?? 0.5) >= 0.7;
-			const stateMatches =
-				!userState || !resultState || userState === resultState;
+			// === DETECT AUTO-CORRECTIONS ===
+			const autoCorrection = detectAutoCorrection(searchQuery, suggestion.description);
+			
+			// === ADAPTIVE CONFIDENCE THRESHOLDS ===
+			const getConfidenceThreshold = () => {
+				const baseThreshold = isRecording ? 0.65 : 0.72; // Voice vs manual
 
+				// Intent-based adjustments
+				switch (currentIntent) {
+					case "address":
+						return baseThreshold + 0.05; // Higher bar for addresses
+					case "suburb":
+						return baseThreshold - 0.03; // More tolerant for suburbs
+					case "street":
+						return baseThreshold; // Standard threshold
+					case "general":
+						return baseThreshold - 0.08; // Most tolerant for general
+					default:
+						return baseThreshold;
+				}
+			};
+
+			const baseConfidence = suggestion.confidence ?? 0.5;
+			const confidenceThreshold = getConfidenceThreshold();
+			
+			// === APPLY AUTO-CORRECTION PENALTIES ===
+			let adjustedConfidence = baseConfidence;
+			
+			if (autoCorrection.hasCorrection) {
+				// Apply penalties based on consequence level
+				if (autoCorrection.stateChanged) {
+					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.4); // Heavy penalty for state changes (high consequence)
+					log(`🔄 State auto-correction detected: ${autoCorrection.originalState} → ${autoCorrection.correctedState}`);
+				}
+				
+				if (autoCorrection.postcodeChanged) {
+					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.1); // Medium penalty for postcode changes
+					log(`🔄 Postcode auto-correction detected: ${autoCorrection.originalPostcode} → ${autoCorrection.correctedPostcode}`);
+				}
+				
+				if (autoCorrection.suburbChanged) {
+					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.05); // Light penalty for suburb changes (low consequence)
+					log(`🔄 Suburb auto-correction detected: ${autoCorrection.originalSuburb} → ${autoCorrection.correctedSuburb}`);
+				}
+				
+				if (autoCorrection.significantReformatting) {
+					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.02); // Minimal penalty for reformatting
+					log(`🔄 Address reformatting detected: ${Math.round(autoCorrection.similarityRatio * 100)}% similarity`);
+				}
+			}
+
+			const highConfidence = adjustedConfidence >= confidenceThreshold;
+			const stateMatches = !userState || !resultState || userState === resultState;
+
+			// === ENHANCED AUTO-SELECTION LOGIC ===
 			if (highConfidence && stateMatches) {
-				handleSelectResult(suggestion);
-				setShowLowConfidence(false);
+				// Store auto-correction information
+				setCurrentAutoCorrection(autoCorrection);
+				
+				// Check if suburb was corrected - show confirmation instead of auto-selecting
+				if (autoCorrection.suburbChanged) {
+					log(`🔄 Suburb correction detected: ${autoCorrection.originalSuburb} → ${autoCorrection.correctedSuburb} - showing confirmation`);
+					setShowLowConfidence(true); // Show confirmation UI for suburb changes
+				} else {
+					// Auto-select without suburb corrections
+					const logMessage = autoCorrection.hasCorrection 
+						? `🎯 Auto-selecting with minor correction (confidence ${Math.round(adjustedConfidence * 100)}%)` 
+						: `🎯 Auto-selecting with confidence ${Math.round(adjustedConfidence * 100)}% (threshold: ${Math.round(confidenceThreshold * 100)}%)`;
+					
+					log(logMessage);
+					
+					// Create a suggestion with the corrected description as the display text
+					const suggestionWithDescription = {
+						...suggestion,
+						// Use the Google-corrected description instead of the original transcription
+						displayText: suggestion.description
+					};
+					
+					log(`🔧 Auto-correction: Setting displayText to "${suggestion.description}" for input "${searchQuery}"`);
+					handleSelectResult(suggestionWithDescription);
+					setShowLowConfidence(false);
+				}
 			} else {
+				// Show low confidence UI with detailed reasoning
+				const reasons = [];
+				if (adjustedConfidence < confidenceThreshold) {
+					reasons.push(`confidence ${Math.round(adjustedConfidence * 100)}% < ${Math.round(confidenceThreshold * 100)}%`);
+				}
+				if (!stateMatches) {
+					reasons.push(`state mismatch (${userState} vs ${resultState})`);
+				}
+				if (autoCorrection.hasCorrection) {
+					reasons.push('auto-correction detected');
+				}
+				
+				log(`⚠️ Low confidence: ${reasons.join(', ')}`);
 				setShowLowConfidence(true);
 			}
 		} else {
 			setShowLowConfidence(false);
+			setCurrentAutoCorrection(null); // Clear auto-correction when not showing suggestions
 		}
 	}, [
 		isRecording,
@@ -412,6 +601,9 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		handleSelectResult,
 		searchQuery,
 		extractState,
+		detectAutoCorrection,
+		log,
+		currentIntent,
 	]);
 
 	// Recall handlers
@@ -444,7 +636,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				["addressSearch", entry.query],
 				newResults.success ? newResults.suggestions : [],
 			);
-			
+
 			// Set intent AFTER API results to ensure it sticks
 			setCurrentIntent(entry.context.intent as LocationIntent);
 			syncToAgent();
@@ -493,7 +685,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			setSelectedResult,
 			syncToAgent,
 			queryClient,
-			setPreserveIntent,
 		],
 	);
 
@@ -514,11 +705,14 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	}, [conversation, addHistory, log]);
 
 	// Handle typing in manual search form
-	const handleManualTyping = useCallback((query: string) => {
-		if (!isRecallMode && !selectedResult) {
-			setActiveSearch({ query, source: "manual" });
-		}
-	}, [setActiveSearch, isRecallMode, selectedResult]);
+	const handleManualTyping = useCallback(
+		(query: string) => {
+			if (!isRecallMode && !selectedResult) {
+				setActiveSearch({ query, source: "manual" });
+			}
+		},
+		[setActiveSearch, isRecallMode, selectedResult],
+	);
 
 	// Computed state
 	const shouldShowSuggestions =
@@ -601,6 +795,9 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		shouldShowSelectedResult,
 		shouldShowValidationStatus,
 		showLowConfidence,
+		
+		// Auto-correction state
+		autoCorrection: currentAutoCorrection,
 
 		// Session management
 		sessionToken: sessionTokenRef.current,

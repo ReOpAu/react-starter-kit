@@ -85,19 +85,28 @@ export function useAddressFinderClientTools(
 
 					if (intent === "address") {
 						log(
-							`🔬 Intent is "address", using direct/strict validation flow for agent.`,
+							`🔬 Intent is "address", using validateThenEnrichAddress flow for agent.`,
 						);
-						const validation = await validateAddressAction({ address: query });
+						const validation = await getPlaceSuggestionsAction({
+							query,
+							intent: "address",
+							maxResults: 1,
+							isAutocomplete: false,
+						});
 
-						if (validation.success && validation.isValid) {
+						if (validation.success && validation.suggestions.length > 0) {
+							const suggestion = validation.suggestions[0];
 							log(
-								`✅ Agent search validated successfully: "${validation.result.address.formattedAddress}"`,
+								`✅ Agent search validated successfully: "${suggestion.description}"`,
 							);
 							const validatedSuggestion: Suggestion = {
-								placeId: validation.result.geocode.placeId,
-								description: validation.result.address.formattedAddress,
-								types: ["street_address", "validated_address"],
-								resultType: "address",
+								placeId: suggestion.placeId,
+								description: suggestion.description,
+								types: suggestion.types || ["street_address", "validated_address"],
+								resultType: suggestion.resultType || "address",
+								confidence: suggestion.confidence || 0.95,
+								suburb: suggestion.suburb,
+								structuredFormatting: suggestion.structuredFormatting,
 							};
 
 							queryClient.setQueryData(
@@ -114,19 +123,18 @@ export function useAddressFinderClientTools(
 									"Address was successfully validated by the system and is ready for selection.",
 							});
 						}
+						const errorMessage = validation.success ? "No suggestions found" : validation.error;
 						log(
-							`❌ Agent search failed strict validation: ${validation.error}`,
+							`❌ Agent search failed validation: ${errorMessage}`,
 						);
 						addHistory({
 							type: "agent",
-							text: `Agent search failed validation: ${validation.error}`,
+							text: `Agent search failed validation: ${errorMessage}`,
 						});
 						return JSON.stringify({
 							status: "validation_failed",
 							suggestions: [],
-							error:
-								validation.error ||
-								"The provided address could not be validated.",
+							error: errorMessage || "The provided address could not be validated.",
 						});
 					}
 

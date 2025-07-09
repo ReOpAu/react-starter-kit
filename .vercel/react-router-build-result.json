@@ -18,6 +18,7 @@
       "routes/subscription-required": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/address-finder": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/test-aldi": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/address-validation-tests": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/api.validate-address": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
@@ -98,6 +99,15 @@
         "parentId": "root",
         "file": "app/routes/test-aldi.tsx",
         "path": "test-aldi",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/address-validation-tests": {
+        "id": "routes/address-validation-tests",
+        "parentId": "root",
+        "file": "app/routes/address-validation-tests.tsx",
+        "path": "address-validation-tests",
         "config": {
           "runtime": "nodejs"
         }
@@ -210,6 +220,12 @@
         "parentId": "root",
         "file": "routes/test-aldi.tsx",
         "path": "test-aldi"
+      },
+      "routes/address-validation-tests": {
+        "id": "routes/address-validation-tests",
+        "parentId": "root",
+        "file": "routes/address-validation-tests.tsx",
+        "path": "address-validation-tests"
       },
       "routes/api.validate-address": {
         "id": "routes/api.validate-address",

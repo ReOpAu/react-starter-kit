@@ -1,10 +1,10 @@
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import type { Suggestion } from "~/stores/addressFinderStore";
+import type { Suggestion } from "~/stores/types";
 import { NearbyAldiStores } from "./NearbyAldiStores";
 
 interface SelectedResultCardProps {
-	result: Suggestion;
+	result: Suggestion | null;
 	onClear: () => void;
 	lat?: number;
 	lng?: number;
@@ -16,6 +16,8 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 	lat,
 	lng,
 }) => {
+	if (!result) return null;
+	
 	return (
 		<Card className="bg-purple-50 border-purple-200">
 			<CardHeader className="flex flex-row items-center justify-between">
@@ -31,7 +33,7 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 				<div className="space-y-3">
 					<div>
 						<p className="font-semibold text-purple-800">Address:</p>
-						<p className="text-purple-700 font-medium">{result.description}</p>
+						<p className="text-purple-700 font-medium">{result.displayText || result.description}</p>
 					</div>
 					<div className="bg-white p-3 rounded border">
 						<p className="font-medium text-purple-800">Place ID:</p>

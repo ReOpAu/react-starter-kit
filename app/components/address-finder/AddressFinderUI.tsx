@@ -50,6 +50,7 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 		shouldShowSelectedResult,
 		shouldShowValidationStatus,
 		showLowConfidence,
+		autoCorrection,
 		history,
 	} = brainState;
 
@@ -256,7 +257,7 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 						{shouldShowSelectedResult && (
 							<>
 								<SelectedResultCard
-									result={selectedResult!}
+									result={selectedResult}
 									onClear={() => handleClear("user")}
 									lat={selectedResult?.lat}
 									lng={selectedResult?.lng}
@@ -306,50 +307,285 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 					</Card>
 				)}
 
-				{/* Low confidence result */}
+				{/* Enhanced Low Confidence Result with Intelligent Analysis */}
 				{shouldShowSuggestions && showLowConfidence && (
-					<Card className="border-yellow-200 bg-yellow-50">
+					<Card className={
+						autoCorrection?.suburbChanged 
+							? "border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
+							: "border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50"
+					}>
 						<CardHeader>
-							<CardTitle>Low Confidence Result</CardTitle>
+							<CardTitle className="flex items-center gap-2">
+								{autoCorrection?.suburbChanged ? (
+									<>
+										<span className="text-2xl">🔄</span>
+										<span>Address Corrected</span>
+										<Badge
+											variant="outline"
+											className="bg-blue-100 text-blue-800"
+										>
+											Suburb Fixed
+										</Badge>
+									</>
+								) : (
+									<>
+										<span className="text-2xl">🤔</span>
+										<span>Uncertain Match Found</span>
+										<Badge
+											variant="outline"
+											className="bg-yellow-100 text-yellow-800"
+										>
+											{Math.round((suggestions[0]?.confidence ?? 0) * 100)}%
+											confidence
+										</Badge>
+									</>
+								)}
+							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<div className="text-yellow-800">
-								<p>
-									I found one possible match, but I'm not confident it's
-									correct:
-								</p>
-								<button
-									type="button"
-									onClick={() => handleSelectResult(suggestions[0])}
-									className="font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer text-left"
-								>
-									{suggestions[0]?.description}
-								</button>
-								<p className="text-xs">
-									(Confidence:{" "}
-									{Math.round((suggestions[0]?.confidence ?? 0) * 100)}%)
-								</p>
+							{/* Input vs Result Comparison */}
+							<div className={`bg-white p-4 rounded-lg border ${
+								autoCorrection?.suburbChanged ? "border-blue-200" : "border-yellow-200"
+							}`}>
+								{autoCorrection?.suburbChanged ? (
+									<div className="space-y-3">
+										<div className="flex items-center gap-2 mb-3">
+											<span className="text-lg">🏘️</span>
+											<h3 className="font-semibold text-blue-800">Suburb Correction Detected</h3>
+										</div>
+										<div className="grid md:grid-cols-2 gap-4">
+											<div>
+												<p className="text-sm font-semibold text-gray-700 mb-1">
+													🎤 You said:
+												</p>
+												<p className="text-gray-900 font-medium bg-gray-50 p-2 rounded">
+													"{searchQuery}"
+												</p>
+												<p className="text-xs text-red-600 mt-1">
+													→ Suburb: <strong>{autoCorrection.originalSuburb}</strong>
+												</p>
+											</div>
+											<div>
+												<p className="text-sm font-semibold text-gray-700 mb-1">
+													✅ Corrected address:
+												</p>
+												<button
+													type="button"
+													onClick={() => handleSelectResult(suggestions[0])}
+													className="w-full text-left font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-2 rounded border border-blue-200 transition-colors"
+												>
+													{suggestions[0]?.description}
+												</button>
+												<p className="text-xs text-green-600 mt-1">
+													→ Suburb: <strong>{autoCorrection.correctedSuburb}</strong>
+												</p>
+											</div>
+										</div>
+										<div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+											<p className="text-sm text-blue-800">
+												<strong>🏠 Good news!</strong> I found the correct address. 
+												<strong> {autoCorrection.originalSuburb}</strong> was corrected to 
+												<strong> {autoCorrection.correctedSuburb}</strong> - the actual suburb where this address is located.
+											</p>
+										</div>
+									</div>
+								) : (
+									<div className="grid md:grid-cols-2 gap-4">
+										<div>
+											<p className="text-sm font-semibold text-gray-700 mb-1">
+												🎤 What I heard/received:
+											</p>
+											<p className="text-gray-900 font-medium bg-gray-50 p-2 rounded">
+												"{searchQuery}"
+											</p>
+										</div>
+										<div>
+											<p className="text-sm font-semibold text-gray-700 mb-1">
+												🎯 Best match found:
+											</p>
+											<button
+												type="button"
+												onClick={() => handleSelectResult(suggestions[0])}
+												className="w-full text-left font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-2 rounded border border-blue-200 transition-colors"
+											>
+												{suggestions[0]?.description}
+											</button>
+										</div>
+									</div>
+								)}
 							</div>
-							<div className="flex gap-2">
-								<Button
-									onClick={() => handleSelectResult(suggestions[0])}
-									className="bg-green-600 hover:bg-green-700"
-								>
-									Confirm This Result
-								</Button>
-								<Button onClick={handleSearchAgain} variant="outline">
-									Search Again
-								</Button>
-								<Button
-									onClick={() => {
-										// This would typically come from the brain state
-										// For now, we'll handle it via the clear action
-										handleClear("user");
-									}}
-									variant="outline"
-								>
-									Manual Input
-								</Button>
+
+							{/* Intelligent Analysis Section */}
+							<div className="space-y-3">
+								<h4 className="font-semibold text-gray-800 flex items-center gap-2">
+									<span>🧠</span>
+									Why I'm uncertain:
+								</h4>
+
+								<div className="grid gap-2 text-sm">
+									{/* Intent Mismatch Analysis */}
+									{currentIntent &&
+										currentIntent !== suggestions[0]?.resultType && (
+											<div className="flex items-start gap-2 bg-yellow-100 p-3 rounded-lg">
+												<span className="text-yellow-600">⚠️</span>
+												<div>
+													<strong>Intent mismatch:</strong> You searched for a{" "}
+													<strong>{currentIntent}</strong>, but this appears to
+													be a <strong>{suggestions[0]?.resultType}</strong>.
+												</div>
+											</div>
+										)}
+
+									{/* Low Query Similarity */}
+									{searchQuery &&
+										suggestions[0]?.description &&
+										!suggestions[0].description
+											.toLowerCase()
+											.includes(searchQuery.toLowerCase().substring(0, 3)) && (
+											<div className="flex items-start gap-2 bg-blue-100 p-3 rounded-lg">
+												<span className="text-blue-600">🔍</span>
+												<div>
+													<strong>Different wording:</strong> Your search terms
+													don't closely match this result.
+												</div>
+											</div>
+										)}
+
+									{/* Voice Input Specific Help */}
+									{isRecording && (
+										<div className="flex items-start gap-2 bg-purple-100 p-3 rounded-lg">
+											<span className="text-purple-600">🎤</span>
+											<div>
+												<strong>Voice transcription:</strong> Speech recognition
+												might have misunderstood your input.
+											</div>
+										</div>
+									)}
+
+									{/* Establishment vs Geographic */}
+									{suggestions[0]?.types?.some((type) =>
+										[
+											"restaurant",
+											"store",
+											"hospital",
+											"school",
+											"point_of_interest",
+										].includes(type),
+									) &&
+										currentIntent !== "general" && (
+											<div className="flex items-start gap-2 bg-orange-100 p-3 rounded-lg">
+												<span className="text-orange-600">🏢</span>
+												<div>
+													<strong>Business vs location:</strong> This appears to
+													be a business/establishment rather than a geographic
+													location.
+												</div>
+											</div>
+										)}
+								</div>
+							</div>
+
+							{/* Enhanced Suggestion Details */}
+							<div className="bg-gray-50 p-4 rounded-lg">
+								<h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+									<span>📋</span>
+									Match Details:
+								</h4>
+								<div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+									<div>
+										<span className="font-semibold">Type:</span>
+										<br />
+										<Badge variant="secondary" className="text-xs">
+											{suggestions[0]?.resultType || "Unknown"}
+										</Badge>
+									</div>
+									<div>
+										<span className="font-semibold">Confidence:</span>
+										<br />
+										<span
+											className={`font-bold ${
+												(suggestions[0]?.confidence ?? 0) > 0.8
+													? "text-green-600"
+													: (suggestions[0]?.confidence ?? 0) > 0.6
+														? "text-yellow-600"
+														: "text-red-600"
+											}`}
+										>
+											{Math.round((suggestions[0]?.confidence ?? 0) * 100)}%
+										</span>
+									</div>
+									{suggestions[0]?.types && (
+										<div className="col-span-2">
+											<span className="font-semibold">Categories:</span>
+											<br />
+											<span className="text-gray-600">
+												{suggestions[0].types.slice(0, 3).join(", ")}
+												{suggestions[0].types.length > 3 && "..."}
+											</span>
+										</div>
+									)}
+								</div>
+							</div>
+
+							{/* Smart Action Buttons */}
+							<div className="space-y-3">
+								<div className="flex flex-wrap gap-2">
+									{autoCorrection?.suburbChanged ? (
+										<>
+											<Button
+												onClick={() => handleSelectResult(suggestions[0])}
+												className="bg-blue-600 hover:bg-blue-700 flex-1 min-w-32"
+											>
+												✅ Accept Correction
+											</Button>
+											<Button
+												onClick={handleSearchAgain}
+												variant="outline"
+												className="flex-1 min-w-32"
+											>
+												🔄 Search Again
+											</Button>
+										</>
+									) : (
+										<>
+											<Button
+												onClick={() => handleSelectResult(suggestions[0])}
+												className="bg-green-600 hover:bg-green-700 flex-1 min-w-32"
+											>
+												✅ Yes, Use This
+											</Button>
+											<Button
+												onClick={handleSearchAgain}
+												variant="outline"
+												className="flex-1 min-w-32"
+											>
+												🔄 Try Again
+											</Button>
+										</>
+									)}
+								</div>
+
+								{/* Context-Aware Suggestions */}
+								<div className="text-xs text-gray-600 bg-blue-50 p-3 rounded border border-blue-200">
+									<p className="font-semibold mb-1">💡 Suggestions:</p>
+									{isRecording ? (
+										<p>
+											• Try speaking more clearly or use the manual input below
+										</p>
+									) : (
+										<p>
+											• Try being more specific (e.g., include suburb, street
+											number, or state)
+										</p>
+									)}
+									{currentIntent !== "general" &&
+										suggestions[0]?.resultType !== currentIntent && (
+											<p>
+												• Search for "{suggestions[0]?.resultType}" instead of "
+												{currentIntent}"
+											</p>
+										)}
+								</div>
 							</div>
 						</CardContent>
 					</Card>

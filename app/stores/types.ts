@@ -14,6 +14,8 @@ export interface Suggestion {
 	lng?: number;
 	// Confidence score (0-1) from backend
 	confidence?: number;
+	// Display text for auto-selected results (uses description by default)
+	displayText?: string;
 	structuredFormatting?: {
 		mainText?: string;
 		// ...other fields as needed
