@@ -8,6 +8,7 @@ export interface Suggestion {
 	// New fields to support rich suggestion UI
 	resultType?: LocationIntent;
 	suburb?: string;
+	postcode?: string;
 	types?: string[];
 	// Optional validated coordinates
 	lat?: number;

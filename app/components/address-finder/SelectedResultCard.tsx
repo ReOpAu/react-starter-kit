@@ -17,7 +17,7 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 	lng,
 }) => {
 	if (!result) return null;
-	
+
 	return (
 		<Card className="bg-purple-50 border-purple-200">
 			<CardHeader className="flex flex-row items-center justify-between">
@@ -33,7 +33,9 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 				<div className="space-y-3">
 					<div>
 						<p className="font-semibold text-purple-800">Address:</p>
-						<p className="text-purple-700 font-medium">{result.displayText || result.description}</p>
+						<p className="text-purple-700 font-medium">
+							{result.displayText || result.description}
+						</p>
 					</div>
 					<div className="bg-white p-3 rounded border">
 						<p className="font-medium text-purple-800">Place ID:</p>
@@ -57,6 +59,14 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								<span className="text-purple-700">{result.suburb}</span>
 							</div>
 						)}
+						{result.postcode && (
+							<div>
+								<span className="font-semibold text-purple-800">
+									Postcode:{" "}
+								</span>
+								<span className="text-purple-700">{result.postcode}</span>
+							</div>
+						)}
 						{result.types && result.types.length > 0 && (
 							<div className="md:col-span-2">
 								<span className="font-semibold text-purple-800">Types: </span>
@@ -65,13 +75,51 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								</span>
 							</div>
 						)}
-						{lat !== undefined && lng !== undefined && (
+						{(result.lat !== undefined && result.lng !== undefined) || (lat !== undefined && lng !== undefined) && (
 							<div className="md:col-span-2">
 								<span className="font-semibold text-purple-800">
 									Coordinates:{" "}
 								</span>
 								<span className="text-purple-700">
-									{lat}, {lng}
+									{result.lat ?? lat}, {result.lng ?? lng}
+								</span>
+							</div>
+						)}
+						{result.confidence !== undefined && (
+							<div>
+								<span className="font-semibold text-purple-800">
+									Confidence:{" "}
+								</span>
+								<span className="text-purple-700">
+									{(result.confidence * 100).toFixed(1)}%
+								</span>
+							</div>
+						)}
+						{result.displayText && result.displayText !== result.description && (
+							<div className="md:col-span-2">
+								<span className="font-semibold text-purple-800">
+									Display Text:{" "}
+								</span>
+								<span className="text-purple-700">{result.displayText}</span>
+							</div>
+						)}
+						{result.structuredFormatting?.mainText && (
+							<div>
+								<span className="font-semibold text-purple-800">
+									Main Text:{" "}
+								</span>
+								<span className="text-purple-700">
+									{result.structuredFormatting.mainText}
+								</span>
+							</div>
+						)}
+						{result.description && (
+							<div className="md:col-span-2">
+								<span className="font-semibold text-purple-800">
+									Full Description:{" "}
+								</span>
+								<span className="text-purple-700 text-sm">
+									{result.description}
 								</span>
 							</div>
 						)}

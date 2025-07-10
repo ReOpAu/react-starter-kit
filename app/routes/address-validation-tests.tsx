@@ -9,6 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { classifyIntent } from "~/utils/addressFinderUtils";
 import type { LocationIntent } from "~/stores/types";
 
+// Constants for testing
+const MAX_RESULTS = 5;
+const PROCESSING_TIMEOUT = 30000; // 30 seconds
+const API_DEBOUNCE_DELAY = 500;
+
 interface ApiCallLog {
 	id: string;
 	timestamp: number;
@@ -38,7 +43,9 @@ export default function AddressValidationTests() {
 	const [selectedApiCall, setSelectedApiCall] = useState<ApiCallLog | null>(null);
 
 	// Direct API actions for testing our actual implementation
-	const getPlaceSuggestions = useAction(api.address.getPlaceSuggestions.getPlaceSuggestions);
+	const getPlaceSuggestions = useAction(
+		api.address.getPlaceSuggestions.getPlaceSuggestions,
+	);
 	const getPlaceDetails = useAction(api.address.getPlaceDetails.getPlaceDetails);
 	const validateAddress = useAction(api.address.validateAddress.validateAddress);
 
@@ -86,9 +93,9 @@ export default function AddressValidationTests() {
 			const suggestionsStart = Date.now();
 			const suggestionsResult = await getPlaceSuggestions({
 				query: address,
-				intent: intent,
+				intent: intent || "general",
 				isAutocomplete: false,
-				maxResults: 5
+				maxResults: MAX_RESULTS
 			});
 			const suggestionsTime = Date.now() - suggestionsStart;
 			
@@ -96,7 +103,7 @@ export default function AddressValidationTests() {
 				id: `${testId}_suggestions`,
 				timestamp: suggestionsStart,
 				api: "getPlaceSuggestions",
-				params: { query: address, intent, isAutocomplete: false, maxResults: 5 },
+				params: { query: address, intent: intent || "general", isAutocomplete: false, maxResults: MAX_RESULTS },
 				response: suggestionsResult,
 				executionTime: suggestionsTime
 			});
@@ -128,23 +135,25 @@ export default function AddressValidationTests() {
 
 			// Step 4: Validate address (if we have a formatted address)
 			let validationResult = null;
-			if (detailsResult?.success && detailsResult.place?.formattedAddress) {
+						if (detailsResult?.success && detailsResult.details?.formattedAddress) {
 				processingSteps.push("4. Validating address");
 				const validationStart = Date.now();
 				validationResult = await validateAddress({
-					address: detailsResult.place.formattedAddress
+					address: detailsResult.details.formattedAddress,
 				});
 				const validationTime = Date.now() - validationStart;
-				
+
 				apiCalls.push({
 					id: `${testId}_validation`,
 					timestamp: validationStart,
 					api: "validateAddress",
-					params: { address: detailsResult.place.formattedAddress },
+					params: { address: detailsResult.details.formattedAddress },
 					response: validationResult,
-					executionTime: validationTime
+					executionTime: validationTime,
 				});
-				processingSteps.push(`   Validation result: ${validationResult.success ? 'valid' : 'invalid'}`);
+				processingSteps.push(
+					`   Validation result: ${validationResult.success ? "valid" : "invalid"}`,
+				);
 			}
 
 			// Create final result
@@ -217,8 +226,9 @@ export default function AddressValidationTests() {
 
 		// Group by intent
 		const byIntent = testResults.reduce((acc, test) => {
-			if (!acc[test.intent]) acc[test.intent] = [];
-			acc[test.intent].push(test);
+			const intent = test.intent || "general";
+			if (!acc[intent]) acc[intent] = [];
+			acc[intent].push(test);
 			return acc;
 		}, {} as Record<string, TestResult[]>);
 
@@ -264,7 +274,7 @@ export default function AddressValidationTests() {
 							? (call.api === 'getPlaceSuggestions' 
 								? `${call.response.suggestions?.length || 0} suggestions` 
 								: call.api === 'getPlaceDetails'
-								? `Got details for ${call.response.place?.name || 'place'}`
+																? `Got details for ${call.response.details?.formattedAddress || 'place'}`
 								: call.api === 'validateAddress'
 								? `Validation: ${call.response.validation?.verdict || 'unknown'}`
 								: 'success')

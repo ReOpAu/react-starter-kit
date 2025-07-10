@@ -3,8 +3,8 @@ import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActionHandler } from "~/hooks/useActionHandler";
-import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressAutoSelection } from "~/hooks/useAddressAutoSelection";
+import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressRecall } from "~/hooks/useAddressRecall";
 import { useAddressSession } from "~/hooks/useAddressSession";
 import { useAgentSync } from "~/hooks/useAgentSync";
@@ -17,9 +17,36 @@ import { useIntentStore } from "~/stores/intentStore";
 import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { Suggestion } from "~/stores/types";
-import type { LocationIntent } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
-import { classifyIntent, classifySelectedResult } from "~/utils/addressFinderUtils";
+import {
+	classifyIntent,
+	classifySelectedResult,
+} from "~/utils/addressFinderUtils";
+
+// Constants
+const ENRICHMENT_CACHE_KEY = "placeDetails";
+const DEBOUNCE_DELAY = 300;
+
+// Helper function to check if a result is already enriched
+const isResultEnriched = (result: Suggestion): boolean => {
+	return Boolean(result.postcode && result.suburb && result.lat && result.lng);
+};
+
+// Helper function to log enrichment operations
+const logEnrichment = (
+	operation: string,
+	result: Suggestion,
+	extra?: Record<string, unknown>,
+) => {
+	if (useUIStore.getState().isLoggingEnabled) {
+		console.log(`[AddressFinderBrain:Enrichment] ${operation}`, {
+			placeId: result.placeId,
+			description: result.description,
+			isEnriched: isResultEnriched(result),
+			...extra,
+		});
+	}
+};
 
 interface AddressFinderBrainProps {
 	children: (handlers: AddressFinderBrainHandlers) => React.ReactNode;
@@ -43,7 +70,7 @@ export interface AddressFinderBrainHandlers {
 	shouldShowSelectedResult: boolean;
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
-	
+
 	// Auto-correction state
 	autoCorrection: any;
 
@@ -95,8 +122,9 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
 	// Custom hooks for extracted logic
-	const { getSessionToken, clearSessionToken, getCurrentSessionToken } = useAddressSession();
-	
+	const { getSessionToken, clearSessionToken, getCurrentSessionToken } =
+		useAddressSession();
+
 	const {
 		isRecallMode,
 		preserveIntent,
@@ -143,40 +171,104 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		api.address.getPlaceDetails.getPlaceDetails,
 	);
 
-	// Result selection handler - simplified version
+	// Result selection handler with caching and performance optimizations
 	const handleSelectResult = useCallback(
 		async (result: Suggestion): Promise<void> => {
-			let updatedResult = result;
-			if (
-				(result.lat === undefined || result.lng === undefined) &&
-				result.placeId
-			) {
-				const detailsRes = await getPlaceDetailsAction({
-					placeId: result.placeId,
-				});
-				if (detailsRes.success && detailsRes.details?.geometry?.location) {
-					updatedResult = {
-						...result,
-						lat: detailsRes.details.geometry.location.lat,
-						lng: detailsRes.details.geometry.location.lng,
+			let enrichedResult = { ...result };
+
+			// Check if result is already enriched to avoid redundant API calls
+			if (result.placeId && !isResultEnriched(result)) {
+				logEnrichment("Starting enrichment", result);
+
+				// Check cache first
+				const cachedData = queryClient.getQueryData<{
+					success: boolean;
+					details: {
+						formattedAddress: string;
+						lat: number;
+						lng: number;
+						types: string[];
+						suburb?: string;
+						postcode?: string;
 					};
+				}>([ENRICHMENT_CACHE_KEY, result.placeId]);
+
+				if (cachedData?.success) {
+					logEnrichment("Using cached data", result);
+					enrichedResult = {
+						...result, // Keep original suggestion data like confidence
+						description: cachedData.details.formattedAddress,
+						displayText: cachedData.details.formattedAddress,
+						lat: cachedData.details.lat,
+						lng: cachedData.details.lng,
+						types: cachedData.details.types,
+						suburb: cachedData.details.suburb,
+						postcode: cachedData.details.postcode,
+					};
+				} else {
+					// Fetch fresh data from API
+					logEnrichment("Fetching from API", result);
+					const detailsRes = await getPlaceDetailsAction({
+						placeId: result.placeId,
+					});
+
+					if (detailsRes.success) {
+						logEnrichment("Enrichment successful", result, {
+							formattedAddress: detailsRes.details.formattedAddress,
+							postcode: detailsRes.details.postcode,
+							suburb: detailsRes.details.suburb,
+						});
+
+						// Cache the result
+						queryClient.setQueryData(
+							[ENRICHMENT_CACHE_KEY, result.placeId],
+							detailsRes,
+						);
+
+						enrichedResult = {
+							...result, // Keep original suggestion data like confidence
+							description: detailsRes.details.formattedAddress,
+							displayText: detailsRes.details.formattedAddress,
+							lat: detailsRes.details.lat,
+							lng: detailsRes.details.lng,
+							types: detailsRes.details.types,
+							suburb: detailsRes.details.suburb,
+							postcode: detailsRes.details.postcode,
+						};
+					} else {
+						// Log enrichment failure but continue with original result
+						logEnrichment("Enrichment failed", result, {
+							error: detailsRes.error,
+						});
+						console.warn(
+							`[AddressFinderBrain] Failed to enrich place details for ${result.placeId}:`,
+							detailsRes.error,
+						);
+					}
 				}
+			} else if (isResultEnriched(result)) {
+				logEnrichment("Already enriched, skipping", result);
+			} else {
+				logEnrichment("No placeId, skipping enrichment", result);
 			}
-			const currentSearchQuery = searchQuery || result.description;
+
+			const currentSearchQuery = searchQuery || enrichedResult.description;
 			const currentSuggestions =
 				queryClient.getQueryData<Suggestion[]>([
 					"addressSearch",
 					currentSearchQuery,
 				]) || [];
-			if (!currentSuggestions.find((s) => s.placeId === result.placeId)) {
-				const updatedSuggestions = [...currentSuggestions, updatedResult];
+			if (
+				!currentSuggestions.find((s) => s.placeId === enrichedResult.placeId)
+			) {
+				const updatedSuggestions = [...currentSuggestions, enrichedResult];
 				queryClient.setQueryData(
 					["addressSearch", currentSearchQuery],
 					updatedSuggestions,
 				);
 				log("🔧 Context sync: Added selection to agent's suggestions array");
 			}
-			handleSelect(updatedResult);
+			handleSelect(enrichedResult);
 
 			// Preserve intent if this is a recall, otherwise update based on selection
 			if (preserveIntent) {
@@ -184,14 +276,16 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				setPreserveIntent(null);
 			} else {
 				// Update intent based on the selected result
-				const resultIntent = classifySelectedResult(updatedResult);
+				const resultIntent = classifySelectedResult(enrichedResult);
 				setCurrentIntent(resultIntent);
 			}
 
-			log(`🔧 Storing selection - originalQuery: "${currentSearchQuery}", selectedAddress.description: "${updatedResult.description}", selectedAddress.displayText: "${updatedResult.displayText}"`);
+			log(
+				`🔧 Storing selection - originalQuery: "${currentSearchQuery}", selectedAddress.description: "${enrichedResult.description}", selectedAddress.displayText: "${enrichedResult.displayText}"`,
+			);
 			addAddressSelection({
 				originalQuery: currentSearchQuery,
-				selectedAddress: updatedResult,
+				selectedAddress: enrichedResult,
 				context: {
 					mode: isRecording ? "voice" : "manual",
 					intent: currentIntent ?? "general",
@@ -218,7 +312,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			addAddressSelection,
 			preserveIntent,
 			setPreserveIntent,
-			classifySelectedResult,
 			resetRecallMode,
 		],
 	);
@@ -226,7 +319,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	// Initialize conversation lifecycle with the handleSelectResult
 	const {
 		conversation,
-		conversationRef: conversationRefFromHook,
 		handleStartRecording,
 		handleStopRecording,
 		handleRequestAgentState,
@@ -316,7 +408,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			if (!isRecording && searchQuery !== debouncedSearchQuery) {
 				setDebouncedSearchQuery(searchQuery);
 			}
-		}, 300);
+		}, DEBOUNCE_DELAY);
 		return () => clearTimeout(timer);
 	}, [searchQuery, isRecording, debouncedSearchQuery]);
 
@@ -411,7 +503,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		shouldShowSelectedResult,
 		shouldShowValidationStatus,
 		showLowConfidence,
-		
+
 		// Auto-correction state
 		autoCorrection,
 
