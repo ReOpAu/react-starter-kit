@@ -1,12 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAgentSync } from "~/hooks/useAgentSync";
 import { useApiStore } from "~/stores/apiStore";
-import type { ConfirmedSelectionEntry } from "~/stores/confirmedSelectionsStore";
+import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { useIntentStore } from "~/stores/intentStore";
-import type { SearchMemoryEntry } from "~/stores/searchMemoryStore";
+import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { LocationIntent, Mode } from "~/stores/types";
 
 export function useAddressRecall() {
@@ -20,16 +20,20 @@ export function useAddressRecall() {
 		setSelectedResult,
 	} = useIntentStore();
 
+	const [isRecallMode, setIsRecallMode] = useState(false);
+	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(null);
+
 	const getPlaceSuggestionsAction = useAction(
 		api.address.getPlaceSuggestions.getPlaceSuggestions,
 	);
 
 	const handleRecallPreviousSearch = useCallback(
-		async (entry: SearchMemoryEntry) => {
+		async (entry: SearchHistoryEntry) => {
 			setActiveSearch({ query: entry.query, source: entry.context.mode });
 			setCurrentIntent(entry.context.intent as LocationIntent);
 			setAgentLastSearchQuery(entry.query);
 			setSelectedResult(null);
+			setIsRecallMode(true);
 
 			// Trigger a new search API call for the recalled query
 			const newResults = await getPlaceSuggestionsAction({
@@ -71,24 +75,26 @@ export function useAddressRecall() {
 	);
 
 	const handleRecallConfirmedSelection = useCallback(
-		(entry: ConfirmedSelectionEntry) => {
+		(entry: AddressSelectionEntry) => {
 			setActiveSearch({
-				query: entry.query,
+				query: entry.originalQuery,
 				source: entry.context.mode as Mode,
 			});
 			setCurrentIntent(entry.context.intent as LocationIntent);
-			setAgentLastSearchQuery(entry.query);
+			setAgentLastSearchQuery(entry.originalQuery);
+			setPreserveIntent(entry.context.intent as LocationIntent);
 			setApiResults({
-				suggestions: [entry.selectedResult],
+				suggestions: [entry.selectedAddress],
 				isLoading: false,
 				error: null,
 				source: entry.context.mode as Mode,
 			});
-			setSelectedResult(entry.selectedResult);
+			setSelectedResult(entry.selectedAddress);
 			queryClient.setQueryData(
-				["addressSearch", entry.query],
-				[entry.selectedResult],
+				["addressSearch", entry.originalQuery],
+				[entry.selectedAddress],
 			);
+			setIsRecallMode(true);
 			syncToAgent();
 		},
 		[
@@ -102,8 +108,17 @@ export function useAddressRecall() {
 		],
 	);
 
+	const resetRecallMode = useCallback(() => {
+		setIsRecallMode(false);
+		setPreserveIntent(null);
+	}, []);
+
 	return {
+		isRecallMode,
+		preserveIntent,
 		handleRecallPreviousSearch,
 		handleRecallConfirmedSelection,
+		resetRecallMode,
+		setPreserveIntent,
 	};
 }

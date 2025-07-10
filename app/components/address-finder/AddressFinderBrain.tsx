@@ -4,10 +4,11 @@ import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActionHandler } from "~/hooks/useActionHandler";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
-import { useAddressFinderClientTools } from "~/hooks/useAddressFinderClientTools";
+import { useAddressAutoSelection } from "~/hooks/useAddressAutoSelection";
+import { useAddressRecall } from "~/hooks/useAddressRecall";
+import { useAddressSession } from "~/hooks/useAddressSession";
 import { useAgentSync } from "~/hooks/useAgentSync";
-import { useAudioManager } from "~/hooks/useAudioManager";
-import { useConversationManager } from "~/hooks/useConversationManager";
+import { useConversationLifecycle } from "~/hooks/useConversationLifecycle";
 import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { useApiStore } from "~/stores/apiStore";
@@ -16,42 +17,16 @@ import { useIntentStore } from "~/stores/intentStore";
 import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { Suggestion } from "~/stores/types";
-import type { LocationIntent, Mode } from "~/stores/types";
+import type { LocationIntent } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
-import {
-	classifyIntent,
-	classifySelectedResult,
-} from "~/utils/addressFinderUtils";
+import { classifyIntent, classifySelectedResult } from "~/utils/addressFinderUtils";
 
 interface AddressFinderBrainProps {
-	children: (brainState: AddressFinderBrainState) => React.ReactNode;
+	children: (handlers: AddressFinderBrainHandlers) => React.ReactNode;
 }
 
-export interface AddressFinderBrainState {
-	// Core state
-	suggestions: Suggestion[];
-	isLoading: boolean;
-	isError: boolean;
-	error: Error | null;
-	selectedResult: Suggestion | null;
-	searchQuery: string;
-	currentIntent: LocationIntent | null;
-	debouncedSearchQuery: string;
-
-	// UI state
-	isRecording: boolean;
-	isVoiceActive: boolean;
-	agentRequestedManual: boolean;
-	selectionAcknowledged: boolean;
-	isValidating: boolean;
-	validationError: string | null;
-	pendingRuralConfirmation: null | { result: Suggestion; validation: any };
-
-	// Memory state
-	searchHistory: SearchHistoryEntry[];
-	addressSelections: AddressSelectionEntry[];
-
-	// Handlers
+export interface AddressFinderBrainHandlers {
+	// Core handlers
 	handleSelectResult: (result: Suggestion) => void;
 	handleStartRecording: () => void;
 	handleStopRecording: () => void;
@@ -70,18 +45,12 @@ export interface AddressFinderBrainState {
 	showLowConfidence: boolean;
 	
 	// Auto-correction state
-	autoCorrection: {
-		hasCorrection: boolean;
-		suburbChanged: boolean;
-		postcodeChanged: boolean;
-		stateChanged: boolean;
-		originalSuburb: string | null;
-		correctedSuburb: string | null;
-		originalPostcode: string | null;
-		correctedPostcode: string | null;
-		originalState: string | null;
-		correctedState: string | null;
-	} | null;
+	autoCorrection: any;
+
+	// Validation state
+	isValidating: boolean;
+	validationError: string | null;
+	pendingRuralConfirmation: any;
 
 	// Session management
 	sessionToken: string | null;
@@ -89,21 +58,17 @@ export interface AddressFinderBrainState {
 
 	// Debug state
 	agentStateForDebug: any;
-	history: any[];
 }
 
 export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const queryClient = useQueryClient();
 	const { syncToAgent } = useAgentSync();
 
-	// State from pillar-aligned stores
+	// State from stores
 	const {
 		isRecording,
-		isVoiceActive,
 		agentRequestedManual,
-		isLoggingEnabled,
 		setAgentRequestedManual,
-		selectionAcknowledged,
 		setSelectionAcknowledged,
 	} = useUIStore();
 
@@ -116,43 +81,30 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		setSelectedResult,
 		setCurrentIntent,
 		setAgentLastSearchQuery,
-		agentLastSearchQuery,
 	} = useIntentStore();
 
 	const { setApiResults } = useApiStore();
-	const { history, addHistory } = useHistoryStore();
+	const { addHistory } = useHistoryStore();
 	const { clearSelectionAndSearch } = useAddressFinderActions();
 	const { addSearchToHistory } = useSearchHistoryStore();
-	const searchHistory = useSearchHistoryStore((s) => s.searchHistory);
-	const addressSelections = useAddressSelectionStore(
-		(s) => s.addressSelections,
-	);
 	const addAddressSelection = useAddressSelectionStore(
 		(s) => s.addAddressSelection,
 	);
 
 	// Local component state
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-	const [isRecallMode, setIsRecallMode] = useState(false);
-	const [showLowConfidence, setShowLowConfidence] = useState(false);
-	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(
-		null,
-	);
-	const [currentAutoCorrection, setCurrentAutoCorrection] = useState<{
-		hasCorrection: boolean;
-		suburbChanged: boolean;
-		postcodeChanged: boolean;
-		stateChanged: boolean;
-		originalSuburb: string | null;
-		correctedSuburb: string | null;
-		originalPostcode: string | null;
-		correctedPostcode: string | null;
-		originalState: string | null;
-		correctedState: string | null;
-	} | null>(null);
 
-	// Session token management
-	const sessionTokenRef = useRef<string | null>(null);
+	// Custom hooks for extracted logic
+	const { getSessionToken, clearSessionToken, getCurrentSessionToken } = useAddressSession();
+	
+	const {
+		isRecallMode,
+		preserveIntent,
+		handleRecallPreviousSearch,
+		handleRecallConfirmedSelection,
+		resetRecallMode,
+		setPreserveIntent,
+	} = useAddressRecall();
 
 	// Logging utility
 	const log = useCallback((...args: unknown[]) => {
@@ -161,26 +113,8 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		}
 	}, []);
 
-	// Session token functions
-	const getSessionToken = useCallback(() => {
-		if (!sessionTokenRef.current) {
-			sessionTokenRef.current = crypto.randomUUID();
-			log("Generated new session token:", sessionTokenRef.current);
-		}
-		return sessionTokenRef.current;
-	}, [log]);
-
-	const clearSessionToken = useCallback(() => {
-		if (sessionTokenRef.current) {
-			log("Clearing session token:", sessionTokenRef.current);
-			sessionTokenRef.current = null;
-		}
-	}, [log]);
-
-	// Conversation management
-	const conversationRef = useRef<
-		ReturnType<typeof useConversationManager>["conversation"] | null
-	>(null);
+	// Temporary conversation ref for useActionHandler
+	const conversationRef = useRef<any>(null);
 
 	const {
 		handleSelect,
@@ -208,13 +142,10 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const getPlaceDetailsAction = useAction(
 		api.address.getPlaceDetails.getPlaceDetails,
 	);
-	const getPlaceSuggestionsAction = useAction(
-		api.address.getPlaceSuggestions.getPlaceSuggestions,
-	);
 
-	// Result selection handler
+	// Result selection handler - simplified version
 	const handleSelectResult = useCallback(
-		async (result: Suggestion) => {
+		async (result: Suggestion): Promise<void> => {
 			let updatedResult = result;
 			if (
 				(result.lat === undefined || result.lng === undefined) &&
@@ -272,9 +203,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				exact: true,
 			});
 			syncToAgent();
-			// Note: Don't add selections to search history
-			// Only the useEffect below adds searches with multiple results to history
-			setIsRecallMode(false);
+			resetRecallMode();
 		},
 		[
 			handleSelect,
@@ -286,35 +215,31 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			isRecording,
 			currentIntent,
 			getPlaceDetailsAction,
-			isRecallMode,
 			addAddressSelection,
 			preserveIntent,
 			setPreserveIntent,
 			classifySelectedResult,
+			resetRecallMode,
 		],
 	);
 
-	// Audio and conversation management
-	const clientTools = useAddressFinderClientTools(
+	// Initialize conversation lifecycle with the handleSelectResult
+	const {
+		conversation,
+		conversationRef: conversationRefFromHook,
+		handleStartRecording,
+		handleStopRecording,
+		handleRequestAgentState,
+	} = useConversationLifecycle({
 		getSessionToken,
 		clearSessionToken,
 		handleSelectResult,
-	);
-	const { conversation } = useConversationManager(clientTools);
+	});
 
+	// Update the conversation ref for useActionHandler
 	useEffect(() => {
 		conversationRef.current = conversation;
 	}, [conversation]);
-
-	const { startRecording, stopRecording } = useAudioManager();
-
-	const handleStartRecording = useCallback(() => {
-		startRecording(conversation);
-	}, [startRecording, conversation]);
-
-	const handleStopRecording = useCallback(() => {
-		stopRecording(conversation);
-	}, [stopRecording, conversation]);
 
 	// Query management
 	const {
@@ -337,6 +262,14 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		refetchOnMount: false,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
+	});
+
+	// Auto-selection logic
+	const { showLowConfidence, autoCorrection } = useAddressAutoSelection({
+		suggestions,
+		isLoading,
+		isError,
+		onSelectResult: handleSelectResult,
 	});
 
 	// Sync React Query state to stores
@@ -410,300 +343,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		setCurrentIntent,
 	]);
 
-	// Helper functions
-	const extractState = useCallback((str: string): string | null => {
-		const match = str.match(/\b(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)\b/i);
-		return match ? match[1].toUpperCase() : null;
-	}, []);
-
-	const extractSuburb = useCallback((str: string): string | null => {
-		const parts = str.split(',');
-		if (parts.length >= 2) {
-			// Get the part before the state/postcode
-			const suburbPart = parts[1].trim();
-			const suburbMatch = suburbPart.split(' ')[0]; // First word after comma
-			return suburbMatch || null;
-		}
-		return null;
-	}, []);
-
-	const extractPostcode = useCallback((str: string): string | null => {
-		const match = str.match(/\b\d{4}\b/);
-		return match ? match[0] : null;
-	}, []);
-
-	const detectAutoCorrection = useCallback((input: string, output: string) => {
-		const inputSuburb = extractSuburb(input);
-		const outputSuburb = extractSuburb(output);
-		const inputPostcode = extractPostcode(input);
-		const outputPostcode = extractPostcode(output);
-		const inputState = extractState(input);
-		const outputState = extractState(output);
-
-		// Check for suburb changes (low consequence)
-		const suburbChanged = Boolean(inputSuburb && outputSuburb && 
-			inputSuburb.toLowerCase() !== outputSuburb.toLowerCase());
-
-		// Check for postcode changes (medium consequence)  
-		const postcodeChanged = Boolean(inputPostcode && outputPostcode && 
-			inputPostcode !== outputPostcode);
-
-		// Check for state changes (high consequence)
-		const stateChanged = Boolean(inputState && outputState && 
-			inputState !== outputState);
-
-		// Check for significant address reformatting
-		const inputWords = input.toLowerCase().split(/\s+/);
-		const outputWords = output.toLowerCase().split(/\s+/);
-		const sharedWords = inputWords.filter(word => 
-			outputWords.some(outWord => outWord.includes(word) || word.includes(outWord))
-		);
-		const similarityRatio = sharedWords.length / Math.max(inputWords.length, 1);
-		const significantReformatting = similarityRatio < 0.6;
-
-		return {
-			hasCorrection: suburbChanged || postcodeChanged || stateChanged || significantReformatting,
-			suburbChanged,
-			postcodeChanged,
-			stateChanged,
-			significantReformatting,
-			originalSuburb: inputSuburb,
-			correctedSuburb: outputSuburb,
-			originalPostcode: inputPostcode,
-			correctedPostcode: outputPostcode,
-			originalState: inputState,
-			correctedState: outputState,
-			similarityRatio,
-		};
-	}, [extractSuburb, extractPostcode, extractState]);
-
-	// Enhanced auto-select logic with auto-correction detection
-	useEffect(() => {
-		if (
-			isRecording &&
-			!selectedResult &&
-			suggestions.length === 1 &&
-			!isLoading &&
-			!isError
-		) {
-			const suggestion = suggestions[0];
-			const userState = extractState(searchQuery);
-			const resultState = extractState(suggestion.description);
-
-			// === DETECT AUTO-CORRECTIONS ===
-			const autoCorrection = detectAutoCorrection(searchQuery, suggestion.description);
-			
-			// === ADAPTIVE CONFIDENCE THRESHOLDS ===
-			const getConfidenceThreshold = () => {
-				const baseThreshold = isRecording ? 0.65 : 0.72; // Voice vs manual
-
-				// Intent-based adjustments
-				switch (currentIntent) {
-					case "address":
-						return baseThreshold + 0.05; // Higher bar for addresses
-					case "suburb":
-						return baseThreshold - 0.03; // More tolerant for suburbs
-					case "street":
-						return baseThreshold; // Standard threshold
-					case "general":
-						return baseThreshold - 0.08; // Most tolerant for general
-					default:
-						return baseThreshold;
-				}
-			};
-
-			const baseConfidence = suggestion.confidence ?? 0.5;
-			const confidenceThreshold = getConfidenceThreshold();
-			
-			// === APPLY AUTO-CORRECTION PENALTIES ===
-			let adjustedConfidence = baseConfidence;
-			
-			if (autoCorrection.hasCorrection) {
-				// Apply penalties based on consequence level
-				if (autoCorrection.stateChanged) {
-					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.4); // Heavy penalty for state changes (high consequence)
-					log(`🔄 State auto-correction detected: ${autoCorrection.originalState} → ${autoCorrection.correctedState}`);
-				}
-				
-				if (autoCorrection.postcodeChanged) {
-					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.1); // Medium penalty for postcode changes
-					log(`🔄 Postcode auto-correction detected: ${autoCorrection.originalPostcode} → ${autoCorrection.correctedPostcode}`);
-				}
-				
-				if (autoCorrection.suburbChanged) {
-					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.05); // Light penalty for suburb changes (low consequence)
-					log(`🔄 Suburb auto-correction detected: ${autoCorrection.originalSuburb} → ${autoCorrection.correctedSuburb}`);
-				}
-				
-				if (autoCorrection.significantReformatting) {
-					adjustedConfidence = Math.max(0.1, adjustedConfidence - 0.02); // Minimal penalty for reformatting
-					log(`🔄 Address reformatting detected: ${Math.round(autoCorrection.similarityRatio * 100)}% similarity`);
-				}
-			}
-
-			const highConfidence = adjustedConfidence >= confidenceThreshold;
-			const stateMatches = !userState || !resultState || userState === resultState;
-
-			// === ENHANCED AUTO-SELECTION LOGIC ===
-			if (highConfidence && stateMatches) {
-				// Store auto-correction information
-				setCurrentAutoCorrection(autoCorrection);
-				
-				// Check if suburb was corrected - show confirmation instead of auto-selecting
-				if (autoCorrection.suburbChanged) {
-					log(`🔄 Suburb correction detected: ${autoCorrection.originalSuburb} → ${autoCorrection.correctedSuburb} - showing confirmation`);
-					setShowLowConfidence(true); // Show confirmation UI for suburb changes
-				} else {
-					// Auto-select without suburb corrections
-					const logMessage = autoCorrection.hasCorrection 
-						? `🎯 Auto-selecting with minor correction (confidence ${Math.round(adjustedConfidence * 100)}%)` 
-						: `🎯 Auto-selecting with confidence ${Math.round(adjustedConfidence * 100)}% (threshold: ${Math.round(confidenceThreshold * 100)}%)`;
-					
-					log(logMessage);
-					
-					// Create a suggestion with the corrected description as the display text
-					const suggestionWithDescription = {
-						...suggestion,
-						// Use the Google-corrected description instead of the original transcription
-						displayText: suggestion.description
-					};
-					
-					log(`🔧 Auto-correction: Setting displayText to "${suggestion.description}" for input "${searchQuery}"`);
-					handleSelectResult(suggestionWithDescription);
-					setShowLowConfidence(false);
-				}
-			} else {
-				// Show low confidence UI with detailed reasoning
-				const reasons = [];
-				if (adjustedConfidence < confidenceThreshold) {
-					reasons.push(`confidence ${Math.round(adjustedConfidence * 100)}% < ${Math.round(confidenceThreshold * 100)}%`);
-				}
-				if (!stateMatches) {
-					reasons.push(`state mismatch (${userState} vs ${resultState})`);
-				}
-				if (autoCorrection.hasCorrection) {
-					reasons.push('auto-correction detected');
-				}
-				
-				log(`⚠️ Low confidence: ${reasons.join(', ')}`);
-				setShowLowConfidence(true);
-			}
-		} else {
-			setShowLowConfidence(false);
-			setCurrentAutoCorrection(null); // Clear auto-correction when not showing suggestions
-		}
-	}, [
-		isRecording,
-		selectedResult,
-		suggestions,
-		isLoading,
-		isError,
-		handleSelectResult,
-		searchQuery,
-		extractState,
-		detectAutoCorrection,
-		log,
-		currentIntent,
-	]);
-
-	// Recall handlers
-	const handleRecallPreviousSearch = useCallback(
-		async (entry: SearchHistoryEntry) => {
-			setActiveSearch({ query: entry.query, source: entry.context.mode });
-			setAgentLastSearchQuery(entry.query);
-			setSelectedResult(null);
-			setDebouncedSearchQuery(entry.query);
-			setIsRecallMode(true);
-
-			const newResults = await getPlaceSuggestionsAction({
-				query: entry.query,
-				intent: entry.context.intent as
-					| "general"
-					| "suburb"
-					| "street"
-					| "address"
-					| undefined,
-				isAutocomplete: false,
-				sessionToken: undefined,
-			});
-			setApiResults({
-				suggestions: newResults.success ? newResults.suggestions : [],
-				isLoading: false,
-				error: newResults.success ? null : newResults.error,
-				source: entry.context.mode,
-			});
-			queryClient.setQueryData(
-				["addressSearch", entry.query],
-				newResults.success ? newResults.suggestions : [],
-			);
-
-			// Set intent AFTER API results to ensure it sticks
-			setCurrentIntent(entry.context.intent as LocationIntent);
-			syncToAgent();
-		},
-		[
-			setActiveSearch,
-			setCurrentIntent,
-			setAgentLastSearchQuery,
-			setApiResults,
-			setSelectedResult,
-			syncToAgent,
-			queryClient,
-			getPlaceSuggestionsAction,
-		],
-	);
-
-	const handleRecallConfirmedSelection = useCallback(
-		(entry: AddressSelectionEntry) => {
-			setActiveSearch({
-				query: entry.originalQuery,
-				source: entry.context.mode as Mode,
-			});
-			setPreserveIntent(entry.context.intent as LocationIntent);
-			setCurrentIntent(entry.context.intent as LocationIntent);
-			setAgentLastSearchQuery(entry.originalQuery);
-			setApiResults({
-				suggestions: [entry.selectedAddress],
-				isLoading: false,
-				error: null,
-				source: entry.context.mode as Mode,
-			});
-			setSelectedResult(entry.selectedAddress);
-			queryClient.setQueryData(
-				["addressSearch", entry.originalQuery],
-				[entry.selectedAddress],
-			);
-			setDebouncedSearchQuery(entry.originalQuery);
-			syncToAgent();
-			setIsRecallMode(true);
-		},
-		[
-			setActiveSearch,
-			setCurrentIntent,
-			setAgentLastSearchQuery,
-			setApiResults,
-			setSelectedResult,
-			syncToAgent,
-			queryClient,
-		],
-	);
-
-	const handleRequestAgentState = useCallback(() => {
-		if (conversation.status === "connected") {
-			const prompt =
-				"Please report your current state. Use the getCurrentState tool to find out what it is, and then tell me the result.";
-			log("🤖 Requesting agent state with prompt:", prompt);
-			conversation.sendUserMessage?.(prompt);
-			addHistory({ type: "user", text: "Requested current state from agent." });
-		} else {
-			log("⚠️ Cannot request agent state, conversation not connected.");
-			addHistory({
-				type: "system",
-				text: "Error: Conversation not connected.",
-			});
-		}
-	}, [conversation, addHistory, log]);
-
 	// Handle typing in manual search form
 	const handleManualTyping = useCallback(
 		(query: string) => {
@@ -725,7 +364,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const agentStateForDebug = {
 		ui: {
 			isRecording,
-			isVoiceActive,
+			isVoiceActive: false, // Will be provided by the store
 			currentIntent: currentIntent || "general",
 			searchQuery,
 			hasQuery: !!searchQuery,
@@ -744,7 +383,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			hasSelection: !!selectedResult,
 			selectedAddress: selectedResult?.description || null,
 			selectedPlaceId: selectedResult?.placeId || null,
-			selectionAcknowledged,
+			selectionAcknowledged: false, // Will be provided by the store
 		},
 		meta: {
 			lastUpdate: Date.now(),
@@ -754,31 +393,8 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		},
 	};
 
-	const brainState: AddressFinderBrainState = {
-		// Core state
-		suggestions,
-		isLoading,
-		isError,
-		error,
-		selectedResult,
-		searchQuery,
-		currentIntent,
-		debouncedSearchQuery,
-
-		// UI state
-		isRecording,
-		isVoiceActive,
-		agentRequestedManual,
-		selectionAcknowledged,
-		isValidating,
-		validationError,
-		pendingRuralConfirmation,
-
-		// Memory state
-		searchHistory,
-		addressSelections,
-
-		// Handlers
+	const handlers: AddressFinderBrainHandlers = {
+		// Core handlers
 		handleSelectResult,
 		handleStartRecording,
 		handleStopRecording,
@@ -797,16 +413,20 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		showLowConfidence,
 		
 		// Auto-correction state
-		autoCorrection: currentAutoCorrection,
+		autoCorrection,
+
+		// Validation state
+		isValidating,
+		validationError,
+		pendingRuralConfirmation,
 
 		// Session management
-		sessionToken: sessionTokenRef.current,
+		sessionToken: getCurrentSessionToken(),
 		conversationStatus: conversation.status,
 
 		// Debug state
 		agentStateForDebug,
-		history,
 	};
 
-	return <>{children(brainState)}</>;
+	return <>{children(handlers)}</>;
 }

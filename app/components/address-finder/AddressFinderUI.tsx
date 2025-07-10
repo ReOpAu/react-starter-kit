@@ -13,46 +13,68 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
+import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
+import { useApiStore } from "~/stores/apiStore";
+import { useHistoryStore } from "~/stores/historyStore";
+import { useIntentStore } from "~/stores/intentStore";
+import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
+import { useUIStore } from "~/stores/uiStore";
 import { getIntentColor } from "~/utils/addressFinderUtils";
-import type { AddressFinderBrainState } from "./AddressFinderBrain";
+import type { Suggestion } from "~/stores/types";
 
 interface AddressFinderUIProps {
-	brainState: AddressFinderBrainState;
+	// Handlers from the brain component
+	handleSelectResult: (result: Suggestion) => void;
+	handleStartRecording: () => void;
+	handleStopRecording: () => void;
+	handleClear: (source: "user" | "agent") => void;
+	handleAcceptRuralAddress: () => void;
+	handleRecallPreviousSearch: (entry: any) => void;
+	handleRecallConfirmedSelection: (entry: any) => void;
+	handleManualTyping: (query: string) => void;
+	
+	// Computed state
+	shouldShowSuggestions: boolean;
+	shouldShowManualForm: boolean;
+	shouldShowSelectedResult: boolean;
+	shouldShowValidationStatus: boolean;
+	showLowConfidence: boolean;
+	autoCorrection: any;
+	
+	// Validation state
+	isValidating: boolean;
+	validationError: string | null;
+	pendingRuralConfirmation: any;
 }
 
-export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
-	const {
-		suggestions,
-		isLoading,
-		isError,
-		error,
-		selectedResult,
-		searchQuery,
-		currentIntent,
-		isRecording,
-		isVoiceActive,
-		agentRequestedManual,
-		isValidating,
-		validationError,
-		pendingRuralConfirmation,
-		searchHistory,
-		addressSelections,
-		handleSelectResult,
-		handleStartRecording,
-		handleStopRecording,
-		handleClear,
-		handleAcceptRuralAddress,
-		handleRecallPreviousSearch,
-		handleRecallConfirmedSelection,
-		handleManualTyping,
-		shouldShowSuggestions,
-		shouldShowManualForm,
-		shouldShowSelectedResult,
-		shouldShowValidationStatus,
-		showLowConfidence,
-		autoCorrection,
-		history,
-	} = brainState;
+export function AddressFinderUI({
+	handleSelectResult,
+	handleStartRecording,
+	handleStopRecording,
+	handleClear,
+	handleAcceptRuralAddress,
+	handleRecallPreviousSearch,
+	handleRecallConfirmedSelection,
+	handleManualTyping,
+	shouldShowSuggestions,
+	shouldShowManualForm,
+	shouldShowSelectedResult,
+	shouldShowValidationStatus,
+	showLowConfidence,
+	autoCorrection,
+	isValidating,
+	validationError,
+	pendingRuralConfirmation,
+}: AddressFinderUIProps) {
+	// Get state directly from stores instead of prop drilling
+	const { apiResults } = useApiStore();
+	const { suggestions, isLoading, error } = apiResults;
+	const isError = Boolean(error);
+	const { searchQuery, selectedResult, currentIntent } = useIntentStore();
+	const { isRecording, isVoiceActive, agentRequestedManual } = useUIStore();
+	const { history } = useHistoryStore();
+	const { searchHistory } = useSearchHistoryStore();
+	const { addressSelections } = useAddressSelectionStore();
 
 	const [showPreviousSearches, setShowPreviousSearches] = useState(false);
 	const [showConfirmedSelections, setShowConfirmedSelections] = useState(false);
@@ -301,7 +323,7 @@ export function AddressFinderUI({ brainState }: AddressFinderUIProps) {
 								onSelect={handleSelectResult}
 								isLoading={isLoading}
 								isError={isError}
-								error={error}
+								error={error ? new Error(error) : null}
 							/>
 						</CardContent>
 					</Card>

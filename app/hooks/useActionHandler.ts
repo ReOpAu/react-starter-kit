@@ -68,6 +68,11 @@ export function useActionHandler({
 				setIsValidating(true);
 
 				try {
+					// Check if Convex is available before calling the action
+					if (!validateAddressAction) {
+						throw new Error("Address validation service is not available. Please ensure Convex dev server is running.");
+					}
+					
 					const validation = await validateAddressAction({
 						address: result.description,
 					});
@@ -147,8 +152,18 @@ export function useActionHandler({
 					}
 				} catch (error: any) {
 					log("💥 VALIDATION ACTION FAILED:", error);
-					const errorMessage =
-						error.data?.message || error.message || "An unknown error occurred";
+					console.error("Full error object:", error);
+					
+					// Enhanced error handling to catch "require is not defined" errors
+					let errorMessage = "An unknown error occurred";
+					if (error.message?.includes("require is not defined")) {
+						errorMessage = "Server-side code execution error. Please check the server logs.";
+					} else if (error.data?.message) {
+						errorMessage = error.data.message;
+					} else if (error.message) {
+						errorMessage = error.message;
+					}
+					
 					setValidationError(`Validation failed: ${errorMessage}`);
 					addHistory({
 						type: "system",
