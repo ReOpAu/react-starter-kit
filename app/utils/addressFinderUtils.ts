@@ -203,8 +203,8 @@ export function classifyIntent(query: string): LocationIntent {
 		/^(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*[,\s]/i.test(lowerQuery) ||
 		/^[a-z]?\d+([/-]\d+[a-z]?)*[,/]\s*\d+\s+/.test(lowerQuery);
 
-	// If starts with number + space + anything, assume address intent
-	// This handles cases like "18 s", "123 g", "5 c" immediately
+	// IMMEDIATE ADDRESS RECOGNITION - Number first = likely address
+	// This handles cases like "18 s", "123 g", "5 c", "18 melbourne" 
 	if (hasHouseNumber || hasUnitNumber) {
 		return "address";
 	}

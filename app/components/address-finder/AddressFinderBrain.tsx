@@ -22,6 +22,7 @@ import {
 	classifyIntent,
 	classifySelectedResult,
 } from "~/utils/addressFinderUtils";
+import { useVelocityIntentClassification } from "~/hooks/useVelocityIntentClassification";
 
 // Constants
 const ENRICHMENT_CACHE_KEY = "placeDetails";
@@ -412,28 +413,37 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		return () => clearTimeout(timer);
 	}, [searchQuery, isRecording, debouncedSearchQuery]);
 
-	// Dynamic intent classification based on user typing
+	// Velocity-based intent classification for manual typing
+	const {
+		shouldClassify: shouldClassifyByVelocity,
+		detectedIntent: velocityDetectedIntent,
+		typingState,
+	} = useVelocityIntentClassification(
+		searchQuery || "",
+		currentIntent || "general",
+		{
+			enabled: !isRecording && !isRecallMode && !selectedResult && !!searchQuery && searchQuery.length >= 2,
+			velocityChangeThreshold: 2.0,
+			minBaselineKeystrokes: 3,
+			maxIntervalForBaseline: 1000,
+		}
+	);
+
+	// Apply velocity-based intent classification
 	useEffect(() => {
-		if (
-			searchQuery &&
-			searchQuery.length >= 2 &&
-			!isRecallMode &&
-			!selectedResult &&
-			!isRecording
-		) {
-			const detectedIntent = classifyIntent(searchQuery);
-			if (detectedIntent !== currentIntent) {
-				setCurrentIntent(detectedIntent);
+		if (shouldClassifyByVelocity && velocityDetectedIntent) {
+			const storeIntent = useIntentStore.getState().currentIntent;
+			if (velocityDetectedIntent !== storeIntent) {
+				log(`🚀 Velocity-based classification: "${searchQuery}" → "${velocityDetectedIntent}" (was: "${storeIntent}")`);
+				console.log('🏪 Before setCurrentIntent - store intent:', storeIntent, 'new intent:', velocityDetectedIntent);
+				setCurrentIntent(velocityDetectedIntent);
+				// Force a delay to check if the store actually updated
+				setTimeout(() => {
+					console.log('🏪 After setCurrentIntent (delayed) - store intent:', useIntentStore.getState().currentIntent);
+				}, 50);
 			}
 		}
-	}, [
-		searchQuery,
-		isRecallMode,
-		selectedResult,
-		isRecording,
-		currentIntent,
-		setCurrentIntent,
-	]);
+	}, [shouldClassifyByVelocity, velocityDetectedIntent, setCurrentIntent, searchQuery, log]);
 
 	// Handle typing in manual search form
 	const handleManualTyping = useCallback(
@@ -460,6 +470,12 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			currentIntent: currentIntent || "general",
 			searchQuery,
 			hasQuery: !!searchQuery,
+			velocityClassification: {
+				enabled: !isRecording && !isRecallMode && !selectedResult,
+				typingState,
+				shouldClassify: shouldClassifyByVelocity,
+				detectedIntent: velocityDetectedIntent,
+			},
 		},
 		api: {
 			suggestions,

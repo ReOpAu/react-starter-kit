@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
 	HistoryPanel,
 	ManualSearchForm,
@@ -71,6 +71,13 @@ export function AddressFinderUI({
 	const { suggestions, isLoading, error } = apiResults;
 	const isError = Boolean(error);
 	const { searchQuery, selectedResult, currentIntent } = useIntentStore();
+	
+	// Debug: Log when currentIntent changes in UI
+	const prevIntentRef = useRef(currentIntent);
+	if (prevIntentRef.current !== currentIntent) {
+		console.log('🎯 UI Badge Update: currentIntent changed from', prevIntentRef.current, 'to', currentIntent);
+		prevIntentRef.current = currentIntent;
+	}
 	const { isRecording, isVoiceActive, agentRequestedManual } = useUIStore();
 	const { history } = useHistoryStore();
 	const { searchHistory } = useSearchHistoryStore();
