@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from "react";
 import type { LocationIntent } from "~/stores/types";
+import { STREET_KEYWORDS } from "../../shared/constants/addressTypes";
 
 interface TypingVelocity {
 	isTypingFast: boolean;

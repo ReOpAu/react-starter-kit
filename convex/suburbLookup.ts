@@ -11,25 +11,9 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 
 // Intent classification types
-export type LocationIntent = "suburb" | "street" | "address" | "general";
+import type { LocationIntent, PlaceSuggestion } from "./shared/types/location";
 
-// Result types for better UI display
-export interface PlaceSuggestion {
-	placeId: string;
-	description: string;
-	types: string[];
-	matchedSubstrings: Array<{ length: number; offset: number }>;
-	structuredFormatting: {
-		mainText: string;
-		secondaryText: string;
-		main_text?: string;
-		secondary_text?: string;
-		main_text_matched_substrings?: Array<{ length: number; offset: number }>;
-	};
-	resultType: "suburb" | "street" | "address" | "general";
-	confidence: number;
-	suburb?: string; // 🎯 NEW: Extracted suburb/town from Places API
-}
+// PlaceSuggestion interface now imported from shared types
 
 interface GoogleAutocompletePrediction {
 	description: string;
@@ -196,125 +180,8 @@ export const EXCLUDED_PLACE_TYPES = [
 	"junction",
 ] as const;
 
-// Intent classification helper
-function classifyLocationIntent(query: string): LocationIntent {
-	const lowerQuery = query.toLowerCase().trim();
-
-	// Street indicators
-	const streetKeywords = [
-		"street",
-		"st",
-		"road",
-		"rd",
-		"avenue",
-		"ave",
-		"lane",
-		"ln",
-		"drive",
-		"dr",
-		"way",
-		"crescent",
-		"cres",
-		"court",
-		"ct",
-		"place",
-		"pl",
-		"terrace",
-		"tce",
-		"grove",
-		"close",
-		"boulevard",
-		"blvd",
-		"parade",
-		"pde",
-		"circuit",
-		"cct",
-		"walk",
-		"mews",
-		"row",
-		"square",
-		"sq",
-		"esplanade",
-		"esp",
-	];
-
-	// Check if query has street type indicator
-	const hasStreetType = streetKeywords.some((keyword) => {
-		// Use word boundaries to avoid false matches like "st" in "west"
-		const wordBoundaryRegex = new RegExp(`\\b${keyword}\\b`, "i");
-		return wordBoundaryRegex.test(lowerQuery);
-	});
-
-	// Check for house number at the beginning (true address)
-	const hasHouseNumber = /^\d+[a-z]?\s+/.test(lowerQuery);
-
-	// Check for unit/apartment patterns at the beginning
-	const hasUnitNumber =
-		/^(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery);
-
-	// 🎯 STRICTER ADDRESS CLASSIFICATION for Two-Step Validation
-	// Only classify as "address" if it has BOTH a street number AND street type AND looks complete
-	// This ensures we only use Address Validation API for complete street addresses
-	if ((hasHouseNumber || hasUnitNumber) && hasStreetType) {
-		// Additional check: address should look complete (have suburb/state info)
-		// Incomplete addresses like "38 Clive street Wes" should be treated as "street" during autocomplete
-		const hasSuburbInfo =
-			/\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(
-				lowerQuery,
-			) ||
-			/\b\d{4}\b/.test(lowerQuery) || // Has postcode
-			lowerQuery.split(",").length >= 2; // Has comma-separated parts (likely includes suburb)
-
-		// If it has address components but looks incomplete, treat as street for autocomplete
-		if (!hasSuburbInfo && lowerQuery.length < 50) {
-			// Reasonable length check
-			console.log(
-				`[Intent Classification] "${query}" has address components but appears incomplete - treating as street for autocomplete`,
-			);
-			return "street";
-		}
-
-		return "address";
-	}
-
-	// Street name pattern (street type but no house number at start)
-	// Examples: "Clive street", "Smith Road, Richmond", "Collins St, Melbourne"
-	if (hasStreetType && !hasHouseNumber && !hasUnitNumber) {
-		return "street";
-	}
-
-	// Unit/apartment patterns anywhere in the query without street type (fallback to general)
-	if (
-		/\b(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i.test(lowerQuery) &&
-		!hasStreetType
-	) {
-		return "general";
-	}
-
-	// Check for postcode patterns (4 digits) - these are usually suburbs
-	const hasPostcode = /\b\d{4}\b/.test(lowerQuery);
-
-	// Check for Australian state abbreviations
-	const hasAustralianState =
-		/\b(vic|nsw|qld|wa|sa|tas|nt|act|victoria|new south wales|queensland|western australia|south australia|tasmania|northern territory|australian capital territory)\b/i.test(
-			lowerQuery,
-		);
-
-	// If it has postcode or state but no street indicators, likely a suburb
-	if ((hasPostcode || hasAustralianState) && !hasStreetType) {
-		return "suburb";
-	}
-
-	// Suburb patterns (simple text without numbers or street types)
-	const isSimpleText = /^[a-z\s\-']+$/i.test(lowerQuery);
-
-	// If it's just simple text without street indicators, assume suburb
-	if (isSimpleText && !hasStreetType) {
-		return "suburb";
-	}
-
-	return "general";
-}
+// Import the canonical implementation
+import { classifyLocationIntent } from "./shared/utils/intentClassification";
 
 // Enhanced place suggestions function with intent handling
 export const getPlaceSuggestions = action({
