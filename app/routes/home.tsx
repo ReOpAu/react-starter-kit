@@ -88,7 +88,11 @@ export async function loader(args: Route.LoaderArgs) {
 					return null;
 				})
 			: Promise.resolve(null),
-		fetchAction(api.subscriptions.getAvailablePlans),
+		fetchAction(api.subscriptions.getAvailablePlans).catch((error) => {
+			console.error("Failed to fetch available plans:", error);
+			// Return empty plans array if Polar.sh is not configured or API fails
+			return { items: [], pagination: { hasNextPage: false, hasPreviousPage: false } };
+		}),
 	]);
 
 	return {
@@ -122,7 +126,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 							);
 
 							// Call the suburb lookup action
-							const result = await convex.action(api.suburb.lookupSuburb, {
+							const result = await convex.action(api.suburbLookup.lookupSuburb, {
 								suburbInput: address,
 							});
 

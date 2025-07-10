@@ -1,6 +1,6 @@
 {
 	"include": ["app", "remix.env.d.ts", "**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "convex", "public"],
+	"exclude": ["node_modules", "convex", "public", "_archive"],
 	"compilerOptions": {
 		"lib": ["DOM", "DOM.Iterable", "ES2022"],
 		"types": ["node", "vite/client"],

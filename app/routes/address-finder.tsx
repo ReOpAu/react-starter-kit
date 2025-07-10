@@ -1,5 +1,5 @@
 import { AddressFinderBrain } from "~/components/address-finder/AddressFinderBrain";
-import { AddressFinderDebug } from "~/components/address-finder/AddressFinderDebug";
+// import { AddressFinderDebug } from "~/components/address-finder/AddressFinderDebug";
 import { AddressFinderUI } from "~/components/address-finder/AddressFinderUI";
 
 export default function AddressFinder() {
@@ -26,13 +26,13 @@ export default function AddressFinder() {
 						validationError={handlers.validationError}
 						pendingRuralConfirmation={handlers.pendingRuralConfirmation}
 					/>
-					<AddressFinderDebug
+					{/* <AddressFinderDebug
 						handleRequestAgentState={handlers.handleRequestAgentState}
 						handleClear={handlers.handleClear}
 						agentStateForDebug={handlers.agentStateForDebug}
 						sessionToken={handlers.sessionToken}
 						conversationStatus={handlers.conversationStatus}
-					/>
+					/> */}
 				</>
 			)}
 		</AddressFinderBrain>

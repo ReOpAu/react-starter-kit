@@ -66,6 +66,14 @@ const createCheckout = async ({
 
 export const getAvailablePlansQuery = query({
 	handler: async (ctx) => {
+		if (!process.env.POLAR_ACCESS_TOKEN) {
+			throw new Error("POLAR_ACCESS_TOKEN is not configured");
+		}
+
+		if (!process.env.POLAR_ORGANIZATION_ID) {
+			throw new Error("POLAR_ORGANIZATION_ID is not configured");
+		}
+
 		const polar = new Polar({
 			server: "sandbox",
 			accessToken: process.env.POLAR_ACCESS_TOKEN,
@@ -99,6 +107,14 @@ export const getAvailablePlansQuery = query({
 
 export const getAvailablePlans = action({
 	handler: async (ctx) => {
+		if (!process.env.POLAR_ACCESS_TOKEN) {
+			throw new Error("POLAR_ACCESS_TOKEN is not configured");
+		}
+
+		if (!process.env.POLAR_ORGANIZATION_ID) {
+			throw new Error("POLAR_ORGANIZATION_ID is not configured");
+		}
+
 		const polar = new Polar({
 			server: "sandbox",
 			accessToken: process.env.POLAR_ACCESS_TOKEN,
