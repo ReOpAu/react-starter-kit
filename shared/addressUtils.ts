@@ -28,7 +28,7 @@ export interface HistoryItem {
 export type Mode = "manual" | "voice" | "agent";
 
 // Re-export the canonical implementation
-export { classifyIntent } from "./utils/intentClassification";
+export { classifyLocationIntent as classifyIntent } from "./utils/intentClassification";
 
 /**
  * Helper function to classify intent based on what user actually selected

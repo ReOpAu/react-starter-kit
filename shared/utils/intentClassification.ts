@@ -1,5 +1,5 @@
 /**
- * Canonical intent classification function
+ * Canonical intent classification function for Convex backend
  * Consolidated from app/utils/addressFinderUtils.ts (most comprehensive implementation)
  */
 
@@ -15,7 +15,7 @@ import {
 	SUBURB_INDICATOR_PATTERNS,
 } from "../constants/validationPatterns";
 
-export function classifyIntent(query: string): LocationIntent {
+export function classifyLocationIntent(query: string): LocationIntent {
 	const lowerQuery = query.toLowerCase().trim();
 
 	// IMMEDIATE ADDRESS RECOGNITION - Recognize obvious address patterns first

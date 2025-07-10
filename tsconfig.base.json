@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"~/*": ["./app/*"],
+			"@shared/*": ["./shared/*"]
+		},
+		"strict": true,
+		"target": "ES2022",
+		"moduleResolution": "Bundler",
+		"isolatedModules": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"verbatimModuleSyntax": true,
+		"resolveJsonModule": true,
+		"forceConsistentCasingInFileNames": true,
+		"allowSyntheticDefaultImports": true
+	}
+}

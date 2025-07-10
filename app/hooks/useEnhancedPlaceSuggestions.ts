@@ -2,7 +2,7 @@ import { useAction } from "convex/react";
 import { useCallback, useState } from "react";
 import { classifyIntent } from "~/utils/addressFinderUtils";
 import { api } from "../../convex/_generated/api";
-import type { PlaceSuggestion } from "../../convex/location";
+import type { PlaceSuggestion } from "@shared/types/location";
 
 export type LocationIntent = "suburb" | "street" | "address" | "general";
 

@@ -1,24 +1,12 @@
 {
-	"include": ["app", "remix.env.d.ts", "**/*.ts", "**/*.tsx"],
+	"extends": "./tsconfig.base.json",
+	"include": ["app", "shared", "remix.env.d.ts", "**/*.ts", "**/*.tsx"],
 	"exclude": ["node_modules", "convex", "public", "_archive"],
 	"compilerOptions": {
 		"lib": ["DOM", "DOM.Iterable", "ES2022"],
 		"types": ["node", "vite/client"],
-		"target": "ES2022",
 		"module": "ES2022",
-		"moduleResolution": "Bundler",
 		"jsx": "react-jsx",
-		"rootDirs": [".", "./.react-router/types"],
-		"baseUrl": ".",
-		"paths": {
-			"~/*": ["./app/*"]
-		},
-		"esModuleInterop": true,
-		"verbatimModuleSyntax": true,
-		"noEmit": true,
-		"resolveJsonModule": true,
-		"isolatedModules": true,
-		"skipLibCheck": true,
-		"strict": true
+		"rootDirs": [".", "./.react-router/types"]
 	}
 }

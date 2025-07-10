@@ -1,10 +1,10 @@
 // Shared helpers for address-related Convex actions
 // (Moved from location.ts)
 
-import type { LocationIntent, PlaceSuggestion } from "../shared/types/location";
+import type { LocationIntent, PlaceSuggestion } from "@shared/types/location";
 
 // Re-export the canonical implementation
-export { classifyLocationIntent } from "../shared/utils/intentClassification";
+export { classifyLocationIntent } from "@shared/utils/intentClassification";
 
 // Helper to clean suburb strings
 function cleanSuburbString(str: string): string {

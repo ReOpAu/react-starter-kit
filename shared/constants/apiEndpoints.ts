@@ -1,5 +1,5 @@
 /**
- * Shared Google API endpoints and configuration
+ * Shared Google API endpoints and configuration for Convex backend
  * Consolidated from multiple files to ensure consistency
  */
 

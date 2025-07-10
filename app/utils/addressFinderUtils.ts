@@ -1,5 +1,5 @@
 import type { Suggestion } from "~/stores/addressFinderStore";
-import type { LocationIntent } from "../../shared/types/location";
+import type { LocationIntent } from "@shared/types/location";
 
 /**
  * Helper function to classify intent based on what user actually selected
@@ -93,10 +93,10 @@ export const getIntentColor = (intent: LocationIntent): string => {
 	}
 };
 
-import { STREET_KEYWORDS } from "../../shared/constants/addressTypes";
+import { STREET_KEYWORDS } from "@shared/constants/addressTypes";
 
 // Re-export the canonical implementation
-export { classifyIntent } from "../../shared/utils/intentClassification";
+export { classifyLocationIntent as classifyIntent } from "@shared/utils/intentClassification";
 
 // Re-export for backward compatibility (to be removed after migration)
 export const streetKeywords = STREET_KEYWORDS;

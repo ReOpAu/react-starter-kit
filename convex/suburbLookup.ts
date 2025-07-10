@@ -11,7 +11,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 
 // Intent classification types
-import type { LocationIntent, PlaceSuggestion } from "./shared/types/location";
+import type { LocationIntent, PlaceSuggestion } from "@shared/types/location";
 
 // PlaceSuggestion interface now imported from shared types
 
@@ -181,7 +181,7 @@ export const EXCLUDED_PLACE_TYPES = [
 ] as const;
 
 // Import the canonical implementation
-import { classifyLocationIntent } from "./shared/utils/intentClassification";
+import { classifyLocationIntent } from "@shared/utils/intentClassification";
 
 // Enhanced place suggestions function with intent handling
 export const getPlaceSuggestions = action({
