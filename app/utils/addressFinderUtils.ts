@@ -194,10 +194,25 @@ const ruralKeywordRegexes = ruralKeywords.map(
 export function classifyIntent(query: string): LocationIntent {
 	const lowerQuery = query.toLowerCase().trim();
 
+	// IMMEDIATE ADDRESS RECOGNITION - Recognize obvious address patterns first
+	// Enhanced house number patterns - covers more Australian formats
+	const hasHouseNumber = /^(\d+[a-z]?([/-]\d+[a-z]?)*)\s+/.test(lowerQuery);
+
+	// Enhanced unit/apartment patterns - covers more variations
+	const hasUnitNumber =
+		/^(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*[,\s]/i.test(lowerQuery) ||
+		/^[a-z]?\d+([/-]\d+[a-z]?)*[,/]\s*\d+\s+/.test(lowerQuery);
+
+	// If starts with number + space + anything, assume address intent
+	// This handles cases like "18 s", "123 g", "5 c" immediately
+	if (hasHouseNumber || hasUnitNumber) {
+		return "address";
+	}
+
 	// Special handling for common Australian place names that contain street-like words
 	const specialCases = [
 		/^st\s+kilda/i,           // St Kilda (suburb)
-		/^mt\s+/i,                // Mount suburbs (Mt Eliza, Mt Waverley)
+		/^(mount|mt)\s+/i,        // Mount suburbs (Mt Eliza, Mt Waverley, Mount Eliza)
 		/^port\s+/i,              // Port suburbs (Port Melbourne)
 		/^glen\s+/i,              // Glen suburbs (Glen Waverley)
 		/^box\s+hill/i,           // Box Hill
@@ -207,26 +222,57 @@ export function classifyIntent(query: string): LocationIntent {
 
 	const isSpecialSuburb = specialCases.some(pattern => pattern.test(lowerQuery));
 
+	// Handle special suburb cases BEFORE street type detection to prevent misclassification
+	if (isSpecialSuburb) {
+		// For special suburbs, only consider it a street/address if it has additional street indicators
+		// beyond the special suburb name itself
+		
+		// Special handling for complete suburb names that contain street-like words
+		// These are complete suburb names, not prefix + suburb patterns
+		const completeSuburbNames = [
+			/^box\s+hill$/i,           // Box Hill is a complete suburb name
+		];
+		
+		const isCompleteSuburbName = completeSuburbNames.some(pattern => pattern.test(lowerQuery));
+		
+		// For complete suburb names, don't check for additional street types
+		// They are definitively suburbs, not streets
+		if (isCompleteSuburbName) {
+			return "suburb";
+		}
+		
+		// For prefix-based special suburbs (St Kilda, Mt Waverley, etc.)
+		// Remove the prefix to check if there are additional street indicators
+		const withoutSpecialPrefix = lowerQuery.replace(/^(st|mt|mount|port|glen|point)\s+/i, "");
+		
+		const hasAdditionalStreetType = streetKeywordRegexes.some((regex) =>
+			regex.test(withoutSpecialPrefix),
+		);
+		
+		// Check if it's a street in a special suburb (e.g., "St Kilda Road")
+		if (hasAdditionalStreetType && !hasHouseNumber && !hasUnitNumber) {
+			return "street";
+		}
+		// Check if it's an address in special suburb (e.g., "123 St Kilda Road")
+		if ((hasHouseNumber || hasUnitNumber) && hasAdditionalStreetType) {
+			return "address";
+		}
+		// Otherwise it's just the suburb name
+		return "suburb";
+	}
+
 	// Check if query has street type indicator
 	const hasStreetType = streetKeywordRegexes.some((regex) =>
 		regex.test(lowerQuery),
 	);
 
-	// Enhanced house number patterns - covers more Australian formats
-	const hasHouseNumber = /^(\d+[a-z]?([/-]\d+[a-z]?)*)\s+/.test(lowerQuery);
-
-	// Enhanced unit/apartment patterns - covers more variations
-	const hasUnitNumber =
-		/^(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*[,\s]/i.test(lowerQuery) ||
-		/^[a-z]?\d+([/-]\d+[a-z]?)*[,/]\s*\d+\s+/.test(lowerQuery);
-
 	// Rural address pattern: house number + rural keyword
 	const hasRuralType = ruralKeywordRegexes.some((regex) =>
 		regex.test(lowerQuery),
 	);
-	if ((hasHouseNumber || hasUnitNumber) && (hasStreetType || hasRuralType)) {
-		return "address";
-	}
+	
+	// Note: The (hasHouseNumber || hasUnitNumber) && (hasStreetType || hasRuralType) check
+	// is now handled by the immediate address recognition above
 
 	// Street name pattern (street type but no house number at start)
 	if (hasStreetType && !hasHouseNumber && !hasUnitNumber) {
@@ -255,26 +301,6 @@ export function classifyIntent(query: string): LocationIntent {
 		/\b(north|south|east|west|upper|lower|mount|mt|saint|st|port|glen|box|point|new|old)\s+[a-z]/i.test(lowerQuery) ||
 		/\b(heights|gardens|valley|beach|park|creek|hill|ridge|bay|cove|grove|lakes|springs|falls)\b/i.test(lowerQuery);
 
-	// Handle special suburb cases first
-	if (isSpecialSuburb) {
-		// For special suburbs, only consider it a street/address if it has additional street indicators
-		// beyond the special suburb name itself
-		const withoutSpecialPrefix = lowerQuery.replace(/^(st|mt|port|glen|point)\s+/i, "");
-		const hasAdditionalStreetType = streetKeywordRegexes.some((regex) =>
-			regex.test(withoutSpecialPrefix),
-		);
-		
-		// Check if it's a street in a special suburb (e.g., "St Kilda Road")
-		if (hasAdditionalStreetType && !hasHouseNumber && !hasUnitNumber) {
-			return "street";
-		}
-		// Check if it's an address in special suburb (e.g., "123 St Kilda Road")
-		if ((hasHouseNumber || hasUnitNumber) && hasAdditionalStreetType) {
-			return "address";
-		}
-		// Otherwise it's just the suburb name
-		return "suburb";
-	}
 
 	// If it has postcode, state, or suburb indicators but no street indicators, likely a suburb
 	if ((hasPostcode || hasAustralianState || hasSuburbIndicators) && !hasStreetType && !hasRuralType) {
