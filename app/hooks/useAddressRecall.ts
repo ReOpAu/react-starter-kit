@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useCallback, useState } from "react";
-import { useAgentSync } from "~/hooks/useAgentSync";
+import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
 import { useApiStore } from "~/stores/apiStore";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { useIntentStore } from "~/stores/intentStore";

@@ -8,6 +8,10 @@ import {
 } from "~/utils/addressFinderUtils";
 
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
+import {
+	getAgentByTransferIndex,
+	getAvailableTransferTargets,
+} from "@shared/constants/agentConfig";
 import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
 import { useIntentStore } from "~/stores/intentStore";
@@ -102,7 +106,10 @@ export function useAddressFinderClientTools(
 							const validatedSuggestion: Suggestion = {
 								placeId: suggestion.placeId,
 								description: suggestion.description,
-								types: suggestion.types || ["street_address", "validated_address"],
+								types: suggestion.types || [
+									"street_address",
+									"validated_address",
+								],
 								resultType: suggestion.resultType || "address",
 								confidence: suggestion.confidence || 0.95,
 								suburb: suggestion.suburb,
@@ -123,10 +130,10 @@ export function useAddressFinderClientTools(
 									"Address was successfully validated by the system and is ready for selection.",
 							});
 						}
-						const errorMessage = validation.success ? "No suggestions found" : validation.error;
-						log(
-							`❌ Agent search failed validation: ${errorMessage}`,
-						);
+						const errorMessage = validation.success
+							? "No suggestions found"
+							: validation.error;
+						log(`❌ Agent search failed validation: ${errorMessage}`);
 						addHistory({
 							type: "agent",
 							text: `Agent search failed validation: ${errorMessage}`,
@@ -134,7 +141,8 @@ export function useAddressFinderClientTools(
 						return JSON.stringify({
 							status: "validation_failed",
 							suggestions: [],
-							error: errorMessage || "The provided address could not be validated.",
+							error:
+								errorMessage || "The provided address could not be validated.",
 						});
 					}
 
@@ -258,11 +266,11 @@ export function useAddressFinderClientTools(
 						const detailsRes = await getPlaceDetailsAction({
 							placeId: selection.placeId,
 						});
-						if (detailsRes.success && detailsRes.details?.geometry?.location) {
+						if (detailsRes.success && detailsRes.details) {
 							updatedSelection = {
 								...selection,
-								lat: detailsRes.details.geometry.location.lat,
-								lng: detailsRes.details.geometry.location.lng,
+								lat: detailsRes.details.lat,
+								lng: detailsRes.details.lng,
 							};
 						}
 					}
@@ -526,6 +534,87 @@ export function useAddressFinderClientTools(
 			setSelectionAcknowledged: async (params: { acknowledged: boolean }) => {
 				useUIStore.getState().setSelectionAcknowledged(params.acknowledged);
 				return JSON.stringify({ status: "ok" });
+			},
+
+			transferToAgent: async (params: {
+				agent_number: number;
+				reason?: string;
+				transfer_message?: string;
+				delay?: number;
+			}) => {
+				log("🔧 ===== Tool Call: transferToAgent =====");
+				log("🔄 AGENT REQUESTING TRANSFER with params:", params);
+
+				const { agent_number, reason, transfer_message, delay } = params;
+
+				// Validate agent_number
+				if (typeof agent_number !== "number" || agent_number < 0) {
+					const errorMessage =
+						"Invalid agent_number. Must be a non-negative number.";
+					log(`Tool transferToAgent failed: ${errorMessage}`, { params });
+					return JSON.stringify({
+						status: "error",
+						error: errorMessage,
+					});
+				}
+
+				// Get target agent configuration
+				const targetAgent = getAgentByTransferIndex(agent_number);
+				if (!targetAgent) {
+					const availableAgents = getAvailableTransferTargets("ADDRESS_FINDER");
+					const errorMessage = `Agent ${agent_number} not found. Available agents: ${availableAgents.map((a) => `${a.transferIndex}: ${a.name}`).join(", ")}`;
+					log(`Tool transferToAgent failed: ${errorMessage}`, { params });
+					return JSON.stringify({
+						status: "error",
+						error: errorMessage,
+						availableAgents: availableAgents,
+					});
+				}
+
+				log(
+					`✅ Target agent found: ${targetAgent.name} (${targetAgent.description})`,
+				);
+
+				// Log transfer request for user history
+				const transferReason =
+					reason ||
+					`User request requires specialized assistance from ${targetAgent.name}`;
+				addHistory({
+					type: "agent",
+					text: `🔄 Initiating transfer to ${targetAgent.name}: ${transferReason}`,
+				});
+
+				// Apply delay if specified
+				if (delay && delay > 0) {
+					log(`⏳ Applying transfer delay: ${delay} seconds`);
+					await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+				}
+
+				// Prepare transfer response (ElevenLabs will handle the actual transfer)
+				const transferResponse = {
+					status: "transfer_initiated",
+					target_agent: {
+						index: agent_number,
+						name: targetAgent.name,
+						description: targetAgent.description,
+						specializations: targetAgent.specializations,
+					},
+					reason: transferReason,
+					transfer_message:
+						transfer_message ||
+						`You are being transferred to ${targetAgent.name} for specialized assistance.`,
+					timestamp: Date.now(),
+				};
+
+				log("🎯 TRANSFER INITIATED:", transferResponse);
+				addHistory({
+					type: "system",
+					text: `Transfer to ${targetAgent.name} initiated: ${transferReason}`,
+				});
+
+				// Note: The actual agent transfer is handled by ElevenLabs system
+				// This clientTool provides the context and logging for the transfer
+				return JSON.stringify(transferResponse);
 			},
 		}),
 		[

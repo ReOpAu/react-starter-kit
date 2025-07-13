@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useAddressFinderClientTools } from "~/hooks/useAddressFinderClientTools";
+import { useAddressFinderClientTools } from "~/elevenlabs/hooks/useAddressFinderClientTools";
 import { useAudioManager } from "~/hooks/useAudioManager";
-import { useConversationManager } from "~/hooks/useConversationManager";
+import { useConversationManager } from "~/elevenlabs/hooks/useConversationManager";
 import type { Suggestion } from "~/stores/types";
 
 interface UseConversationLifecycleProps {

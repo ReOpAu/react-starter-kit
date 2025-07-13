@@ -7,7 +7,7 @@ import { useAddressAutoSelection } from "~/hooks/useAddressAutoSelection";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressRecall } from "~/hooks/useAddressRecall";
 import { useAddressSession } from "~/hooks/useAddressSession";
-import { useAgentSync } from "~/hooks/useAgentSync";
+import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
 import { useConversationLifecycle } from "~/hooks/useConversationLifecycle";
 import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";

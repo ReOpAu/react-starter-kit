@@ -21,7 +21,7 @@ export function useConversationManager(clientTools: Record<string, any>) {
 		[isLoggingEnabled],
 	);
 
-	// Conversation setup with enhanced clientTools
+	// Conversation setup with enhanced clientTools and complete event handling
 	const conversation = useConversation({
 		apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
 		agentId: import.meta.env.VITE_ELEVENLABS_ADDRESS_AGENT_ID,
@@ -62,6 +62,50 @@ export function useConversationManager(clientTools: Record<string, any>) {
 		onError: (error) => {
 			log("❌ Conversation error:", error);
 			addHistory({ type: "system", text: `Error: ${error}` });
+		},
+		// Enhanced event handlers for full API compliance
+		onPing: () => {
+			log("🏓 PING received - responding automatically");
+			// SDK should handle PING response automatically, but log for debugging
+		},
+		onAudioReceived: (audioData: any) => {
+			log("🔊 Audio data received:", {
+				eventId: audioData?.eventId,
+				audioLength: audioData?.audio?.length,
+				format: "base64",
+			});
+			// Audio playback is typically handled by SDK automatically
+		},
+		onClientToolCall: (toolCall: any) => {
+			log("🔧 Client tool call event received:", {
+				toolName: toolCall?.name,
+				parameters: toolCall?.parameters,
+				callId: toolCall?.id,
+			});
+			// clientTools are automatically invoked by SDK, but log for debugging
+		},
+		onConversationInitiated: (metadata: any) => {
+			log("🚀 Conversation initiated with metadata:", {
+				conversationId: metadata?.conversationId,
+				audioFormat: metadata?.audioFormat,
+				sampleRate: metadata?.sampleRate,
+			});
+			addHistory({
+				type: "system",
+				text: `Conversation started (ID: ${metadata?.conversationId || "unknown"})`,
+			});
+		},
+		onVoiceActivityDetection: (vadScore: number) => {
+			// Only log VAD scores above threshold to avoid spam
+			if (vadScore > 0.7) {
+				log("🎙️ High voice activity detected:", vadScore);
+			}
+			// Update UI state based on voice activity
+			if (vadScore > 0.5) {
+				useUIStore.getState().setIsVoiceActive(true);
+			} else if (vadScore < 0.3) {
+				useUIStore.getState().setIsVoiceActive(false);
+			}
 		},
 		clientTools,
 	});

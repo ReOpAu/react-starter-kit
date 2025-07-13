@@ -62,8 +62,8 @@ const FitBoundsToPlace: React.FC<{ placeId: string }> = ({ placeId }) => {
 			try {
 				const place = new places.Place({ id: placeId });
 				await place.fetchFields({ fields: ["geometry"] });
-				if (place.geometry?.viewport) {
-					map.fitBounds(place.geometry.viewport);
+				if ((place as any).geometry?.viewport) {
+					map.fitBounds((place as any).geometry.viewport);
 					return;
 				}
 			} catch (e) {

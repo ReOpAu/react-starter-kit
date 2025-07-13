@@ -1,5 +1,6 @@
 import type { Icon } from "@tabler/icons-react";
 import { memo, useMemo } from "react";
+import type { ComponentType } from "react";
 
 import { Link, useLocation } from "react-router";
 import {
@@ -17,7 +18,7 @@ export const NavMain = memo(
 		items: {
 			title: string;
 			url: string;
-			icon?: Icon;
+			icon?: Icon | ComponentType<any>;
 		}[];
 	}) => {
 		const location = useLocation();

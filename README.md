@@ -14,6 +14,7 @@ A modern, production-ready SaaS starter template for building full-stack React a
 - 💳 **Subscription management with Polar.sh** - Billing and payments
 - 🗄️ **Real-time database with Convex** - Serverless backend
 - 🤖 **AI Chat Integration** - OpenAI-powered chat functionality
+- 🎤 **ElevenLabs Voice AI** - Conversational voice agents with centralized configuration
 - 📊 **Interactive Dashboard** - User management and analytics
 - 🎯 **Webhook handling** - Payment and subscription events
 - 📱 **Responsive Design** - Mobile-first approach
@@ -34,6 +35,7 @@ A modern, production-ready SaaS starter template for building full-stack React a
 - **Clerk** - Authentication and user management
 - **Polar.sh** - Subscription billing and payments
 - **OpenAI** - AI chat capabilities
+- **ElevenLabs** - Conversational voice AI with centralized configuration
 
 ### Development & Deployment
 - **Vite** - Fast build tool
@@ -49,6 +51,7 @@ A modern, production-ready SaaS starter template for building full-stack React a
 - Convex account for database
 - Polar.sh account for subscriptions
 - OpenAI API key (for AI chat features)
+- ElevenLabs account for voice AI (optional)
 
 ### Installation
 
@@ -83,6 +86,11 @@ POLAR_WEBHOOK_SECRET=your_polar_webhook_secret_here
 # OpenAI Configuration (for AI chat)
 OPENAI_API_KEY=your_openai_api_key_here
 
+# ElevenLabs Configuration (for voice AI)
+VITE_ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+VITE_ELEVENLABS_ADDRESS_AGENT_ID=your_agent_id_here
+
 # Frontend URL for redirects
 FRONTEND_URL=http://localhost:5173
 ```
@@ -106,6 +114,61 @@ npm run dev
 ```
 
 Your application will be available at `http://localhost:5173`.
+
+## ElevenLabs Voice AI Configuration
+
+This project includes a sophisticated ElevenLabs conversational AI integration with **centralized configuration management**. All agent configurations are version-controlled and synced programmatically - no manual UI updates required.
+
+### Features
+- 🎤 **Voice Conversational AI** - Natural voice interactions
+- 🔧 **12 Client Tools** - Comprehensive address finder capabilities  
+- 📝 **Centralized Configuration** - All agent settings in code
+- 🔄 **Automated Sync** - Scripts to update ElevenLabs agents
+- 🎯 **Zero Breaking Changes** - Built on existing integration
+
+### Quick Start
+
+The ElevenLabs configuration is already set up and ready to use:
+
+```bash
+# Download current agent configuration
+npx tsx scripts/1-download-config.ts
+
+# Preview configuration changes
+npx tsx scripts/2-sync-agent.ts --dry-run
+
+# Sync local config to ElevenLabs agent
+npx tsx scripts/2-sync-agent.ts
+```
+
+### Configuration Files
+
+```
+ai/
+├── master_prompt_base.txt     # Base agent prompt (7,474 chars)
+└── tools.config.ts           # 12 tool definitions with Zod schemas
+
+scripts/
+├── env-loader.ts             # Custom .env.local reader
+├── 1-download-config.ts      # Download agent config
+└── 2-sync-agent.ts          # Bidirectional sync
+```
+
+### Daily Workflow
+
+1. **Edit Configuration**: Modify `ai/tools.config.ts` or `ai/master_prompt_base.txt`
+2. **Preview Changes**: Run `npx tsx scripts/2-sync-agent.ts --dry-run`
+3. **Sync Live**: Run `npx tsx scripts/2-sync-agent.ts`
+
+### Benefits
+
+- ✅ **Single Source of Truth**: All 12 tools defined in `ai/tools.config.ts`
+- ✅ **Version Control**: Agent configuration tracked in git
+- ✅ **Type Safety**: Zod schemas prevent configuration errors
+- ✅ **Zero Dependencies**: Custom environment loader (no dotenv needed)
+- ✅ **Live Sync**: Verified with agent `agent_01jydc3p56er8tn495y66hybmn`
+
+For complete documentation, see [`docs/elevenlabs-ai-in-local-code.md`](docs/elevenlabs-ai-in-local-code.md).
 
 ## Building for Production
 
@@ -211,19 +274,32 @@ Make sure to deploy the output of `npm run build`
 - `POLAR_ORGANIZATION_ID` - Your Polar.sh organization ID
 - `POLAR_WEBHOOK_SECRET` - Polar.sh webhook secret
 - `OPENAI_API_KEY` - OpenAI API key for chat features
+- `VITE_ELEVENLABS_API_KEY` - ElevenLabs API key for voice AI
+- `ELEVENLABS_API_KEY` - ElevenLabs API key for sync scripts
+- `VITE_ELEVENLABS_ADDRESS_AGENT_ID` - Your ElevenLabs agent ID
 - `FRONTEND_URL` - Your production frontend URL
 
 ## Project Structure
 
 ```
+├── ai/                    # ElevenLabs AI configuration
+│   ├── master_prompt_base.txt  # Base agent prompt
+│   └── tools.config.ts    # Tool definitions with Zod schemas
 ├── app/
 │   ├── components/         # Reusable UI components
 │   │   ├── ui/            # shadcn/ui components
+│   │   ├── address-finder/ # Voice AI address finder
 │   │   ├── homepage/      # Homepage sections
 │   │   └── dashboard/     # Dashboard components
 │   ├── routes/            # React Router routes
+│   ├── hooks/             # Custom React hooks
+│   ├── stores/            # Zustand state management
 │   └── utils/             # Utility functions
 ├── convex/                # Convex backend functions
+├── scripts/               # ElevenLabs sync scripts
+│   ├── env-loader.ts      # Custom environment loader
+│   ├── 1-download-config.ts # Download agent config
+│   └── 2-sync-agent.ts    # Sync local config to ElevenLabs
 ├── public/                # Static assets
 └── docs/                  # Documentation
 ```
@@ -236,16 +312,24 @@ Make sure to deploy the output of `npm run build`
 - `convex` - Real-time database
 - `@polar-sh/sdk` - Subscription management
 - `@ai-sdk/openai` & `ai` - AI chat capabilities
+- `@elevenlabs/react` - Voice AI conversations
 - `@vercel/react-router` - Vercel deployment
 - `tailwindcss` v4 - Styling
 - `@radix-ui/*` - UI primitives
+- `zod` - Type-safe schema validation
 
 ## Scripts
 
+### Development & Build
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run typecheck` - Run TypeScript checks
+
+### ElevenLabs Configuration Management
+- `npx tsx scripts/1-download-config.ts` - Download current agent config
+- `npx tsx scripts/2-sync-agent.ts --dry-run` - Preview config changes
+- `npx tsx scripts/2-sync-agent.ts` - Sync local config to ElevenLabs agent
 
 ## Contributing
 

@@ -6,7 +6,7 @@ import { type RefObject, useCallback, useState } from "react";
 import { useIntentStore } from "~/stores/intentStore";
 import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
 import { classifySelectedResult } from "~/utils/addressFinderUtils";
-import { useReliableSync } from "./useReliableSync";
+import { useReliableSync } from "~/elevenlabs/hooks/useReliableSync";
 
 type UseActionHandlerDependencies = {
 	log: (...args: any[]) => void;

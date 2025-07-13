@@ -1,0 +1,422 @@
+{
+  "agent_id": "agent_01jydc3p56er8tn495y66hybmn",
+  "name": "AddressFinder",
+  "conversation_config": {
+    "asr": {
+      "quality": "high",
+      "provider": "elevenlabs",
+      "user_input_audio_format": "pcm_16000",
+      "keywords": []
+    },
+    "turn": {
+      "turn_timeout": 7,
+      "silence_end_call_timeout": 20,
+      "mode": "turn"
+    },
+    "tts": {
+      "model_id": "eleven_flash_v2",
+      "voice_id": "HDA9tsk27wYi3uq0fPcK",
+      "supported_voices": [],
+      "agent_output_audio_format": "pcm_16000",
+      "optimize_streaming_latency": 3,
+      "stability": 0.5,
+      "speed": 1,
+      "similarity_boost": 0.8,
+      "pronunciation_dictionary_locators": []
+    },
+    "conversation": {
+      "text_only": false,
+      "max_duration_seconds": 300,
+      "client_events": [
+        "audio",
+        "interruption",
+        "user_transcript",
+        "agent_response",
+        "agent_response_correction"
+      ]
+    },
+    "language_presets": {},
+    "agent": {
+      "first_message": "What address are you looking for?",
+      "language": "en",
+      "dynamic_variables": {
+        "dynamic_variable_placeholders": {
+          "selectionAcknowledged": "false",
+          "searchResultsCount": "3",
+          "hasResults": "true",
+          "activeSearchSource": "manual",
+          "selectedResult": "1",
+          "agentLastSearchQuery": "Camberwell VIC",
+          "isRecording": "true",
+          "currentIntent": "suburb"
+        }
+      },
+      "prompt": {
+        "prompt": "You are an intelligent address finder assistant. You help users find and select addresses using voice conversation.\n\n#### **Dynamic Context Awareness**\n\nThe `CURRENT CONTEXT` variables below update in real-time based on user actions. You must check them before every response.\n\n*   **The Most Important Variable is `{{selectedResult}}`**.\n*   **Your Rule:** If `{{selectedResult}}` has a value (is not \"null\"), it means a selection has been **confirmed**. Your current task in the `CONVERSATION FLOW` is now complete. You must stop, acknowledge the selection to the user, and ask them what to do next. Do not continue with the flow (e.g., do not ask them to select an option if `{{selectedResult}}` already has a value).\n\n If {{selectedResult}} is present and {{currentIntent}} is \"suburb\" or \"locality\":\n- Acknowledge the selection as a valid suburb or locality.\n- Do not attempt to validate it as a full address.\n- Only ask for a more specific address if the user’s goal requires it (e.g., delivery, property-level lookup).\n- Otherwise, proceed with suburb-level logic or ask the user what they want to do next.\n\nAfter a selection is confirmed ({{selectedResult}} is set):\nDo not call any selection tools (selectSuggestion, selectByOrdinal, etc.) or continue the address selection flow.\nOnly acknowledge the selection and wait for the user's next instruction.\nIf the user wants to change or clear the selection, wait for them to explicitly request it before resuming the address selection flow.\n\n#### **CURRENT CONTEXT:**\n*   Recording Status: `{{isRecording}}`\n*   Has Search Results: `{{hasResults}}`\n*   Number of Results: `{{searchResultsCount}}`\n*   Agent's Last Search Query: `{{agentLastSearchQuery}}`\n*   Current Selection: `{{selectedResult}}`\n*   Current Intent: `{{currentIntent}}`\n*   Search Source: `{{activeSearchSource}}` (manual/voice/autocomplete)\n*   Selection Acknowledged: `{{selectionAcknowledged}}`\n\n#### **CONTEXT VALIDATION RULES:**\n*   **Before using `selectSuggestion`**: Check that `{{agentLastSearchQuery}}` matches the query that produced the current results. If it's null or different, the selection context is stale.\n*   **If `{{agentLastSearchQuery}}` is null**: The agent has no valid search context. Ask the user to provide a new search query.\n*   **If `{{hasResults}}` is false**: No suggestions are available. Use `searchAddress` to find options.\n*   **If `{{selectedResult}}` has a value**: A selection is already confirmed. Acknowledge it and ask what's next.\nBefore clearing suggestions or advancing the flow, always check that {{selectionAcknowledged}} is true.\n\n#### **AVAILABLE TOOLS:**\n*   `searchAddress`: Search for places by query\n*   `selectSuggestion`: Select a place by various methods (placeId, ordinal, description)\n*   `selectByOrdinal`: Select by \"first\", \"second\", \"third\", etc.\n*   `getSuggestions`: Get current search results\n*   `getConfirmedSelection`: Check what's currently selected\n*   `requestManualInput`: Enable manual typing mode\n*   `getCurrentState`: A debug tool to get a full snapshot of the application's state.\n*   `setSelectionAcknowledged`: Sets the selectionAcknowledged variable in the agent state to true or false. Use this after confirming a selection (set to true), and whenever a new search or selection is started (set to false).\n\n#### **TOOL USAGE PATTERNS:**\n*   **`searchAddress(query)`**: Use when user provides a new search query OR when `{{agentLastSearchQuery}}` is null. This updates the agent's context.\n*   **`selectSuggestion(placeId)`**: Use ONLY when `{{agentLastSearchQuery}}` is set and `{{hasResults}}` is true. The placeId must come from the current search results.\n*   **`selectByOrdinal(ordinal)`**: Use for \"first\", \"second\", etc. responses when results are available.\n*   **`getSuggestions()`**: Use to verify current results before selection attempts.\n*   **`requestManualInput(reason)`**: Use when user needs to type complex addresses or when voice recognition fails.\n*   **`setSelectionAcknowledged(value)`**: Use with `true` after you have confirmed and acknowledged a selection. Use with `false` whenever a new search or selection is started.\n\n#### **ORDINAL SELECTION RULES:**\nWhen you present multiple options to users, they can respond with:\n*   \"first\", \"second\", \"third\" (or 1st, 2nd, 3rd)\n*   \"the first one\", \"the second option\"\n*   Numbers: \"1\", \"2\", \"3\"\n*   State references: \"the one in Victoria\", \"NSW one\"\n\nUse `selectByOrdinal` for ordinal responses, or `selectSuggestion` for other selection methods.\n\n#### **GRACEFUL FALLBACK RULES:**\n*   **When address validation fails**: If `searchAddress` cannot find a specific address but returns street/suburb suggestions, present those options to the user. Say: \"I couldn't find a specific address, but here are some possible streets/suburbs: [list]. Would you like to select one of these, or try a different address?\"\n*   **When user wants specific address but gets street names**: If the user asks for \"23 Monomeath Avenue\" but you only get street-level results, explain: \"I found Monomeath Avenue as a street, but couldn't confirm a specific address at number 23. Would you like to select the street, or try a different address?\"\n*   **After 2 failed attempts**: If the same query fails twice, suggest: \"I'm having trouble finding that specific address. Would you like to try manual input mode, or search for a different location?\"\n*   **Always report your inferred intent**: When presenting results, briefly mention what you're looking for: \"I searched for [query] as a [intent] and found [X] results.\"\n\n#### **ERROR RECOVERY:**\n*   **If `selectSuggestion` fails**: The selection context may be stale. Use `searchAddress` with the user's query to refresh the context.\n*   **If `searchAddress` returns no results**: Ask the user to provide more specific information or try a different query.\n*   **If tools fail repeatedly**: Use `requestManualInput` to enable manual typing mode.\n*   **If validation fails**: Present available alternatives and explain the limitation clearly.\n\n#### **CONVERSATION FLOW:**\n1.  Ask what address they're looking for.\n2.  **Validate context**: Check if `{{agentLastSearchQuery}}` is set and matches user's intent.\n3.  Use `searchAddress` to find options (updates agent context).\n4.  **Present results with context**: \"I searched for [query] as a [intent] and found [X] results: [list]\"\n5.  **Before selection**: Verify `{{hasResults}}` is true and `{{agentLastSearchQuery}}` is current.\n6.  Use appropriate selection tool based on their response.\n7.  Confirm selection and ask what's next.\n\n- After you have confirmed and acknowledged a selection to the user ({{selectedResult}} is set and you have told the user), call `setSelectionAcknowledged(true)`.\n- Whenever a new search or selection is started (e.g., the user provides a new query, or the selection is cleared/changed), call `setSelectionAcknowledged(false)`.\n- Never set `selectionAcknowledged` to true before you have actually acknowledged the selection to the user.\n- The UI will wait for `selectionAcknowledged` to be true before clearing suggestions or advancing the flow.\n- All critical sync variables (like selectionAcknowledged) must be present in both the UI and agent context, and explicitly listed here, to ensure robust, debuggable flows.\n\nWhen asked for your state, use the getCurrentState() tool. Report the result clearly.",
+        "llm": "gemini-2.0-flash-001",
+        "temperature": 0,
+        "max_tokens": -1,
+        "tool_ids": [
+          "eHpX1owqLwnhc8CnTCUB",
+          "5rkjSznZYI0QwEn82lgO",
+          "fD8PhwfNqpPg2AGo2G83",
+          "lktIxis0LDEXTCXZiCrh",
+          "N6OEXRDOBG4hbgC0YYx5",
+          "oRagvWvrsWFjJuKqtlW6",
+          "3JsY4u8RMGoNX1M6gUXA"
+        ],
+        "built_in_tools": {
+          "end_call": {
+            "name": "end_call",
+            "description": "",
+            "response_timeout_secs": 20,
+            "type": "system",
+            "params": {
+              "system_tool_type": "end_call"
+            }
+          },
+          "language_detection": null,
+          "transfer_to_agent": null,
+          "transfer_to_number": null,
+          "skip_turn": {
+            "name": "skip_turn",
+            "description": "",
+            "response_timeout_secs": 20,
+            "type": "system",
+            "params": {
+              "system_tool_type": "skip_turn"
+            }
+          },
+          "play_keypad_touch_tone": null
+        },
+        "mcp_server_ids": [],
+        "native_mcp_server_ids": [],
+        "knowledge_base": [],
+        "custom_llm": null,
+        "ignore_default_personality": false,
+        "rag": {
+          "enabled": false,
+          "embedding_model": "e5_mistral_7b_instruct",
+          "max_vector_distance": 0.6,
+          "max_documents_length": 50000,
+          "max_retrieved_rag_chunks_count": 20
+        },
+        "tools": [
+          {
+            "name": "selectSuggestion",
+            "description": "Selects a specific address suggestion from the previously returned search results. Use this tool after searchAddress to confirm the user's choice from the list of suggestions.",
+            "response_timeout_secs": 3,
+            "type": "client",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "placeId"
+              ],
+              "description": "",
+              "properties": {
+                "placeId": {
+                  "type": "string",
+                  "description": "placeId",
+                  "dynamic_variable": "",
+                  "constant_value": ""
+                }
+              }
+            },
+            "expects_response": true,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "getCurrentState",
+            "description": "A debug tool to get a full snapshot of the application's current state.",
+            "response_timeout_secs": 2,
+            "type": "client",
+            "parameters": null,
+            "expects_response": true,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "clearSelection",
+            "description": "Resets the process and clears the user interface. Call this if the user says the selection is wrong or says they want to start over.",
+            "response_timeout_secs": 20,
+            "type": "client",
+            "parameters": null,
+            "expects_response": false,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "setSelectionAcknowledged",
+            "description": "Sets the selectionAcknowledged variable in the agent state to true or false. Use this after confirming a selection (set to true), and whenever a new search or selection is started (set to false).",
+            "response_timeout_secs": 20,
+            "type": "client",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "description": "",
+              "properties": {
+                "value": {
+                  "type": "boolean",
+                  "description": "Set to true after you have confirmed and acknowledged a selection to the user. Set to false whenever a new search or selection is started.",
+                  "dynamic_variable": "",
+                  "constant_value": ""
+                }
+              }
+            },
+            "expects_response": false,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "requestManualInput",
+            "description": "Switch to manual typing mode when voice is problematic",
+            "response_timeout_secs": 20,
+            "type": "client",
+            "parameters": null,
+            "expects_response": false,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "searchAddress",
+            "description": "Google places API call",
+            "response_timeout_secs": 20,
+            "type": "client",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "query"
+              ],
+              "description": "",
+              "properties": {
+                "placeId": {
+                  "type": "string",
+                  "description": "placeId",
+                  "dynamic_variable": "",
+                  "constant_value": ""
+                },
+                "query": {
+                  "type": "string",
+                  "description": "Extracts the full address, suburb, or location from the user's request. For example, if the user says \"I'm looking for 123 Collins Street Melbourne\", this value should be \"123 Collins Street Melbourne\".",
+                  "dynamic_variable": "",
+                  "constant_value": ""
+                }
+              }
+            },
+            "expects_response": true,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "getConfirmedSelection",
+            "description": "Retrieves the full, detailed address for the currently selected place. Call this immediately after 'selectSuggestion' to get the final address for confirmation.",
+            "response_timeout_secs": 3,
+            "type": "client",
+            "parameters": {
+              "type": "object",
+              "required": [
+                "placeId"
+              ],
+              "description": "",
+              "properties": {
+                "placeId": {
+                  "type": "string",
+                  "description": "placeId",
+                  "dynamic_variable": "",
+                  "constant_value": ""
+                }
+              }
+            },
+            "expects_response": true,
+            "dynamic_variables": {
+              "dynamic_variable_placeholders": {}
+            }
+          },
+          {
+            "name": "end_call",
+            "description": "",
+            "response_timeout_secs": 20,
+            "type": "system",
+            "params": {
+              "system_tool_type": "end_call"
+            }
+          },
+          {
+            "name": "skip_turn",
+            "description": "",
+            "response_timeout_secs": 20,
+            "type": "system",
+            "params": {
+              "system_tool_type": "skip_turn"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "created_at_unix_secs": 1750648085
+  },
+  "platform_settings": {
+    "auth": {
+      "enable_auth": false,
+      "allowlist": [],
+      "shareable_token": null
+    },
+    "evaluation": {
+      "criteria": []
+    },
+    "widget": {
+      "variant": "full",
+      "placement": "bottom-right",
+      "expandable": "never",
+      "avatar": {
+        "type": "orb",
+        "color_1": "#2792DC",
+        "color_2": "#9CE6E6"
+      },
+      "feedback_mode": "during",
+      "bg_color": "#ffffff",
+      "text_color": "#000000",
+      "btn_color": "#000000",
+      "btn_text_color": "#ffffff",
+      "border_color": "#e1e1e1",
+      "focus_color": "#000000",
+      "border_radius": null,
+      "btn_radius": null,
+      "action_text": null,
+      "start_call_text": null,
+      "end_call_text": null,
+      "expand_text": null,
+      "listening_text": null,
+      "speaking_text": null,
+      "shareable_page_text": null,
+      "shareable_page_show_terms": true,
+      "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
+      "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
+      "terms_key": null,
+      "show_avatar_when_collapsed": true,
+      "disable_banner": false,
+      "override_link": null,
+      "mic_muting_enabled": false,
+      "transcript_enabled": false,
+      "text_input_enabled": true,
+      "text_contents": {
+        "main_label": null,
+        "start_call": null,
+        "start_chat": null,
+        "new_call": null,
+        "end_call": null,
+        "mute_microphone": null,
+        "change_language": null,
+        "collapse": null,
+        "expand": null,
+        "copied": null,
+        "accept_terms": null,
+        "dismiss_terms": null,
+        "listening_status": null,
+        "speaking_status": null,
+        "connecting_status": null,
+        "chatting_status": null,
+        "input_label": null,
+        "input_placeholder": null,
+        "input_placeholder_text_only": null,
+        "input_placeholder_new_conversation": null,
+        "user_ended_conversation": null,
+        "agent_ended_conversation": null,
+        "conversation_id": null,
+        "error_occurred": null,
+        "copy_id": null
+      },
+      "styles": {
+        "base": null,
+        "base_hover": null,
+        "base_active": null,
+        "base_border": null,
+        "base_subtle": null,
+        "base_primary": null,
+        "base_error": null,
+        "accent": null,
+        "accent_hover": null,
+        "accent_active": null,
+        "accent_border": null,
+        "accent_subtle": null,
+        "accent_primary": null,
+        "overlay_padding": null,
+        "button_radius": null,
+        "input_radius": null,
+        "bubble_radius": null,
+        "sheet_radius": null,
+        "compact_sheet_radius": null,
+        "dropdown_sheet_radius": null
+      },
+      "language_selector": false,
+      "supports_text_only": true,
+      "custom_avatar_path": null,
+      "language_presets": {}
+    },
+    "data_collection": {},
+    "overrides": {
+      "conversation_config_override": {
+        "tts": {
+          "voice_id": false
+        },
+        "conversation": {
+          "text_only": true
+        },
+        "agent": {
+          "first_message": false,
+          "language": false,
+          "prompt": {
+            "prompt": false
+          }
+        }
+      },
+      "custom_llm_extra_body": false,
+      "enable_conversation_initiation_client_data_from_webhook": false
+    },
+    "call_limits": {
+      "agent_concurrency_limit": -1,
+      "daily_limit": 100000,
+      "bursting_enabled": true
+    },
+    "ban": null,
+    "privacy": {
+      "record_voice": true,
+      "retention_days": 730,
+      "delete_transcript_and_pii": true,
+      "delete_audio": true,
+      "apply_to_existing_conversations": false,
+      "zero_retention_mode": false
+    },
+    "workspace_overrides": {
+      "conversation_initiation_client_data_webhook": null,
+      "webhooks": {
+        "post_call_webhook_id": null,
+        "send_audio": false
+      }
+    },
+    "safety": {
+      "is_blocked_ivc": false,
+      "is_blocked_non_ivc": false,
+      "ignore_safety_evaluation": false
+    }
+  },
+  "phone_numbers": [],
+  "access_info": {
+    "is_creator": true,
+    "creator_name": "Stewart Milne",
+    "creator_email": "stemil23@gmail.com",
+    "role": "admin"
+  },
+  "tags": []
+}
