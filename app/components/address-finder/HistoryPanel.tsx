@@ -11,7 +11,7 @@ interface HistoryPanelProps {
 	history: HistoryEntry[];
 }
 
-const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {
+export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {
 	if (history.length === 0) {
 		return null;
 	}
@@ -47,4 +47,3 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {
 	);
 };
 
-export default HistoryPanel;

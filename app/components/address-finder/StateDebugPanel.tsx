@@ -3,7 +3,10 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
-import { useAddressFinderStore } from "~/stores/addressFinderStore";
+import { useUIStore } from "~/stores/uiStore";
+import { useIntentStore } from "~/stores/intentStore";
+import { useApiStore } from "~/stores/apiStore";
+import { useHistoryStore } from "~/stores/historyStore";
 
 interface StateDebugPanelProps {
 	// React Query state
@@ -40,17 +43,20 @@ export default function StateDebugPanel({
 	const [isExpanded, setIsExpanded] = useState(false);
 	const previousStateRef = useRef<any>(null);
 
-	// Get all Zustand store state
-	const zustandState = useAddressFinderStore();
+	// Get state from pillar stores
+	const uiState = useUIStore();
+	const intentState = useIntentStore();
+	const apiState = useApiStore();
+	const historyState = useHistoryStore();
 
 	// Logging utility - respects the store's logging setting
 	const log = useCallback(
 		(...args: any[]) => {
-			if (zustandState.isLoggingEnabled) {
+			if (uiState.isLoggingEnabled) {
 				console.log("[StateDebugPanel]", ...args);
 			}
 		},
-		[zustandState.isLoggingEnabled],
+		[uiState.isLoggingEnabled],
 	);
 
 	const formatValue = (value: any): string => {
@@ -98,27 +104,40 @@ export default function StateDebugPanel({
 		</div>
 	);
 
-	// Organize Zustand state into logical groups
+	// Organize state from pillar stores into logical groups
 	const searchState = {
-		searchQuery: zustandState.searchQuery,
-		selectedResult: zustandState.selectedResult,
-		currentIntent: zustandState.currentIntent,
+		searchQuery: intentState.searchQuery,
+		selectedResult: intentState.selectedResult,
+		currentIntent: intentState.currentIntent,
+		activeSearchSource: intentState.activeSearchSource,
+		agentLastSearchQuery: intentState.agentLastSearchQuery,
 	};
 
 	const voiceState = {
-		isRecording: zustandState.isRecording,
-		isVoiceActive: zustandState.isVoiceActive,
+		isRecording: uiState.isRecording,
+		isVoiceActive: uiState.isVoiceActive,
 	};
 
 	const settingsState = {
-		isLoggingEnabled: zustandState.isLoggingEnabled,
-		isSmartValidationEnabled: zustandState.isSmartValidationEnabled,
+		isLoggingEnabled: uiState.isLoggingEnabled,
+		isSmartValidationEnabled: intentState.isSmartValidationEnabled,
+		agentRequestedManual: uiState.agentRequestedManual,
+		selectionAcknowledged: uiState.selectionAcknowledged,
 	};
 
-	const historyState = {
-		historyLength: zustandState.history.length,
+	const historyStateDisplay = {
+		historyLength: historyState.history.length,
 		lastHistoryItem:
-			zustandState.history[zustandState.history.length - 1] || null,
+			historyState.history[historyState.history.length - 1] || null,
+	};
+
+	const apiStateDisplay = {
+		suggestionsCount: apiState.apiResults.suggestions.length,
+		isApiLoading: apiState.apiResults.isLoading,
+		hasApiError: !!apiState.apiResults.error,
+		apiErrorMessage: apiState.apiResults.error,
+		apiSource: apiState.apiResults.source,
+		apiTimestamp: apiState.apiResults.timestamp,
 	};
 
 	const reactQueryState = {
@@ -151,14 +170,15 @@ export default function StateDebugPanel({
 
 	// Comprehensive state object for logging
 	const fullStateSnapshot = {
-		zustand: {
+		stores: {
 			search: searchState,
 			voice: voiceState,
 			settings: settingsState,
 			history: {
-				...historyState,
-				fullHistory: zustandState.history,
+				...historyStateDisplay,
+				fullHistory: historyState.history,
 			},
+			api: apiStateDisplay,
 		},
 		reactQuery: reactQueryState,
 		local: localState,
@@ -187,11 +207,11 @@ export default function StateDebugPanel({
 				const changes: Record<string, any> = {};
 
 				if (
-					JSON.stringify(current.zustand) !== JSON.stringify(previous.zustand)
+					JSON.stringify(current.stores) !== JSON.stringify(previous.stores)
 				) {
-					changes.zustand = {
-						from: previous.zustand,
-						to: current.zustand,
+					changes.stores = {
+						from: previous.stores,
+						to: current.stores,
 					};
 				}
 
@@ -246,18 +266,14 @@ export default function StateDebugPanel({
 		log("📸 CURRENT STATE SNAPSHOT:", fullStateSnapshot);
 	}, [fullStateSnapshot, log]);
 
-	const logZustandState = useCallback(() => {
-		log("🎯 ZUSTAND STATE ONLY:", {
-			searchQuery: zustandState.searchQuery,
-			selectedResult: zustandState.selectedResult,
-			currentIntent: zustandState.currentIntent,
-			isRecording: zustandState.isRecording,
-			isVoiceActive: zustandState.isVoiceActive,
-			history: zustandState.history,
-			isLoggingEnabled: zustandState.isLoggingEnabled,
-			isSmartValidationEnabled: zustandState.isSmartValidationEnabled,
+	const logStoreState = useCallback(() => {
+		log("🎯 STORE STATE ONLY:", {
+			ui: uiState,
+			intent: intentState,
+			api: apiState,
+			history: historyState,
 		});
-	}, [zustandState, log]);
+	}, [uiState, intentState, apiState, historyState, log]);
 
 	const logReactQueryState = useCallback(() => {
 		log("🔄 REACT QUERY STATE ONLY:", {
@@ -322,10 +338,10 @@ export default function StateDebugPanel({
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={logZustandState}
+							onClick={logStoreState}
 							className="text-xs"
 						>
-							🎯 Log Zustand
+							🎯 Log Stores
 						</Button>
 						<Button
 							variant="ghost"
@@ -344,7 +360,7 @@ export default function StateDebugPanel({
 							💬 Log Conversation
 						</Button>
 						<div className="text-xs text-gray-500 flex items-center ml-auto">
-							{zustandState.isLoggingEnabled ? (
+							{uiState.isLoggingEnabled ? (
 								<span className="text-green-600">✅ Logging Enabled</span>
 							) : (
 								<span className="text-red-600">❌ Logging Disabled</span>
@@ -357,7 +373,7 @@ export default function StateDebugPanel({
 			{isExpanded && (
 				<CardContent className="space-y-4">
 					<StateSection
-						title="🎯 Search State (Zustand)"
+						title="🎯 Search State (Intent Store)"
 						data={searchState}
 						variant="default"
 					/>
@@ -365,7 +381,7 @@ export default function StateDebugPanel({
 					<Separator />
 
 					<StateSection
-						title="🎤 Voice State (Zustand)"
+						title="🎤 Voice State (UI Store)"
 						data={voiceState}
 						variant="secondary"
 					/>
@@ -373,7 +389,7 @@ export default function StateDebugPanel({
 					<Separator />
 
 					<StateSection
-						title="⚙️ Settings State (Zustand)"
+						title="⚙️ Settings State (UI + Intent Stores)"
 						data={settingsState}
 						variant="outline"
 					/>
@@ -381,8 +397,16 @@ export default function StateDebugPanel({
 					<Separator />
 
 					<StateSection
-						title="📚 History State (Zustand)"
-						data={historyState}
+						title="📚 History State (History Store)"
+						data={historyStateDisplay}
+						variant="outline"
+					/>
+
+					<Separator />
+
+					<StateSection
+						title="🔧 API State (API Store)"
+						data={apiStateDisplay}
 						variant="outline"
 					/>
 
@@ -436,16 +460,16 @@ export default function StateDebugPanel({
 					)}
 
 					{/* Full history detail when expanded */}
-					{zustandState.history.length > 0 && (
+					{historyState.history.length > 0 && (
 						<>
 							<Separator />
 							<div className="space-y-2">
 								<Badge variant="outline" className="text-xs">
-									📜 Full History Array ({zustandState.history.length} items)
+									📜 Full History Array ({historyState.history.length} items)
 								</Badge>
 								<div className="bg-gray-50 rounded-lg p-3 text-xs font-mono max-h-64 overflow-y-auto">
 									<pre className="whitespace-pre-wrap break-all">
-										{JSON.stringify(zustandState.history, null, 2)}
+										{JSON.stringify(historyState.history, null, 2)}
 									</pre>
 								</div>
 							</div>

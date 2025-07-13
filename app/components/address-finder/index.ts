@@ -1,8 +1,9 @@
 export { default as VoiceInputController } from "./VoiceInputController";
-export { default as ManualSearchForm } from "./ManualSearchForm";
+export { ManualSearchForm } from "./ManualSearchForm";
 export { default as SuggestionsDisplay } from "./SuggestionsDisplay";
 export { SelectedResultCard } from "./SelectedResultCard";
-export { default as HistoryPanel } from "./HistoryPanel";
+export { HistoryPanel } from "./HistoryPanel";
+export { AddressInput } from "./AddressInput";
 export { default as StateDebugPanel } from "./StateDebugPanel";
 export { default as SuburbBoundaryMap } from "./SuburbBoundaryMap";
 export { AddressFinderBrain } from "./AddressFinderBrain";

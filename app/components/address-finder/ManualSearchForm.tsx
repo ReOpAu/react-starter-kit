@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Badge } from "~/components/ui/badge";
 import type { Suggestion } from "~/stores/types";
 import { classifyIntent } from "~/utils/addressFinderUtils";
-import AddressInput from "./AddressInput";
+import { AddressInput } from "./AddressInput";
 
 // Google Maps best practice: Highlight matching text in suggestions
 const renderHighlightedText = (
@@ -38,7 +38,7 @@ interface ManualSearchFormProps {
 	onTyping?: (query: string) => void;
 }
 
-const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
+export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 	({ onSelect, disabled = false, onTyping }) => {
 		const [inputValue, setInputValue] = useState("");
 		const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -275,7 +275,6 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 					onKeyDown={handleKeyDown}
 					onFocus={handleFocus}
 					onBlur={handleBlur}
-					onSubmit={handleSubmit}
 					onClear={handleClearInput}
 					isLoading={isLoading}
 					disabled={disabled}
@@ -384,5 +383,3 @@ const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 );
 
 ManualSearchForm.displayName = "ManualSearchForm";
-
-export default ManualSearchForm;

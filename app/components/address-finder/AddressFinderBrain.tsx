@@ -395,7 +395,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		error,
 		searchQuery,
 		activeSearchSource,
-		setApiResults,
 		syncToAgent,
 		queryClient,
 		addSearchToHistory,
@@ -443,7 +442,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				}, 50);
 			}
 		}
-	}, [shouldClassifyByVelocity, velocityDetectedIntent, setCurrentIntent, searchQuery, log]);
+	}, [shouldClassifyByVelocity, velocityDetectedIntent, searchQuery, log]);
 
 	// Handle typing in manual search form
 	const handleManualTyping = useCallback(

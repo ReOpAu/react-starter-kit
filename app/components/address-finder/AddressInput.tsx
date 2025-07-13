@@ -7,7 +7,6 @@ interface AddressInputProps {
 	onKeyDown: (e: React.KeyboardEvent) => void;
 	onFocus: () => void;
 	onBlur?: () => void;
-	onSubmit: (e: React.FormEvent) => void;
 	onClear: () => void;
 	isLoading: boolean;
 	disabled?: boolean;
@@ -19,7 +18,7 @@ interface AddressInputProps {
 	role?: string;
 }
 
-const AddressInput = React.forwardRef<HTMLInputElement, AddressInputProps>(
+export const AddressInput = React.forwardRef<HTMLInputElement, AddressInputProps>(
 	(
 		{
 			value,
@@ -27,7 +26,6 @@ const AddressInput = React.forwardRef<HTMLInputElement, AddressInputProps>(
 			onKeyDown,
 			onFocus,
 			onBlur,
-			onSubmit,
 			onClear,
 			isLoading,
 			disabled = false,
@@ -40,62 +38,58 @@ const AddressInput = React.forwardRef<HTMLInputElement, AddressInputProps>(
 		ref,
 	) => {
 		return (
-			<form onSubmit={onSubmit}>
-				<div className="relative w-full">
-					<Input
-						ref={ref}
-						placeholder="Or type an address..."
-						value={value}
-						onChange={onChange}
-						onKeyDown={onKeyDown}
-						onFocus={onFocus}
-						onBlur={onBlur}
-						disabled={disabled}
-						autoComplete="off"
-						spellCheck={false}
-						autoCorrect="off"
-						autoCapitalize="off"
-						className={`${isLoading ? "pr-16" : "pr-10"}`}
-						aria-expanded={ariaExpanded}
-						aria-haspopup={ariaHaspopup}
-						aria-autocomplete={ariaAutocomplete}
-						aria-activedescendant={ariaActivedescendant}
-						role={role}
-					/>
-					{isLoading && (
-						<div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-							<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
-						</div>
-					)}
-					{value && (
-						<button
-							type="button"
-							onClick={onClear}
-							className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-							aria-label="Clear search"
+			<div className="relative w-full">
+				<Input
+					ref={ref}
+					placeholder="Or type an address..."
+					value={value}
+					onChange={onChange}
+					onKeyDown={onKeyDown}
+					onFocus={onFocus}
+					onBlur={onBlur}
+					disabled={disabled}
+					autoComplete="off"
+					spellCheck={false}
+					autoCorrect="off"
+					autoCapitalize="off"
+					className={`${isLoading ? "pr-16" : "pr-10"}`}
+					aria-expanded={ariaExpanded}
+					aria-haspopup={ariaHaspopup}
+					aria-autocomplete={ariaAutocomplete}
+					aria-activedescendant={ariaActivedescendant}
+					role={role}
+				/>
+				{isLoading && (
+					<div className="absolute right-8 top-1/2 transform -translate-y-1/2">
+						<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400" />
+					</div>
+				)}
+				{value && (
+					<button
+						type="button"
+						onClick={onClear}
+						className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+						aria-label="Clear search"
+					>
+						<svg
+							className="w-4 h-4"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
 						>
-							<svg
-								className="w-4 h-4"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<title>Clear input</title>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M6 18L18 6M6 6l12 12"
-								/>
-							</svg>
-						</button>
-					)}
-				</div>
-			</form>
+							<title>Clear input</title>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				)}
+			</div>
 		);
 	},
 );
 
 AddressInput.displayName = "AddressInput";
-
-export default AddressInput;
