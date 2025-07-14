@@ -8,6 +8,28 @@ import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
 import { classifySelectedResult } from "~/utils/addressFinderUtils";
 import { useReliableSync } from "~/elevenlabs/hooks/useReliableSync";
 
+// Constants for place details enrichment
+const ENRICHMENT_CACHE_KEY = "placeDetails";
+
+// Helper function to check if a result is already enriched
+const isResultEnriched = (result: Suggestion): boolean => {
+	return Boolean(result.postcode && result.suburb && result.lat && result.lng);
+};
+
+// Helper function to log enrichment operations
+const logEnrichment = (
+	operation: string,
+	result: Suggestion,
+	extra?: Record<string, unknown>,
+) => {
+	console.log(`[AddressHandler:Enrichment] ${operation}`, {
+		placeId: result.placeId,
+		description: result.description,
+		isEnriched: isResultEnriched(result),
+		...extra,
+	});
+};
+
 type UseActionHandlerDependencies = {
 	log: (...args: any[]) => void;
 	setCurrentIntent: (intent: LocationIntent) => void;
@@ -24,6 +46,16 @@ type UseActionHandlerDependencies = {
 	conversationRef: RefObject<ReturnType<typeof useConversation> | null>;
 	queryClient: QueryClient;
 	clearSelectionAndSearch: () => void;
+	// New dependencies for consolidated selection logic
+	getPlaceDetailsAction: any;
+	setAgentLastSearchQuery: (query: string | null) => void;
+	addAddressSelection: (entry: any) => void;
+	searchQuery: string;
+	currentIntent: LocationIntent | null;
+	preserveIntent: LocationIntent | null;
+	setPreserveIntent: (intent: LocationIntent | null) => void;
+	resetRecallMode: () => void;
+	syncToAgent: () => void;
 };
 
 export function useActionHandler({
@@ -39,6 +71,16 @@ export function useActionHandler({
 	conversationRef,
 	queryClient,
 	clearSelectionAndSearch,
+	// New dependencies for consolidated selection logic
+	getPlaceDetailsAction,
+	setAgentLastSearchQuery,
+	addAddressSelection,
+	searchQuery,
+	currentIntent,
+	preserveIntent,
+	setPreserveIntent,
+	resetRecallMode,
+	syncToAgent,
 }: UseActionHandlerDependencies) {
 	const [isValidating, setIsValidating] = useState(false);
 	const [validationError, setValidationError] = useState<string | null>(null);
@@ -49,6 +91,328 @@ export function useActionHandler({
 	);
 	const { performReliableSync } = useReliableSync();
 
+	// Consolidated selection handler with enrichment and validation
+	const handleSelectResult = useCallback(
+		async (result: Suggestion): Promise<void> => {
+			log("🎯 === CONSOLIDATED SELECTION FLOW START ===");
+			let enrichedResult = { ...result };
+
+			// Step 1: Enrichment (from original handleSelectResult)
+			if (result.placeId && !isResultEnriched(result)) {
+				logEnrichment("Starting enrichment", result);
+
+				// Check cache first
+				const cachedData = queryClient.getQueryData<{
+					success: boolean;
+					details: {
+						formattedAddress: string;
+						lat: number;
+						lng: number;
+						types: string[];
+						suburb?: string;
+						postcode?: string;
+					};
+				}>([ENRICHMENT_CACHE_KEY, result.placeId]);
+
+				if (cachedData?.success) {
+					logEnrichment("Using cached data", result);
+					enrichedResult = {
+						...result, // Keep original suggestion data like confidence
+						description: cachedData.details.formattedAddress,
+						displayText: cachedData.details.formattedAddress,
+						lat: cachedData.details.lat,
+						lng: cachedData.details.lng,
+						types: cachedData.details.types,
+						suburb: cachedData.details.suburb,
+						postcode: cachedData.details.postcode,
+					};
+				} else {
+					// Fetch fresh data from API
+					logEnrichment("Fetching from API", result);
+					try {
+						const detailsRes = await getPlaceDetailsAction({
+							placeId: result.placeId,
+						});
+
+						if (detailsRes.success) {
+							logEnrichment("Enrichment successful", result, {
+								formattedAddress: detailsRes.details.formattedAddress,
+								postcode: detailsRes.details.postcode,
+								suburb: detailsRes.details.suburb,
+							});
+
+							// Cache the result
+							queryClient.setQueryData(
+								[ENRICHMENT_CACHE_KEY, result.placeId],
+								detailsRes,
+							);
+
+							enrichedResult = {
+								...result, // Keep original suggestion data like confidence
+								description: detailsRes.details.formattedAddress,
+								displayText: detailsRes.details.formattedAddress,
+								lat: detailsRes.details.lat,
+								lng: detailsRes.details.lng,
+								types: detailsRes.details.types,
+								suburb: detailsRes.details.suburb,
+								postcode: detailsRes.details.postcode,
+							};
+						} else {
+							// Log enrichment failure but continue with original result
+							logEnrichment("Enrichment failed", result, {
+								error: detailsRes.error,
+							});
+							console.warn(
+								`[AddressHandler] Failed to enrich place details for ${result.placeId}:`,
+								detailsRes.error,
+							);
+						}
+					} catch (error) {
+						logEnrichment("Enrichment API call failed", result, { error });
+						console.warn(
+							`[AddressHandler] Exception during enrichment for ${result.placeId}:`,
+							error,
+						);
+					}
+				}
+			} else if (isResultEnriched(result)) {
+				logEnrichment("Already enriched, skipping", result);
+			} else {
+				logEnrichment("No placeId, skipping enrichment", result);
+			}
+
+			// Step 2: Add to suggestions cache for agent context
+			const currentSearchQuery = searchQuery || enrichedResult.description;
+			const currentSuggestions =
+				queryClient.getQueryData<Suggestion[]>([
+					"addressSearch",
+					currentSearchQuery,
+				]) || [];
+			if (
+				!currentSuggestions.find((s) => s.placeId === enrichedResult.placeId)
+			) {
+				const updatedSuggestions = [...currentSuggestions, enrichedResult];
+				queryClient.setQueryData(
+					["addressSearch", currentSearchQuery],
+					updatedSuggestions,
+				);
+				log("🔧 Context sync: Added selection to agent's suggestions array");
+			}
+
+			// Step 3: Intent classification and validation (from original handleSelect)
+			const intent = classifySelectedResult(enrichedResult);
+			log(`🎯 Initial classification from suggestion: ${intent}`);
+
+			if (intent === "address") {
+				log('🔬 Intent is "address", proceeding with full validation.');
+				setValidationError(null);
+				setIsValidating(true);
+
+				try {
+					// Check if Convex is available before calling the action
+					if (!validateAddressAction) {
+						throw new Error("Address validation service is not available. Please ensure Convex dev server is running.");
+					}
+					
+					const validation = await validateAddressAction({
+						address: enrichedResult.description,
+					});
+
+					log("🔬 VALIDATION RESULT:", validation);
+
+					if (validation.success && validation.isValid) {
+						// Further enrich with validation data if available
+						const finalResult: Suggestion = {
+							...enrichedResult,
+							description: validation.result.address.formattedAddress,
+							placeId: validation.result.geocode.placeId,
+							lat: validation.result.geocode?.location?.latitude,
+							lng: validation.result.geocode?.location?.longitude,
+						};
+						const finalIntent = classifySelectedResult(finalResult);
+						log(`🎯 Final intent after validation: ${finalIntent}`);
+						setCurrentIntent(finalIntent);
+
+						setSelectedResult(finalResult);
+						setActiveSearch({
+							query: finalResult.description,
+							source: "manual",
+						});
+						setAgentRequestedManual(false);
+						addHistory({
+							type: "user",
+							text: `Selected: "${finalResult.description}"`,
+						});
+
+						clearSessionToken();
+
+						// Step 4: Agent communication
+						if (
+							isRecording &&
+							conversationRef.current?.status === "connected"
+						) {
+							const selectionMessage = `I have selected "${finalResult.description}" from the available options. Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed.`;
+							log("🗨️ SENDING MESSAGE TO AGENT:", selectionMessage);
+
+							try {
+								conversationRef.current?.sendUserMessage?.(selectionMessage);
+								log("✅ Message sent to agent successfully");
+								addHistory({
+									type: "system",
+									text: "Notified agent about selection",
+								});
+							} catch (error) {
+								log("❌ Failed to send message to agent:", error);
+								addHistory({
+									type: "system",
+									text: `Failed to notify agent: ${error}`,
+								});
+							}
+						}
+
+						// Step 5: Store selection and sync
+						log(
+							`🔧 Storing selection - originalQuery: "${currentSearchQuery}", selectedAddress.description: "${finalResult.description}"`,
+						);
+						addAddressSelection({
+							originalQuery: currentSearchQuery,
+							selectedAddress: finalResult,
+							context: {
+								mode: isRecording ? "voice" : "manual",
+								intent: currentIntent ?? "general",
+							},
+						});
+						setAgentLastSearchQuery(currentSearchQuery);
+						syncToAgent();
+						resetRecallMode();
+
+					} else if (
+						validation.success &&
+						"isRuralException" in validation &&
+						validation.isRuralException
+					) {
+						// Rural exception: prompt user for confirmation
+						setPendingRuralConfirmation({ result: enrichedResult, validation });
+						setValidationError(null);
+						addHistory({
+							type: "system",
+							text: `Rural address exception: ${validation.error}`,
+						});
+					} else {
+						const errorMessage =
+							validation.error ||
+							"The selected address could not be validated.";
+						log(`❌ VALIDATION FAILED: ${errorMessage}`);
+						setValidationError(errorMessage);
+						addHistory({
+							type: "system",
+							text: `Validation failed: ${errorMessage}`,
+						});
+					}
+				} catch (error: any) {
+					log("💥 VALIDATION ACTION FAILED:", error);
+					console.error("Full error object:", error);
+					
+					// Enhanced error handling to catch "require is not defined" errors
+					let errorMessage = "An unknown error occurred";
+					if (error.message?.includes("require is not defined")) {
+						errorMessage = "Server-side code execution error. Please check the server logs.";
+					} else if (error.data?.message) {
+						errorMessage = error.data.message;
+					} else if (error.message) {
+						errorMessage = error.message;
+					}
+					
+					setValidationError(`Validation failed: ${errorMessage}`);
+					addHistory({
+						type: "system",
+						text: `Validation action failed: ${errorMessage}`,
+					});
+				} finally {
+					setIsValidating(false);
+				}
+			} else {
+				// Non-address intents: proceed without validation
+				log(`🎯 Intent is "${intent}", skipping full validation.`);
+				
+				// Preserve intent if this is a recall, otherwise update based on selection
+				if (preserveIntent) {
+					setCurrentIntent(preserveIntent);
+					setPreserveIntent(null);
+				} else {
+					setCurrentIntent(intent);
+				}
+
+				setSelectedResult(enrichedResult);
+				setActiveSearch({ query: enrichedResult.description, source: "manual" });
+				setAgentRequestedManual(false);
+				addHistory({ type: "user", text: `Selected: "${enrichedResult.description}"` });
+				clearSessionToken();
+
+				// Agent communication for non-address selections
+				if (isRecording && conversationRef.current?.status === "connected") {
+					const selectionMessage = `I have selected "${enrichedResult.description}". This is a ${intent}, not a full address. Please acknowledge this selection.`;
+					log("🗨️ SENDING MESSAGE TO AGENT:", selectionMessage);
+
+					try {
+						conversationRef.current?.sendUserMessage?.(selectionMessage);
+						log("✅ Message sent to agent successfully");
+						addHistory({
+							type: "system",
+							text: `Notified agent about ${intent} selection`,
+						});
+					} catch (error) {
+						log("❌ Failed to send message to agent:", error);
+						addHistory({
+							type: "system",
+							text: `Failed to notify agent: ${error}`,
+						});
+					}
+				}
+
+				// Store selection and sync
+				log(
+					`🔧 Storing selection - originalQuery: "${currentSearchQuery}", selectedAddress.description: "${enrichedResult.description}"`,
+				);
+				addAddressSelection({
+					originalQuery: currentSearchQuery,
+					selectedAddress: enrichedResult,
+					context: {
+						mode: isRecording ? "voice" : "manual",
+						intent: currentIntent ?? "general",
+					},
+				});
+				setAgentLastSearchQuery(currentSearchQuery);
+				syncToAgent();
+				resetRecallMode();
+			}
+			log("🎯 === CONSOLIDATED SELECTION FLOW END ===");
+		},
+		[
+			log,
+			getPlaceDetailsAction,
+			queryClient,
+			searchQuery,
+			validateAddressAction,
+			setCurrentIntent,
+			setSelectedResult,
+			setActiveSearch,
+			setAgentRequestedManual,
+			addHistory,
+			clearSessionToken,
+			isRecording,
+			conversationRef,
+			addAddressSelection,
+			setAgentLastSearchQuery,
+			syncToAgent,
+			resetRecallMode,
+			currentIntent,
+			preserveIntent,
+			setPreserveIntent,
+		],
+	);
+
+	// Legacy handleSelect for backward compatibility (will be removed)
 	const handleSelect = useCallback(
 		async (result: Suggestion) => {
 			log("🎯 === UNIFIED SELECTION FLOW START ===");
@@ -324,7 +688,8 @@ export function useActionHandler({
 	]);
 
 	return {
-		handleSelect,
+		handleSelectResult, // New consolidated function
+		handleSelect, // Legacy function for backward compatibility
 		isValidating,
 		validationError,
 		handleClear,

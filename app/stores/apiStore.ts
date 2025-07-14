@@ -10,10 +10,8 @@ interface ApiState {
 		source: Mode | null;
 		timestamp: number;
 	};
-	agentLastSearchQuery: string | null;
 
 	setApiResults: (results: Partial<ApiState["apiResults"]>) => void;
-	setAgentLastSearchQuery: (query: string | null) => void;
 
 	// Action to reset API state
 	resetApiState: () => void;
@@ -27,7 +25,6 @@ const initialApiState = {
 		source: null,
 		timestamp: 0,
 	},
-	agentLastSearchQuery: null,
 };
 
 export const useApiStore = create<ApiState>()(
@@ -42,8 +39,6 @@ export const useApiStore = create<ApiState>()(
 						timestamp: Date.now(),
 					},
 				})),
-			setAgentLastSearchQuery: (query: string | null) =>
-				set({ agentLastSearchQuery: query }),
 			resetApiState: () => set(initialApiState),
 		}),
 		{ name: "ApiStore" },

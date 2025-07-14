@@ -15,7 +15,6 @@ import type * as address_types from "../address/types.js";
 import type * as address_utils from "../address/utils.js";
 import type * as address_validateAddress from "../address/validateAddress.js";
 import type * as addressFinder from "../addressFinder.js";
-import type * as agentTools from "../agentTools.js";
 import type * as autocomplete from "../autocomplete.js";
 import type * as http from "../http.js";
 import type * as schemas_index from "../schemas/index.js";
@@ -53,7 +52,6 @@ declare const fullApi: ApiFromModules<{
   "address/utils": typeof address_utils;
   "address/validateAddress": typeof address_validateAddress;
   addressFinder: typeof addressFinder;
-  agentTools: typeof agentTools;
   autocomplete: typeof autocomplete;
   http: typeof http;
   "schemas/index": typeof schemas_index;

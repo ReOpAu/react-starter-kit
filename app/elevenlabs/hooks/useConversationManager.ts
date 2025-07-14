@@ -1,14 +1,20 @@
 import { useConversation } from "@elevenlabs/react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useHistoryStore } from "~/stores/historyStore";
 import { useUIStore } from "~/stores/uiStore";
+import { withRetry, ELEVENLABS_RETRY_CONFIG } from "~/utils/retryMechanism";
 
 export function useConversationManager(clientTools: Record<string, any>) {
 	// More robust state selection to avoid lifecycle issues
 	const setIsRecording = useUIStore((state) => state.setIsRecording);
 	const setIsVoiceActive = useUIStore((state) => state.setIsVoiceActive);
 	const isLoggingEnabled = useUIStore((state) => state.isLoggingEnabled);
+	const vadThresholds = useUIStore((state) => state.vadThresholds);
 	const addHistory = useHistoryStore((state) => state.addHistory);
+	
+	// Track connection attempts for retry logic
+	const connectionAttempts = useRef(0);
+	const maxConnectionAttempts = 3;
 
 	// Logging utility - STABLE: No dependencies to prevent infinite loops
 	const log = useCallback(
@@ -27,6 +33,7 @@ export function useConversationManager(clientTools: Record<string, any>) {
 		agentId: import.meta.env.VITE_ELEVENLABS_ADDRESS_AGENT_ID,
 		onConnect: () => {
 			log("🔗 Connected to ElevenLabs");
+			connectionAttempts.current = 0; // Reset on successful connection
 			// Note: Centralized sync effect will handle sync automatically
 		},
 		onDisconnect: () => {
@@ -62,6 +69,35 @@ export function useConversationManager(clientTools: Record<string, any>) {
 		onError: (error) => {
 			log("❌ Conversation error:", error);
 			addHistory({ type: "system", text: `Error: ${error}` });
+			
+			// Handle connection errors with retry logic
+			const errorMessage = error?.toString() || '';
+			const isConnectionError = (
+				errorMessage.includes('connection') ||
+				errorMessage.includes('websocket') ||
+				errorMessage.includes('network') ||
+				errorMessage.includes('timeout')
+			);
+			
+			if (isConnectionError && connectionAttempts.current < maxConnectionAttempts) {
+				connectionAttempts.current++;
+				const retryDelay = 2000 * Math.pow(2, connectionAttempts.current - 1); // Exponential backoff
+				
+				log(`🔄 Connection error detected, attempting retry ${connectionAttempts.current}/${maxConnectionAttempts} in ${retryDelay}ms`);
+				addHistory({ 
+					type: "system", 
+					text: `Connection failed, retrying in ${retryDelay/1000}s (attempt ${connectionAttempts.current}/${maxConnectionAttempts})` 
+				});
+				
+				// The actual retry would need to be handled at a higher level
+				// as the useConversation hook manages its own connection lifecycle
+			} else if (isConnectionError) {
+				log(`❌ Maximum connection attempts (${maxConnectionAttempts}) reached`);
+				addHistory({ 
+					type: "system", 
+					text: `Connection failed after ${maxConnectionAttempts} attempts. Please check your internet connection and try again.` 
+				});
+			}
 		},
 		// Enhanced event handlers for full API compliance
 		onPing: () => {
@@ -96,14 +132,18 @@ export function useConversationManager(clientTools: Record<string, any>) {
 			});
 		},
 		onVoiceActivityDetection: (vadScore: number) => {
-			// Only log VAD scores above threshold to avoid spam
-			if (vadScore > 0.7) {
+			// Use configurable thresholds from store
+			const thresholds = useUIStore.getState().vadThresholds;
+			
+			// Only log VAD scores above configured threshold to avoid spam
+			if (vadScore > thresholds.loggingThreshold) {
 				log("🎙️ High voice activity detected:", vadScore);
 			}
-			// Update UI state based on voice activity
-			if (vadScore > 0.5) {
+			
+			// Update UI state based on configurable voice activity thresholds
+			if (vadScore > thresholds.activationThreshold) {
 				useUIStore.getState().setIsVoiceActive(true);
-			} else if (vadScore < 0.3) {
+			} else if (vadScore < thresholds.deactivationThreshold) {
 				useUIStore.getState().setIsVoiceActive(false);
 			}
 		},

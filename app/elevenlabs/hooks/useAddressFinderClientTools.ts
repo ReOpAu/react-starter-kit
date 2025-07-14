@@ -6,11 +6,13 @@ import {
 	classifyIntent,
 	classifySelectedResult,
 } from "~/utils/addressFinderUtils";
+import { withRetry, API_RETRY_CONFIG } from "~/utils/retryMechanism";
 
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import {
 	getAgentByTransferIndex,
 	getAvailableTransferTargets,
+	validateTransferRequest,
 } from "@shared/constants/agentConfig";
 import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
@@ -91,12 +93,29 @@ export function useAddressFinderClientTools(
 						log(
 							`🔬 Intent is "address", using validateThenEnrichAddress flow for agent.`,
 						);
-						const validation = await getPlaceSuggestionsAction({
-							query,
-							intent: "address",
-							maxResults: 1,
-							isAutocomplete: false,
-						});
+						
+						// Wrap API call with retry logic
+						const validationResult = await withRetry(
+							() => getPlaceSuggestionsAction({
+								query,
+								intent: "address",
+								maxResults: 1,
+								isAutocomplete: false,
+							}),
+							API_RETRY_CONFIG,
+							`address validation for "${query}"`
+						);
+						
+						if (!validationResult.success) {
+							log(`❌ Address validation failed after retries:`, validationResult.error);
+							return JSON.stringify({
+								status: "validation_failed",
+								suggestions: [],
+								error: `Validation failed after ${validationResult.attempts} attempts: ${validationResult.error?.message || 'Unknown error'}`,
+							});
+						}
+						
+						const validation = validationResult.result!
 
 						if (validation.success && validation.suggestions.length > 0) {
 							const suggestion = validation.suggestions[0];
@@ -146,12 +165,28 @@ export function useAddressFinderClientTools(
 						});
 					}
 
-					const result = await getPlaceSuggestionsAction({
-						query: query,
-						intent: intent || "general",
-						isAutocomplete: true,
-						sessionToken: getSessionToken(),
-					});
+					// Wrap API call with retry logic
+					const searchResult = await withRetry(
+						() => getPlaceSuggestionsAction({
+							query: query,
+							intent: intent || "general",
+							isAutocomplete: true,
+							sessionToken: getSessionToken(),
+						}),
+						API_RETRY_CONFIG,
+						`place suggestions for "${query}"`
+					);
+					
+					if (!searchResult.success) {
+						log(`❌ Place suggestions search failed after retries:`, searchResult.error);
+						setAgentLastSearchQuery(null);
+						return JSON.stringify({
+							status: "error",
+							error: `Search failed after ${searchResult.attempts} attempts: ${searchResult.error?.message || 'Unknown error'}`,
+						});
+					}
+					
+					const result = searchResult.result!;
 
 					if (result.success && result.suggestions) {
 						log(
@@ -263,15 +298,24 @@ export function useAddressFinderClientTools(
 						(selection.lat === undefined || selection.lng === undefined) &&
 						selection.placeId
 					) {
-						const detailsRes = await getPlaceDetailsAction({
-							placeId: selection.placeId,
-						});
-						if (detailsRes.success && detailsRes.details) {
+						// Wrap place details call with retry logic
+						const detailsResult = await withRetry(
+							() => getPlaceDetailsAction({
+								placeId: selection.placeId!,
+							}),
+							API_RETRY_CONFIG,
+							`place details for "${selection.placeId}"`
+						);
+						
+						if (detailsResult.success && detailsResult.result?.success && detailsResult.result.details) {
 							updatedSelection = {
 								...selection,
-								lat: detailsRes.details.lat,
-								lng: detailsRes.details.lng,
+								lat: detailsResult.result.details.lat,
+								lng: detailsResult.result.details.lng,
 							};
+						} else {
+							log(`⚠️ Place details retrieval failed after retries:`, detailsResult.error);
+							// Continue with selection even if details fail
 						}
 					}
 					if (onSelectResult) {
@@ -558,18 +602,19 @@ export function useAddressFinderClientTools(
 					});
 				}
 
-				// Get target agent configuration
-				const targetAgent = getAgentByTransferIndex(agent_number);
-				if (!targetAgent) {
+				// Use enhanced validation for transfer request
+				const validation = validateTransferRequest("ADDRESS_FINDER", agent_number);
+				if (!validation.valid) {
 					const availableAgents = getAvailableTransferTargets("ADDRESS_FINDER");
-					const errorMessage = `Agent ${agent_number} not found. Available agents: ${availableAgents.map((a) => `${a.transferIndex}: ${a.name}`).join(", ")}`;
-					log(`Tool transferToAgent failed: ${errorMessage}`, { params });
+					log(`Tool transferToAgent failed: ${validation.error}`, { params });
 					return JSON.stringify({
 						status: "error",
-						error: errorMessage,
+						error: validation.error,
 						availableAgents: availableAgents,
 					});
 				}
+
+				const targetAgent = validation.targetAgent!;
 
 				log(
 					`✅ Target agent found: ${targetAgent.name} (${targetAgent.description})`,

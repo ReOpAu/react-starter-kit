@@ -70,3 +70,91 @@ export function recommendTransferAgent(requiredSpecialization: 'address_search' 
   const agents = Object.values(ELEVENLABS_AGENTS);
   return agents.find(agent => agent.specializations.includes(requiredSpecialization as any)) || null;
 }
+
+/**
+ * Runtime validation for agent configuration
+ */
+export function validateAgentConfig(agentKey: AgentKey): { valid: boolean; errors: string[] } {
+  const agent = ELEVENLABS_AGENTS[agentKey];
+  const errors: string[] = [];
+
+  // Validate agent ID format
+  if (!agent.id || !agent.id.startsWith('agent_')) {
+    errors.push(`Invalid agent ID format: ${agent.id}`);
+  }
+
+  // Validate environment variable exists
+  if (!agent.envVar) {
+    errors.push(`Missing environment variable name for agent: ${agentKey}`);
+  }
+
+  // Validate transfer index uniqueness
+  const allAgents = Object.values(ELEVENLABS_AGENTS);
+  const duplicateIndex = allAgents.filter(a => a.transferIndex === agent.transferIndex);
+  if (duplicateIndex.length > 1) {
+    errors.push(`Duplicate transfer index ${agent.transferIndex} found`);
+  }
+
+  // Validate specializations
+  if (!agent.specializations || agent.specializations.length < 1) {
+    errors.push(`Agent ${agentKey} has no specializations defined`);
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Validate all agent configurations
+ */
+export function validateAllAgentConfigs(): { valid: boolean; errors: Record<AgentKey, string[]> } {
+  const errors: Record<AgentKey, string[]> = {} as Record<AgentKey, string[]>;
+  let allValid = true;
+
+  for (const agentKey of Object.keys(ELEVENLABS_AGENTS) as AgentKey[]) {
+    const validation = validateAgentConfig(agentKey);
+    if (!validation.valid) {
+      errors[agentKey] = validation.errors;
+      allValid = false;
+    }
+  }
+
+  return {
+    valid: allValid,
+    errors
+  };
+}
+
+/**
+ * Runtime validation for transfer requests
+ */
+export function validateTransferRequest(fromAgent: AgentKey, transferIndex: number): { 
+  valid: boolean; 
+  error?: string; 
+  targetAgent?: typeof ELEVENLABS_AGENTS[AgentKey] 
+} {
+  // Check if target agent exists
+  const targetAgent = getAgentByTransferIndex(transferIndex);
+  if (!targetAgent) {
+    return {
+      valid: false,
+      error: `No agent found with transfer index ${transferIndex}`
+    };
+  }
+
+  // Check if trying to transfer to self
+  const sourceAgent = ELEVENLABS_AGENTS[fromAgent];
+  if (sourceAgent.transferIndex === transferIndex) {
+    return {
+      valid: false,
+      error: `Cannot transfer to self (agent ${transferIndex})`
+    };
+  }
+
+  return {
+    valid: true,
+    targetAgent
+  };
+}
