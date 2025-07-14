@@ -12,6 +12,7 @@ export default [
 	route("pricing", "routes/pricing.tsx"),
 	route("success", "routes/success.tsx"),
 	route("subscription-required", "routes/subscription-required.tsx"),
+	route("about", "routes/about.tsx"),
 	route("address-finder", "routes/address-finder.tsx"),
 	route("test-aldi", "routes/test-aldi.tsx"),
 	route("address-validation-tests", "routes/address-validation-tests.tsx"),
