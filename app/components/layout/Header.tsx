@@ -31,7 +31,11 @@ export function Header({
 											Login
 										</Link>
 									</Button>
-									<Button asChild size="sm">
+									<Button
+										asChild
+										size="sm"
+										className="bg-buyer-orange-500 text-white hover:bg-buyer-orange-600"
+									>
 										<Link to="/sign-up" prefetch="viewport">
 											Sign Up
 										</Link>
