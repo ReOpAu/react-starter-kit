@@ -19,6 +19,7 @@ export interface Suggestion {
 	displayText?: string;
 	structuredFormatting?: {
 		mainText?: string;
+		secondaryText?: string;
 		// ...other fields as needed
 	};
 }

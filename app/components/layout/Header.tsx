@@ -21,6 +21,9 @@ export function Header({
 						<Link to="/about" className="text-gray-600 hover:text-primary">
 							About
 						</Link>
+						<Link to="/address-finder" className="text-gray-600 hover:text-primary">
+							Address Finder
+						</Link>
 						<div className="flex items-center gap-2">
 							{loaderData?.isSignedIn ? (
 								<UserButton />
