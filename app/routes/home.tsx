@@ -125,23 +125,26 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 								import.meta.env.VITE_CONVEX_URL,
 							);
 
-							// Call the suburb lookup action
-							const result = await convex.action(api.suburbLookup.lookupSuburb, {
-								suburbInput: address,
+							// Call the place suggestions action
+							const result = await convex.action(api.address.getPlaceSuggestions.getPlaceSuggestions, {
+								query: address,
+								intent: "suburb",
+								maxResults: 1,
 							});
 
-							if (result.success) {
+							if (result.success && result.suggestions.length > 0) {
+								const suggestion = result.suggestions[0];
 								return {
 									success: true,
-									canonicalAddress: result.canonicalSuburb,
-									message: `Found: ${result.canonicalSuburb}`,
+									canonicalAddress: suggestion.description,
+									message: `Found: ${suggestion.description}`,
 								};
 							}
 
 							return {
 								success: false,
-								error: result.error,
-								message: `Could not find address: ${result.error}`,
+								error: result.success ? "No suggestions found" : result.error,
+								message: `Could not find address: ${result.success ? "No suggestions found" : result.error}`,
 							};
 						} catch (error) {
 							console.error("AddressAutocomplete client tool error:", error);

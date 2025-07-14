@@ -15,7 +15,6 @@ export default [
 	route("address-finder", "routes/address-finder.tsx"),
 	route("test-aldi", "routes/test-aldi.tsx"),
 	route("address-validation-tests", "routes/address-validation-tests.tsx"),
-	route("api/validate-address", "routes/api.validate-address.tsx"),
 	layout("routes/dashboard/layout.tsx", [
 		route("dashboard", "routes/dashboard/index.tsx"),
 		route("dashboard/chat", "routes/dashboard/chat.tsx"),
