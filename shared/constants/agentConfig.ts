@@ -3,6 +3,62 @@
  * Centralized management of agent IDs and configurations
  */
 
+import { toolDefinitions } from '../../ai/tools.config';
+
+// Single source of truth for all tool names - derived from tool definitions
+export const CLIENT_TOOLS = Object.keys(toolDefinitions) as Array<keyof typeof toolDefinitions>;
+
+export type ToolName = keyof typeof toolDefinitions;
+
+// Agent-specific tool assignments matrix
+export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
+  ADDRESS_FINDER: [
+    'searchAddress',
+    'selectSuggestion', 
+    'getSuggestions',
+    'getCurrentState',
+    'getConfirmedSelection',
+    'clearSelection',
+    'confirmUserSelection',
+    'requestManualInput',
+    'getHistory',
+    'getPreviousSearches',
+    'selectByOrdinal',
+    'setSelectionAcknowledged',
+    'transferToAgent',
+  ],
+  ADDRESS_FINDER_TEST: [
+    'searchAddress',
+    'selectSuggestion', 
+    'getSuggestions',
+    'getCurrentState',
+    'getConfirmedSelection',
+    'clearSelection',
+    'confirmUserSelection',
+    'requestManualInput',
+    'getHistory',
+    'getPreviousSearches',
+    'selectByOrdinal',
+    'setSelectionAcknowledged',
+    'getNearbyServices', // Additional tool for test agent
+    'transferToAgent',
+  ],
+  CONVERSATION_ASSISTANT: [
+    'searchAddress',
+    'selectSuggestion',
+    'getCurrentState',
+    'getConfirmedSelection',
+    'clearSelection',
+    'getNearbyServices',
+    'transferToAgent',
+    // Legacy tool names for backward compatibility
+    'AddressSearch',
+    'ConfirmPlace',
+    'GetUIState',
+    'ClearResults',
+  ],
+} as const;
+
 export const ELEVENLABS_AGENTS = {
   // Production address finder agent  
   ADDRESS_FINDER: {
@@ -11,7 +67,8 @@ export const ELEVENLABS_AGENTS = {
     description: 'Production address finder with 12 client tools',
     envVar: 'VITE_ELEVENLABS_ADDRESS_AGENT_ID',
     transferIndex: 0, // For agent-to-agent transfers
-    specializations: ['address_search', 'place_validation', 'location_services'],
+    specializations: ['address_search', 'place_validation', 'location_services'] as string[],
+    tools: AGENT_TOOL_MATRIX.ADDRESS_FINDER,
   },
   
   // Test/development agent (to be created)
@@ -21,7 +78,19 @@ export const ELEVENLABS_AGENTS = {
     description: 'Test agent with additional getNearbyServices tool',
     envVar: 'VITE_ELEVENLABS_ADDRESS_AGENT_TEST_ID',
     transferIndex: 1, // For agent-to-agent transfers
-    specializations: ['address_search', 'place_validation', 'nearby_services', 'enhanced_location'],
+    specializations: ['address_search', 'place_validation', 'nearby_services', 'enhanced_location'] as string[],
+    tools: AGENT_TOOL_MATRIX.ADDRESS_FINDER_TEST,
+  },
+
+  // Conversation assistant for homepage
+  CONVERSATION_ASSISTANT: {
+    id: 'agent_01jwsxt8vseg6933dfd2jb4vkd',
+    name: 'ConversationAssistant',
+    description: 'General purpose AI assistant with basic address capabilities',
+    envVar: 'VITE_ELEVENLABS_CONVERSATION_AGENT_ID',
+    transferIndex: 2,
+    specializations: ['general_conversation', 'basic_address_search', 'nearby_services'] as string[],
+    tools: AGENT_TOOL_MATRIX.CONVERSATION_ASSISTANT,
   },
 } as const;
 
@@ -66,9 +135,9 @@ export function getAvailableTransferTargets(currentAgentKey: AgentKey): Array<{
 /**
  * Determine best agent for transfer based on specializations
  */
-export function recommendTransferAgent(requiredSpecialization: 'address_search' | 'place_validation' | 'location_services' | 'nearby_services' | 'enhanced_location'): typeof ELEVENLABS_AGENTS[AgentKey] | null {
+export function recommendTransferAgent(requiredSpecialization: 'address_search' | 'place_validation' | 'location_services' | 'nearby_services' | 'enhanced_location' | 'general_conversation' | 'basic_address_search'): typeof ELEVENLABS_AGENTS[AgentKey] | null {
   const agents = Object.values(ELEVENLABS_AGENTS);
-  return agents.find(agent => agent.specializations.includes(requiredSpecialization as any)) || null;
+  return agents.find(agent => agent.specializations.includes(requiredSpecialization)) || null;
 }
 
 /**

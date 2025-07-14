@@ -56,6 +56,21 @@ export const transferToAgentSchema = z.object({
   delay: z.number().optional().describe("Optional delay in seconds before transfer (default: 0)"),
 });
 
+// =================== LEGACY TOOL SCHEMAS ===================
+// For backward compatibility with existing agent configurations
+
+export const addressSearchSchema = z.object({
+  address: z.string().describe("The address, suburb, or street name to search for"),
+});
+
+export const confirmPlaceSchema = z.object({
+  address: z.string().describe("The full place description from previous AddressSearch"),
+});
+
+export const getUIStateSchema = z.object({});
+
+export const clearResultsSchema = z.object({});
+
 // =================== TOOL DEFINITIONS ===================
 
 export const toolDefinitions = {
@@ -114,6 +129,23 @@ export const toolDefinitions = {
   transferToAgent: {
     description: "Transfer the conversation to a specialized agent for better assistance. Use when current agent capabilities are insufficient.",
     parametersSchema: transferToAgentSchema,
+  },
+  // Legacy tool definitions for backward compatibility
+  AddressSearch: {
+    description: "Search for Australian addresses, suburbs, or streets. Returns place data for confirmation.",
+    parametersSchema: addressSearchSchema,
+  },
+  ConfirmPlace: {
+    description: "Display one or more place suggestions in the UI so the user can confirm or select the correct one.",
+    parametersSchema: confirmPlaceSchema,
+  },
+  GetUIState: {
+    description: "Get current UI state including mode and available results.",
+    parametersSchema: getUIStateSchema,
+  },
+  ClearResults: {
+    description: "Clear current search results and reset the interface.",
+    parametersSchema: clearResultsSchema,
   },
 } as const;
 

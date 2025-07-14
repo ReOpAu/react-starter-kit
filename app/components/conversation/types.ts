@@ -29,6 +29,5 @@ export const languages: { code: Language; name: string; flag: string }[] = [
 
 export const CONVERSATION_CONFIG = {
 	INACTIVE_THRESHOLD: 1000, // 1 second of silence before considering inactive
-	AGENT_ID: "agent_01jwsxt8vseg6933dfd2jb4vkd",
 	AUDIO_THRESHOLD: 5,
 } as const;

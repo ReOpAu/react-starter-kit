@@ -1,6 +1,5 @@
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { fetchAction, fetchQuery } from "convex/nextjs";
-import { useEffect } from "react";
 import { Conversation } from "~/components/conversation";
 import ContentSection from "~/components/homepage/content";
 import Footer from "~/components/homepage/footer";
@@ -9,28 +8,6 @@ import Pricing from "~/components/homepage/pricing";
 import Team from "~/components/homepage/team";
 import { api } from "../../convex/_generated/api";
 import type { Route } from "./+types/home";
-
-// Declare the custom element type for TypeScript
-declare global {
-	namespace JSX {
-		interface IntrinsicElements {
-			"elevenlabs-convai": React.DetailedHTMLProps<
-				React.HTMLAttributes<HTMLElement> & {
-					"agent-id": string;
-				},
-				HTMLElement
-			>;
-		}
-	}
-}
-
-interface ElevenLabsCallEvent extends Event {
-	detail: {
-		config: {
-			clientTools: Record<string, unknown>;
-		};
-	};
-}
 
 export function meta(_: Route.MetaArgs) {
 	const title = "React Starter Kit - Launch Your SAAS Quickly";
@@ -103,63 +80,6 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-	useEffect(() => {
-		const widget = document.querySelector("elevenlabs-convai");
-
-		if (widget) {
-			// Listen for the widget's "call" event to trigger client-side tools
-			widget.addEventListener("elevenlabs-convai:call", (event: Event) => {
-				const callEvent = event as ElevenLabsCallEvent;
-				callEvent.detail.config.clientTools = {
-					redirectToExternalURL: ({ url }: { url: string }) => {
-						window.open(url, "_blank", "noopener,noreferrer");
-					},
-					AddressAutocomplete: async ({ address }: { address: string }) => {
-						try {
-							// Import the Convex action dynamically
-							const { api } = await import("../../convex/_generated/api");
-							const { ConvexReactClient } = await import("convex/react");
-
-							// Create a Convex client
-							const convex = new ConvexReactClient(
-								import.meta.env.VITE_CONVEX_URL,
-							);
-
-							// Call the place suggestions action
-							const result = await convex.action(api.address.getPlaceSuggestions.getPlaceSuggestions, {
-								query: address,
-								intent: "suburb",
-								maxResults: 1,
-							});
-
-							if (result.success && result.suggestions.length > 0) {
-								const suggestion = result.suggestions[0];
-								return {
-									success: true,
-									canonicalAddress: suggestion.description,
-									message: `Found: ${suggestion.description}`,
-								};
-							}
-
-							return {
-								success: false,
-								error: result.success ? "No suggestions found" : result.error,
-								message: `Could not find address: ${result.success ? "No suggestions found" : result.error}`,
-							};
-						} catch (error) {
-							console.error("AddressAutocomplete client tool error:", error);
-							return {
-								success: false,
-								error: "Lookup failed",
-								message: "Address lookup service is currently unavailable",
-							};
-						}
-					},
-				};
-			});
-		}
-	}, []); // Empty dependency array means this runs once on mount
-
 	return (
 		<>
 			<Integrations loaderData={loaderData} />

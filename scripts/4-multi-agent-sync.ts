@@ -43,6 +43,15 @@ const AGENT_TOOL_ASSIGNMENTS: Record<AgentKey, ToolName[]> = {
     'getNearbyServices', // ✅ Enhanced services capability
     'transferToAgent', // ✅ Transfer capability for orchestration
   ],
+  CONVERSATION_ASSISTANT: [
+    'searchAddress',
+    'selectSuggestion',
+    'getCurrentState',
+    'getConfirmedSelection',
+    'clearSelection',
+    'getNearbyServices',
+    'transferToAgent',
+  ],
 };
 
 async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {

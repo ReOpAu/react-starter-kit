@@ -1,12 +1,12 @@
 "use client";
 
-import { useConversation } from "@elevenlabs/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
 import { RainbowButton } from "../ui/magicui/rainbow-button";
 import { ShinyButton } from "../ui/magicui/shiny-button";
+import { useAgentConversation } from "~/elevenlabs/hooks/useAgentConversation";
 import { LanguageSelector } from "./LanguageSelector";
 import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
@@ -27,8 +27,10 @@ export function Conversation() {
 	const animationFrameRef = useRef<number | undefined>(undefined);
 	const lastUpdateRef = useRef<number>(0);
 
-	const conversation = useConversation({
-		apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
+	const conversation = useAgentConversation({
+		agentKey: "CONVERSATION_ASSISTANT",
+		getSessionToken: () => "",
+		clearSessionToken: () => {},
 		onConnect: () => console.log("Connected"),
 		onDisconnect: () => console.log("Disconnected"),
 		onMessage: (message) => {
@@ -58,35 +60,38 @@ export function Conversation() {
 				];
 			});
 		},
-		onUserMessage: (message: string) => {
-			console.log("[onUserMessage] User message:", message);
-			if (
-				message.trim() &&
-				!messages.some((m) => m.text === message && m.sender === "user")
-			) {
-				setMessages((prev) => [
-					...prev,
-					{ text: message, sender: "user", isTranscribed: false },
-				]);
-			}
-		},
-		onTranscription: (text: string) => {
-			console.log("[onTranscription] User transcription:", text);
-			if (
-				text.trim() &&
-				!messages.some(
-					(m) => m.text === text && m.sender === "user" && m.isTranscribed,
-				)
-			) {
-				setMessages((prev) => [
-					...prev,
-					{ text: text, sender: "user", isTranscribed: true },
-				]);
-			}
-		},
 		onError: (error) => console.error("Error:", error),
-		textOnly: true, // Default to chat-only mode
+		textOnly: true,
 	});
+
+	// Handle user messages and transcriptions through conversation object
+	const handleUserMessage = useCallback((message: string) => {
+		console.log("[onUserMessage] User message:", message);
+		if (
+			message.trim() &&
+			!messages.some((m) => m.text === message && m.sender === "user")
+		) {
+			setMessages((prev) => [
+				...prev,
+				{ text: message, sender: "user", isTranscribed: false },
+			]);
+		}
+	}, [messages]);
+
+	const handleTranscription = useCallback((text: string) => {
+		console.log("[onTranscription] User transcription:", text);
+		if (
+			text.trim() &&
+			!messages.some(
+				(m) => m.text === text && m.sender === "user" && m.isTranscribed,
+			)
+		) {
+			setMessages((prev) => [
+				...prev,
+				{ text: text, sender: "user", isTranscribed: true },
+			]);
+		}
+	}, [messages]);
 
 	// Set up audio analysis for voice mode
 	const setupAudioAnalysis = useCallback(async () => {
@@ -150,7 +155,6 @@ export function Conversation() {
 				console.log("Starting session with language:", selectedLanguage);
 
 				await conversation.startSession({
-					agentId: CONVERSATION_CONFIG.AGENT_ID,
 					overrides: {
 						agent: {
 							language: selectedLanguage,

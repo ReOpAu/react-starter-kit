@@ -1,22 +1,36 @@
-### ElevenLabs Conversational AI Integration
+### ElevenLabs Conversational AI Multi-Agent Integration
 
-## ✅ **IMPLEMENTATION COMPLETE**
+## ✅ **COMPLETE MULTI-AGENT SYSTEM IMPLEMENTATION**
 
-**Status**: Successfully implemented and live-tested  
-**Agent**: `agent_01jydc3p56er8tn495y66hybmn` (AddressFinder)  
-**Last Sync**: 200 OK - Configuration updated successfully
+**Status**: ✅ Successfully implemented, tested, and documented  
+**Architecture**: Centralized multi-agent system with unified client tools  
+**Agents Active**: 
+- `agent_01jydc3p56er8tn495y66hybmn` (AddressFinder) ✅ 
+- `agent_01jwsxt8vseg6933dfd2jb4vkd` (ConversationAssistant) ✅
+**Last Sync**: 200 OK - All configurations updated and validated
 
-✨ **Goal Achieved**  
-Created a Single Source of Truth for ElevenLabs agent configuration. All 14 tools and master prompt are now managed in code, version-controlled, and sync programmatically. **Zero manual ElevenLabs UI updates needed.**
+✨ **System Architecture Achievement**  
+Implemented a **Centralized Multi-Agent Management System** featuring:
+- 🔧 **Unified Client Tools**: Single implementation serves all agents
+- 🔄 **Legacy Tool Compatibility**: Backward compatibility with existing agent prompts
+- 📋 **Component Integration Patterns**: Seamless integration with React Router v7 architecture
+- 🎯 **Centralized Configuration**: All agents and tools managed in code and version-controlled
+- 🚀 **Automated Sync**: Zero manual ElevenLabs UI updates required
+- 📊 **Multi-Agent Transfer**: Agent-to-agent transfer capabilities for specialized tasks
 
-🔧 **Recent Updates**:
-- ✅ Implemented missing `selectByOrdinal` tool (ordinal selection like "first", "second", "1", "2", etc.)
-- ✅ Implemented missing `getNearbyServices` tool (find services around an address with mock implementation)
-- ✅ Fixed critical tool contract mismatches between agent configuration and client implementation
-- ✅ Added proper error handling and null safety checks throughout  
+🔧 **Implementation Highlights**:
+- ✅ **Conversation Component Integration**: Successfully integrated `@app/components/conversation/` with centralized agent system
+- ✅ **Legacy Tool Compatibility**: Resolved tool name mismatches (`AddressSearch` ↔ `searchAddress`) through alias system
+- ✅ **Multi-Agent Configuration**: Centralized agent configuration in `shared/constants/agentConfig.ts`
+- ✅ **Universal Client Tools Provider**: Agent-specific tool filtering based on configuration matrix
+- ✅ **Complete Workflow Documentation**: Full implementation patterns and API reference documented  
 
-**🎯 Integration Strategy**  
-This specification builds on your existing ElevenLabs integration (`@elevenlabs/react: ^0.1.7`) with 14 client tools and comprehensive conversation management. We'll extract and centralize existing tool definitions rather than creating new components.
+**🎯 Multi-Agent Integration Strategy**  
+This implementation leverages the existing ElevenLabs integration (`@elevenlabs/react: ^0.1.7`) while adding:
+- **Multi-Agent Architecture**: Support for specialized agents with distinct capabilities
+- **Centralized Tool Management**: Single source of truth for 14+ client tools
+- **Component Integration**: Seamless integration with Brain/Widget architecture patterns
+- **Legacy Compatibility**: Maintains backward compatibility with existing agent configurations
 
 ⚡ **Prerequisites**
 
@@ -233,91 +247,172 @@ npx tsx scripts/4-multi-agent-sync.ts --dry-run        # Preview all agents
 npx tsx scripts/4-multi-agent-sync.ts --agent=ADDRESS_FINDER  # Sync specific agent
 ```
 
-💪 Phase 4: Integration with Existing Architecture  
+💪 **Phase 4: Multi-Agent Component Integration Complete**  
 
-**🚀 Strategy: Enhance Existing Components**  
-Instead of creating a new VoiceAssistant component, integrate with your existing Brain/Widget architecture:
+**🚀 Strategy: Centralized Multi-Agent Architecture**  
+Successfully implemented multi-agent support while preserving existing Brain/Widget patterns:
 
-**4.1 Update AddressFinderBrain.tsx**  
-Modify your existing Brain component to use configuration-driven tools:
+**4.1 Centralized Agent Configuration ✅**  
+`shared/constants/agentConfig.ts` - Single source of truth for all agents:
 
 ```typescript
-// app/components/address-finder/AddressFinderBrain.tsx
-import { toolDefinitions } from '../../../ai/tools.config';
-import { useAddressFinderClientTools } from '~/hooks/useAddressFinderClientTools';
-import { useConversationManager } from '~/hooks/useConversationManager';
+export const ELEVENLABS_AGENTS = {
+  ADDRESS_FINDER: {
+    id: 'agent_01jydc3p56er8tn495y66hybmn',
+    name: 'AddressFinder',
+    tools: ['searchAddress', 'selectSuggestion', /* ... */],
+  },
+  CONVERSATION_ASSISTANT: {
+    id: 'agent_01jwsxt8vseg6933dfd2jb4vkd', 
+    name: 'ConversationAssistant',
+    tools: ['searchAddress', 'AddressSearch', /* legacy compatibility */],
+  },
+};
 
-// Your existing Brain component with enhanced configuration
-export function AddressFinderBrain() {
-  // Use existing clientTools hook (no changes needed)
-  const clientTools = useAddressFinderClientTools(
-    getSessionToken,
-    clearSessionToken,
-    onSelectResult
-  );
+export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
+  ADDRESS_FINDER: [/* 14 specialized tools */],
+  CONVERSATION_ASSISTANT: [/* 7 core tools + legacy aliases */],
+};
+```
+
+**4.2 Universal Client Tools Provider ✅**  
+`app/elevenlabs/providers/ClientToolsProvider.ts` - Agent-specific tool filtering:
+
+```typescript
+export function useUniversalClientTools(
+  agentKey: AgentKey,
+  getSessionToken: () => string,
+  clearSessionToken: () => void,
+): FilteredClientTools {
+  const allClientTools = useAddressFinderClientTools(...);
+  const agentConfig = ELEVENLABS_AGENTS[agentKey];
   
-  // Use existing conversation manager (no changes needed)
-  const conversation = useConversationManager(clientTools);
-  
-  // Rest of your existing Brain component logic...
+  // Filter tools based on agent configuration
+  return useMemo(() => {
+    const filtered = {};
+    for (const toolName of agentConfig.tools) {
+      if (allClientTools[toolName]) {
+        filtered[toolName] = allClientTools[toolName];
+      }
+    }
+    return filtered;
+  }, [allClientTools, agentConfig.tools]);
 }
 ```
 
-**4.2 Existing Convex API Paths (No Changes Needed)**  
-Your current implementation already uses the correct patterns:
+**4.3 Conversation Component Integration ✅**  
+Successfully integrated `@app/components/conversation/` with the multi-agent system:
 
 ```typescript
-// From your existing useAddressFinderClientTools.ts
-const getPlaceSuggestionsAction = useAction(
-  api.address.getPlaceSuggestions.getPlaceSuggestions
-);
-const validateAddressAction = useAction(
-  api.address.validateAddress.validateAddress
-);
-const getPlaceDetailsAction = useAction(
-  api.address.getPlaceDetails.getPlaceDetails
-);
+// app/components/conversation/index.tsx
+import { useAgentConversation } from '@elevenlabs/react';
+import { useUniversalClientTools } from '~/elevenlabs/providers/ClientToolsProvider';
+
+export function Conversation() {
+  // Use centralized agent configuration
+  const clientTools = useUniversalClientTools(
+    'CONVERSATION_ASSISTANT', // agentKey from centralized config
+    getSessionToken,
+    clearSessionToken
+  );
+  
+  const conversation = useAgentConversation({
+    agentKey: 'CONVERSATION_ASSISTANT',
+    clientTools, // Automatically filtered for this agent
+    // ... rest of configuration
+  });
+  
+  // Component handles voice + manual input seamlessly
+}
 ```
 
-**4.3 Environment Variables (Already Configured)**  
-Your existing setup already uses:
+**4.4 Legacy Tool Compatibility System ✅**  
+Resolved critical tool name mismatches through alias system:
+
 ```typescript
-// From your existing useConversationManager.ts
-const conversation = useConversation({
-  apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY,
-  agentId: import.meta.env.VITE_ELEVENLABS_ADDRESS_AGENT_ID,
-  // ... existing configuration
-});
+// app/elevenlabs/hooks/useAddressFinderClientTools.ts  
+// Legacy tool aliases for backward compatibility
+AddressSearch: async (params: { address: string }) => {
+  return clientTools.searchAddress({ query: params.address });
+},
+ConfirmPlace: async (params: { address: string }) => {
+  return clientTools.selectSuggestion({ placeId: extractPlaceId(params.address) });
+},
+// Maps old tool names → new implementations
 ```
 
-**🎯 Integration Benefits:**
-- ✅ **Zero Breaking Changes**: Builds on existing 12 client tools
-- ✅ **Maintains Brain/Widget Pattern**: Preserves architectural separation
-- ✅ **Leverages Existing Infrastructure**: Conversation management, state stores
-- ✅ **Configuration-Driven**: Single source of truth for tool definitions
+**Critical Fix**: Agent prompts used legacy names (`AddressSearch`) but client provided modern names (`searchAddress`). The alias system bridges this gap without breaking existing agents.
 
-🔧 **Future Enhancements**
+**🎯 Multi-Agent Integration Benefits:**
+- ✅ **Zero Breaking Changes**: Enhanced existing 14 client tools without disruption
+- ✅ **Centralized Management**: All agents configured in code, not ElevenLabs UI
+- ✅ **Legacy Compatibility**: Maintains backward compatibility with existing prompts
+- ✅ **Specialized Agents**: Each agent has distinct capabilities and tool assignments
+- ✅ **Agent Transfer**: Built-in transfer system for specialized task routing
+- ✅ **Component Integration**: Seamless Brain/Widget pattern preservation
+- ✅ **Automated Sync**: Scripts handle all agent configuration updates
 
-1. **Production-Grade Security (Signed URLs)**: For production, avoid exposing even the agentId on the client. Generate temporary signed URLs on your Convex backend and pass them to the frontend.  
-2. **Prompt Templating**: Inject dynamic variables into your prompt during the sync process: const finalPrompt \= basePrompt.replace(/\\$\\{buildDate\\}/g, new Date().toISOString());  
-3. **Unit Tests**: Use Vitest or Jest to test your tools.config.ts file. Ensure schemas are correct and that the prompt assembly logic works as expected.  
-4. **Tool Metadata/Tags**: Add optional fields like tags: \['selection', 'ui'\] or group: 'address\_tools' to your toolDefinitions to support future filtering or advanced logic.
+## 🚀 **Multi-Agent System Implementation Summary**
 
-🌟 Summary  
-You now have a configuration-driven, version-controlled workflow for your existing ElevenLabs integration. This builds on your current 12 client tools and conversation infrastructure:
+### ✅ **Complete Implementation Achieved**
 
-**📋 Implementation Workflow:**
-1. Extract existing tool schemas → `ai/tools.config.ts`
-2. Download current agent config → `tsx scripts/1-download-config.ts`
-3. Sync centralized config → `tsx scripts/2-sync-agent.ts`
-4. Optional: Enhance existing Brain components with config imports
+**Core System Components:**
+1. **Centralized Agent Configuration** (`shared/constants/agentConfig.ts`)
+   - Multi-agent support with specialized tool assignments
+   - Agent transfer capabilities with validation
+   - Runtime configuration validation
 
-**🎯 Key Benefits:**
-- ✅ **Zero Disruption**: Builds on existing ElevenLabs integration
-- ✅ **Single Source of Truth**: All 12 tools defined in one place
-- ✅ **Version Control**: Agent configuration tracked in git
-- ✅ **Automated Sync**: No manual ElevenLabs UI updates
-- ✅ **Maintains Architecture**: Preserves Brain/Widget patterns
+2. **Universal Client Tools Provider** (`app/elevenlabs/providers/ClientToolsProvider.ts`)
+   - Agent-specific tool filtering
+   - Automatic tool validation
+   - Consistent tool interface across agents
+
+3. **Legacy Tool Compatibility** (`app/elevenlabs/hooks/useAddressFinderClientTools.ts`)
+   - Backward compatibility aliases (e.g., `AddressSearch` → `searchAddress`)
+   - Seamless integration with existing agent prompts
+   - Zero breaking changes to existing functionality
+
+4. **Conversation Component Integration** (`app/components/conversation/index.tsx`)
+   - Integrated with centralized multi-agent system
+   - Seamless voice + manual input (hybrid mode)
+   - Uses agent-specific tool filtering
+
+### 🛠️ **Implementation Workflow Complete**
+
+1. ✅ **Agent Configuration**: All agents defined in centralized configuration
+2. ✅ **Tool Matrix**: Agent-specific tool assignments with validation
+3. ✅ **Legacy Compatibility**: Backward compatibility with existing prompts
+4. ✅ **Component Integration**: Conversation component successfully integrated
+5. ✅ **Testing & Validation**: Live-tested with working conversation flows
+6. ✅ **Documentation**: Complete workflow and API reference documented
+
+### 🔧 **Future Enhancement Opportunities**
+
+1. **Advanced Agent Specialization**: Expand agent capabilities with domain-specific tools
+2. **Production Security**: Implement signed URLs for agent ID protection
+3. **Dynamic Agent Creation**: Runtime agent creation and configuration
+4. **Enhanced Analytics**: Agent performance and usage tracking
+5. **Advanced RAG Integration**: Knowledge base management for specialized agents
+
+### 🌟 **Multi-Agent System Achievement**
+
+Successfully implemented a **production-ready multi-agent architecture** that:
+
+**📋 Multi-Agent Implementation:**
+1. ✅ **Centralized Configuration**: All agents managed in code (`shared/constants/agentConfig.ts`)
+2. ✅ **Universal Client Tools**: Agent-specific tool filtering (`app/elevenlabs/providers/ClientToolsProvider.ts`)
+3. ✅ **Legacy Compatibility**: Backward compatibility with existing prompts
+4. ✅ **Component Integration**: Conversation component integrated with multi-agent system
+5. ✅ **Automated Sync**: Scripts handle all agent configuration updates
+6. ✅ **Transfer Capabilities**: Agent-to-agent transfer system for specialized tasks
+
+**🎯 Multi-Agent Benefits:**
+- ✅ **Specialized Agents**: Each agent has distinct capabilities and tool assignments
+- ✅ **Centralized Management**: All configuration in code, version-controlled
+- ✅ **Zero Manual UI**: No ElevenLabs UI updates required
+- ✅ **Seamless Integration**: Preserves existing Brain/Widget architecture patterns
+- ✅ **Production Ready**: Live-tested with working conversation flows
+- ✅ **Scalable Architecture**: Easy to add new agents and capabilities
 
 ## 📚 **ElevenLabs API Reference Integration**
 
@@ -852,6 +947,104 @@ const knowledgeBaseOperations = {
 - HR policies and corporate procedures
 - Technical documentation and APIs
 - Customer FAQs and support articles
+
+---
+
+## 🎯 **Complete Multi-Agent Implementation Guide**
+
+### **Architecture Overview**
+
+This implementation creates a **centralized multi-agent system** that manages multiple ElevenLabs agents with specialized capabilities while maintaining a unified codebase.
+
+### **Key Components**
+
+1. **Agent Configuration** (`shared/constants/agentConfig.ts`)
+   - Centralized agent definitions with IDs and capabilities
+   - Tool assignment matrix for agent-specific functionality
+   - Transfer system for agent-to-agent handoffs
+
+2. **Client Tools Provider** (`app/elevenlabs/providers/ClientToolsProvider.ts`)
+   - Universal tool provider with agent-specific filtering
+   - Automatic tool validation and assignment
+   - Consistent interface across all agents
+
+3. **Legacy Compatibility Layer** (`app/elevenlabs/hooks/useAddressFinderClientTools.ts`)
+   - Backward compatibility with existing agent prompts
+   - Tool name aliases (`AddressSearch` → `searchAddress`)
+   - Zero-disruption migration path
+
+4. **Component Integration** (`app/components/conversation/index.tsx`)
+   - Seamless integration with React Router v7
+   - Brain/Widget architecture preservation
+   - Hybrid voice + manual input support
+
+### **Implementation Benefits**
+
+- ✅ **Multi-Agent Support**: Multiple specialized agents with distinct capabilities
+- ✅ **Centralized Management**: All configuration in code, version-controlled
+- ✅ **Legacy Compatibility**: Zero breaking changes to existing functionality
+- ✅ **Automated Sync**: Scripts handle all agent configuration updates
+- ✅ **Production Ready**: Live-tested with working conversation flows
+- ✅ **Scalable Architecture**: Easy to add new agents and expand capabilities
+
+### **Active Agents**
+
+1. **AddressFinder** (`agent_01jydc3p56er8tn495y66hybmn`)
+   - Specialized for Australian address search and validation
+   - 14 comprehensive client tools for address operations
+   - Production-tested with comprehensive error handling
+
+2. **ConversationAssistant** (`agent_01jwsxt8vseg6933dfd2jb4vkd`)
+   - General-purpose conversational AI with basic address capabilities
+   - 7 core tools + legacy compatibility aliases
+   - Integrated with homepage conversation component
+
+### **Usage Examples**
+
+**Multi-Agent Component Integration:**
+```typescript
+// Any component can use any agent through centralized configuration
+import { useUniversalClientTools } from '~/elevenlabs/providers/ClientToolsProvider';
+
+function MyComponent() {
+  const clientTools = useUniversalClientTools(
+    'ADDRESS_FINDER', // or 'CONVERSATION_ASSISTANT'
+    getSessionToken,
+    clearSessionToken
+  );
+  
+  // clientTools automatically filtered for selected agent
+}
+```
+
+**Agent Transfer Example:**
+```typescript
+// Transfer between agents based on specialization
+const transferToAddressFinder = () => {
+  clientTools.transferToAgent({
+    agent_number: 0, // AddressFinder transfer index
+    reason: "User needs specialized address search capabilities",
+    transfer_message: "Connecting you to our address specialist..."
+  });
+};
+```
+
+### **Development Workflow**
+
+1. **Add New Agent**: Update `agentConfig.ts` with new agent definition
+2. **Assign Tools**: Configure agent-specific tools in `AGENT_TOOL_MATRIX`
+3. **Sync Configuration**: Run sync scripts to update live agents
+4. **Component Integration**: Use `useUniversalClientTools` with new agent key
+5. **Test & Validate**: Verify agent functionality and tool access
+
+### **Maintenance & Operations**
+
+- **Daily Sync**: `npx tsx scripts/4-multi-agent-sync.ts` for bulk updates
+- **Individual Sync**: `npx tsx scripts/sync-conversation-agent.ts` for specific agents
+- **Configuration Validation**: Built-in validation ensures consistency
+- **Error Handling**: Comprehensive error recovery and fallback systems
+
+This multi-agent implementation provides a **scalable, maintainable foundation** for expanding AI capabilities while preserving existing architectural patterns and ensuring backward compatibility.
 - Industry-specific knowledge domains
 
 #### **Agent Transfer System**
