@@ -16,10 +16,10 @@
       "routes/pricing": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/success": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/subscription-required": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/about": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/address-finder": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/test-aldi": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/address-validation-tests": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/api.validate-address": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/settings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
@@ -85,6 +85,15 @@
           "runtime": "nodejs"
         }
       },
+      "routes/about": {
+        "id": "routes/about",
+        "parentId": "root",
+        "file": "app/routes/about.tsx",
+        "path": "about",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
       "routes/address-finder": {
         "id": "routes/address-finder",
         "parentId": "root",
@@ -108,15 +117,6 @@
         "parentId": "root",
         "file": "app/routes/address-validation-tests.tsx",
         "path": "address-validation-tests",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/api.validate-address": {
-        "id": "routes/api.validate-address",
-        "parentId": "root",
-        "file": "app/routes/api.validate-address.tsx",
-        "path": "api/validate-address",
         "config": {
           "runtime": "nodejs"
         }
@@ -209,6 +209,12 @@
         "file": "routes/subscription-required.tsx",
         "path": "subscription-required"
       },
+      "routes/about": {
+        "id": "routes/about",
+        "parentId": "root",
+        "file": "routes/about.tsx",
+        "path": "about"
+      },
       "routes/address-finder": {
         "id": "routes/address-finder",
         "parentId": "root",
@@ -226,12 +232,6 @@
         "parentId": "root",
         "file": "routes/address-validation-tests.tsx",
         "path": "address-validation-tests"
-      },
-      "routes/api.validate-address": {
-        "id": "routes/api.validate-address",
-        "parentId": "root",
-        "file": "routes/api.validate-address.tsx",
-        "path": "api/validate-address"
       },
       "routes/dashboard/layout": {
         "id": "routes/dashboard/layout",

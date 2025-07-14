@@ -4,6 +4,25 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+	--color-primary: #be185d;
+	--color-secondary: #4338ca;
+	--color-buyer-orange-100: #fff7ed;
+	--color-buyer-orange-200: #ffedd5;
+	--color-buyer-orange-300: #fed7aa;
+	--color-buyer-orange-400: #fb923c;
+	--color-buyer-orange-500: #f97316;
+	--color-buyer-orange-600: #ea580c;
+	--color-buyer-orange-700: #c2410c;
+	--color-seller-purple-100: #faf5ff;
+	--color-seller-purple-200: #e9d5ff;
+	--color-seller-purple-300: #d8b4fe;
+	--color-seller-purple-400: #c084fc;
+	--color-seller-purple-500: #a855f7;
+	--color-seller-purple-600: #9333ea;
+	--color-seller-purple-700: #7e22ce;
+	--border-width-1: 1px;
+	--font-inter: "Inter", "InterVariable", sans-serif;
+
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--font-sans: var(--font-apple-system);
@@ -30,11 +49,6 @@
 	--color-muted-foreground: var(--muted-foreground);
 	--color-muted: var(--muted);
 	--color-secondary-foreground: var(--secondary-foreground);
-	--color-secondary: var(--secondary);
-	--color-primary-foreground: var(--primary-foreground);
-	--color-primary: var(--primary);
-	--color-popover-foreground: var(--popover-foreground);
-	--color-popover: var(--popover);
 	--color-card-foreground: var(--card-foreground);
 	--color-card: var(--card);
 	--radius-sm: 8px;
