@@ -38,9 +38,9 @@ export const getNearbyAldiStores = action({
 					},
 				},
 			};
-			
+
 			console.log("API request body:", JSON.stringify(body, null, 2));
-			
+
 			const res = await fetch(
 				"https://places.googleapis.com/v1/places:searchNearby",
 				{
@@ -54,25 +54,28 @@ export const getNearbyAldiStores = action({
 					body: JSON.stringify(body),
 				},
 			);
-			
+
 			console.log("API response status:", res.status);
-			
+
 			if (!res.ok) {
 				const errorText = await res.text();
 				console.log("API error response:", errorText);
-				return { success: false as const, error: `API error: ${res.status} - ${errorText}` };
+				return {
+					success: false as const,
+					error: `API error: ${res.status} - ${errorText}`,
+				};
 			}
-			
+
 			const data = await res.json();
 			console.log("API response data:", JSON.stringify(data, null, 2));
-			
+
 			// Filter results to only include Aldi stores
-			const aldiStores = (data.places || []).filter((place: any) => 
-				place.displayName?.text?.toLowerCase().includes('aldi')
+			const aldiStores = (data.places || []).filter((place: any) =>
+				place.displayName?.text?.toLowerCase().includes("aldi"),
 			);
-			
+
 			console.log("Filtered Aldi stores:", JSON.stringify(aldiStores, null, 2));
-			
+
 			return { success: true as const, places: aldiStores };
 		} catch (err) {
 			return {

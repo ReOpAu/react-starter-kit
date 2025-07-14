@@ -21,7 +21,7 @@ const buttonVariants = cva(
 					"hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
 				link: "text-primary underline-offset-4 hover:underline",
 				buyer: "bg-buyer-orange-500 text-white hover:bg-buyer-orange-600",
-        		seller: "bg-seller-purple-500 text-white hover:bg-seller-purple-600",
+				seller: "bg-seller-purple-500 text-white hover:bg-seller-purple-600",
 			},
 			size: {
 				default: "h-9 px-4 py-2 has-[>svg]:px-3",

@@ -3,10 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { cn } from "~/lib/utils";
-import { RainbowButton } from "../ui/magicui/rainbow-button";
-import { ShinyButton } from "../ui/magicui/shiny-button";
 import { useAgentConversation } from "~/elevenlabs/hooks/useAgentConversation";
+import { cn } from "~/lib/utils";
 import { LanguageSelector } from "./LanguageSelector";
 import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
@@ -65,33 +63,39 @@ export function Conversation() {
 	});
 
 	// Handle user messages and transcriptions through conversation object
-	const handleUserMessage = useCallback((message: string) => {
-		console.log("[onUserMessage] User message:", message);
-		if (
-			message.trim() &&
-			!messages.some((m) => m.text === message && m.sender === "user")
-		) {
-			setMessages((prev) => [
-				...prev,
-				{ text: message, sender: "user", isTranscribed: false },
-			]);
-		}
-	}, [messages]);
+	const handleUserMessage = useCallback(
+		(message: string) => {
+			console.log("[onUserMessage] User message:", message);
+			if (
+				message.trim() &&
+				!messages.some((m) => m.text === message && m.sender === "user")
+			) {
+				setMessages((prev) => [
+					...prev,
+					{ text: message, sender: "user", isTranscribed: false },
+				]);
+			}
+		},
+		[messages],
+	);
 
-	const handleTranscription = useCallback((text: string) => {
-		console.log("[onTranscription] User transcription:", text);
-		if (
-			text.trim() &&
-			!messages.some(
-				(m) => m.text === text && m.sender === "user" && m.isTranscribed,
-			)
-		) {
-			setMessages((prev) => [
-				...prev,
-				{ text: text, sender: "user", isTranscribed: true },
-			]);
-		}
-	}, [messages]);
+	const handleTranscription = useCallback(
+		(text: string) => {
+			console.log("[onTranscription] User transcription:", text);
+			if (
+				text.trim() &&
+				!messages.some(
+					(m) => m.text === text && m.sender === "user" && m.isTranscribed,
+				)
+			) {
+				setMessages((prev) => [
+					...prev,
+					{ text: text, sender: "user", isTranscribed: true },
+				]);
+			}
+		},
+		[messages],
+	);
 
 	// Set up audio analysis for voice mode
 	const setupAudioAnalysis = useCallback(async () => {
@@ -235,10 +239,17 @@ export function Conversation() {
 	);
 
 	return (
-		<Card className="w-full max-w-2xl mx-auto">
-			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-				<CardTitle className="text-2xl font-bold">AI Assistant</CardTitle>
-				<div className="flex items-center gap-2">
+		<Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-white dark:bg-gray-900">
+			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
+				<div className="flex items-center gap-3">
+					<div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center">
+						<span className="text-white text-lg">🤖</span>
+					</div>
+					<CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+						AI Assistant
+					</CardTitle>
+				</div>
+				<div className="flex items-center gap-3">
 					<LanguageSelector
 						selectedLanguage={selectedLanguage}
 						onLanguageChange={setSelectedLanguage}
@@ -249,8 +260,8 @@ export function Conversation() {
 					)}
 				</div>
 			</CardHeader>
-			<CardContent>
-				<div className="flex flex-col h-[500px]">
+			<CardContent className="p-0">
+				<div className="flex flex-col h-[500px] bg-white dark:bg-gray-900">
 					<MessageList messages={messages} isAgentTyping={isAgentTyping} />
 					<MessageInput
 						onSendMessage={handleSendMessage}
@@ -258,29 +269,34 @@ export function Conversation() {
 					/>
 				</div>
 
-				<div className="flex justify-center gap-4 mt-4">
+				<div className="flex flex-col sm:flex-row gap-3 p-6 pt-4 bg-gray-50/50 dark:bg-gray-900/50 border-t">
 					{conversation.status !== "connected" ? (
 						<>
-							<RainbowButton
+							<Button
 								onClick={() => startConversation(false)}
-								className="flex-1"
+								variant="default"
+								size="lg"
+								className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
 							>
-								Start Chat
-							</RainbowButton>
-							<ShinyButton
+								💬 Start Text Chat
+							</Button>
+							<Button
 								onClick={() => startConversation(true)}
-								className="flex-1"
+								variant="secondary"
+								size="lg"
+								className="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md"
 							>
-								Start Voice Chat
-							</ShinyButton>
+								🎤 Start Voice Chat
+							</Button>
 						</>
 					) : (
 						<Button
 							onClick={stopConversation}
 							variant="destructive"
-							className="w-full"
+							size="lg"
+							className="w-full shadow-md"
 						>
-							End Conversation
+							❌ End Conversation
 						</Button>
 					)}
 				</div>

@@ -37,17 +37,9 @@ export function LanguageSelector({
 					return (
 						<SelectItem key={lang.code} value={lang.code}>
 							{FlagIcon && (
-								<FlagIcon
-									style={{
-										width: 20,
-										height: 14,
-										marginRight: 8,
-										display: "inline-block",
-										verticalAlign: "middle",
-									}}
-								/>
+								<FlagIcon className="w-5 h-3.5 mr-2 inline-block align-middle" />
 							)}
-							<span style={{ verticalAlign: "middle" }}>{lang.name}</span>
+							<span className="align-middle">{lang.name}</span>
 						</SelectItem>
 					);
 				})}

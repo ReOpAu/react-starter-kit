@@ -13,14 +13,16 @@ export const HOUSE_NUMBER_PATTERNS = {
 	ANY: /^\d+/,
 } as const;
 
-// Unit/apartment patterns  
+// Unit/apartment patterns
 export const UNIT_PATTERNS = {
 	// Unit at start with various formats
-	DETAILED: /^(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*[,\s]/i,
+	DETAILED:
+		/^(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*[,\s]/i,
 	// Simple unit at start
 	SIMPLE: /^(unit|apt|apartment|suite|shop|level|floor|u)\s*\d+/i,
 	// Unit/apartment patterns anywhere in query
-	ANYWHERE: /\b(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*\b/i,
+	ANYWHERE:
+		/\b(unit|apt|apartment|suite|shop|level|floor|lot|u|g|l|b)\s*\d+[a-z]?([/-]\d+[a-z]?)*\b/i,
 	// Complex unit formats like "123a/456"
 	COMPLEX: /^[a-z]?\d+([/-]\d+[a-z]?)*[,/]\s*\d+\s+/,
 } as const;
@@ -33,7 +35,7 @@ export const POSTCODE_PATTERNS = {
 	VALID_AU: /\b[1-9]\d{3}\b/,
 } as const;
 
-// Australian state patterns  
+// Australian state patterns
 export const AUSTRALIAN_STATE_PATTERNS = {
 	// State codes only
 	CODES: /\b(VIC|NSW|QLD|WA|SA|TAS|NT|ACT)\b/i,
@@ -62,23 +64,24 @@ export const SPECIAL_SUBURB_PATTERNS = {
 	ST_ALBANS: /^st\s+albans/i,
 	POINT_SUBURBS: /^point\s+/i,
 	// Complete suburb names that shouldn't be parsed further
-	COMPLETE_NAMES: [
-		/^box\s+hill$/i,
-	],
+	COMPLETE_NAMES: [/^box\s+hill$/i],
 } as const;
 
 // Suburb indicator patterns
 export const SUBURB_INDICATOR_PATTERNS = {
 	// Direction and descriptive words
-	DIRECTIONAL: /\b(north|south|east|west|upper|lower|mount|mt|saint|st|port|glen|box|point|new|old)\s+[a-z]/i,
+	DIRECTIONAL:
+		/\b(north|south|east|west|upper|lower|mount|mt|saint|st|port|glen|box|point|new|old)\s+[a-z]/i,
 	// Geographic features
-	GEOGRAPHIC: /\b(heights|gardens|valley|beach|park|creek|hill|ridge|bay|cove|grove|lakes|springs|falls)\b/i,
+	GEOGRAPHIC:
+		/\b(heights|gardens|valley|beach|park|creek|hill|ridge|bay|cove|grove|lakes|springs|falls)\b/i,
 } as const;
 
 // Rural address patterns
 export const RURAL_PATTERNS = {
 	// Rural address detection
-	RURAL_KEYWORDS: /hwy|highway|rd|road|lane|track|springmount|mount|creek|farm|station/i,
+	RURAL_KEYWORDS:
+		/hwy|highway|rd|road|lane|track|springmount|mount|creek|farm|station/i,
 } as const;
 
 // String processing patterns

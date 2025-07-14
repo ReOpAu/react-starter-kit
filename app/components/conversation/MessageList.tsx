@@ -45,10 +45,19 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
 	return (
 		<div
 			ref={chatContainerRef}
-			className="flex-1 overflow-y-auto space-y-4 p-4 scroll-smooth"
+			className="flex-1 overflow-y-auto space-y-4 p-6 scroll-smooth bg-gradient-to-b from-gray-50/30 to-transparent dark:from-gray-800/30"
 			role="log"
 			aria-label="Chat messages"
 		>
+			{messages.length === 0 && (
+				<div className="flex flex-col items-center justify-center h-full text-center text-gray-500 dark:text-gray-400">
+					<div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-blue-600/20 flex items-center justify-center mb-4">
+						<span className="text-2xl">💬</span>
+					</div>
+					<p className="text-lg font-medium mb-2">Start a conversation</p>
+					<p className="text-sm">Choose text or voice chat to begin talking with the AI assistant.</p>
+				</div>
+			)}
 			{messages.map((msg, index) => (
 				<BlurFade
 					key={index}
@@ -56,55 +65,55 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
 					delay={Math.min(index * 0.05, 0.3)}
 					duration={0.3}
 				>
-					<article
-						className={cn(
-							"flex w-max max-w-[80%] rounded-lg px-4 py-2",
-							msg.sender === "user"
+					<div className={cn(
+						"flex items-start gap-3 max-w-[85%]",
+						msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
+					)}>
+						<div className={cn(
+							"w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+							msg.sender === "user" 
 								? msg.isTranscribed
-									? "ml-auto bg-[#D1E8FF] text-blue-900 border border-blue-200 user-message"
-									: "ml-auto bg-primary text-primary-foreground user-message"
-								: "mr-auto bg-[#E6F0FA] text-gray-900 ai-message",
-						)}
-						aria-label={`${msg.sender} message`}
-						data-testid={`message-${index}`}
-					>
-						<div className="flex items-start gap-2">
-							{msg.sender === "agent" && (
-								<div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
-									AI
-								</div>
-							)}
-							<div className="flex-1">
-								{msg.text}
-								{msg.isTranscribed && (
-									<span
-										className="ml-2 text-xs text-blue-500"
-										title="Voice message"
-									>
-										🎤
-									</span>
-								)}
-							</div>
-							{msg.sender === "user" && !msg.isTranscribed && (
-								<div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
-									You
-								</div>
-							)}
-							{msg.sender === "user" && msg.isTranscribed && (
-								<div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center text-xs">
-									🎤
-								</div>
-							)}
+									? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+									: "bg-gradient-to-br from-primary to-blue-600"
+								: "bg-gradient-to-br from-gray-600 to-gray-700 dark:from-gray-500 dark:to-gray-600"
+						)}>
+							<span className="text-white text-xs font-medium">
+								{msg.sender === "user" 
+									? msg.isTranscribed ? "🎤" : "U"
+									: "🤖"
+								}
+							</span>
 						</div>
-					</article>
+						<div
+							className={cn(
+								"rounded-2xl px-4 py-3 shadow-sm max-w-full",
+								msg.sender === "user"
+									? msg.isTranscribed
+										? "bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/30 text-emerald-900 dark:text-emerald-100 border border-emerald-200 dark:border-emerald-700"
+										: "bg-gradient-to-br from-primary to-blue-600 text-white"
+									: "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700",
+							)}
+							aria-label={`${msg.sender} message`}
+							data-testid={`message-${index}`}
+						>
+							<p className="text-sm leading-relaxed break-words">{msg.text}</p>
+						</div>
+					</div>
 				</BlurFade>
 			))}
 			{isAgentTyping && (
 				<BlurFade direction="up" delay={0.1} duration={0.2}>
-					<div className="flex items-center gap-2 text-muted-foreground text-sm">
-						<div className="animate-bounce">●</div>
-						<div className="animate-bounce delay-100">●</div>
-						<div className="animate-bounce delay-200">●</div>
+					<div className="flex items-start gap-3 max-w-[85%] mr-auto">
+						<div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 dark:from-gray-500 dark:to-gray-600 flex items-center justify-center shrink-0">
+							<span className="text-white text-xs font-medium">🤖</span>
+						</div>
+						<div className="bg-white dark:bg-gray-800 rounded-2xl px-4 py-3 shadow-sm border border-gray-200 dark:border-gray-700">
+							<div className="flex items-center gap-1">
+								<div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+								<div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+								<div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+							</div>
+						</div>
 					</div>
 				</BlurFade>
 			)}

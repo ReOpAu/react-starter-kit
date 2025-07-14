@@ -75,16 +75,17 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								</span>
 							</div>
 						)}
-						{(result.lat !== undefined && result.lng !== undefined) || (lat !== undefined && lng !== undefined) && (
-							<div className="md:col-span-2">
-								<span className="font-semibold text-purple-800">
-									Coordinates:{" "}
-								</span>
-								<span className="text-purple-700">
-									{result.lat ?? lat}, {result.lng ?? lng}
-								</span>
-							</div>
-						)}
+						{(result.lat !== undefined && result.lng !== undefined) ||
+							(lat !== undefined && lng !== undefined && (
+								<div className="md:col-span-2">
+									<span className="font-semibold text-purple-800">
+										Coordinates:{" "}
+									</span>
+									<span className="text-purple-700">
+										{result.lat ?? lat}, {result.lng ?? lng}
+									</span>
+								</div>
+							))}
 						{result.confidence !== undefined && (
 							<div>
 								<span className="font-semibold text-purple-800">
@@ -95,14 +96,15 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								</span>
 							</div>
 						)}
-						{result.displayText && result.displayText !== result.description && (
-							<div className="md:col-span-2">
-								<span className="font-semibold text-purple-800">
-									Display Text:{" "}
-								</span>
-								<span className="text-purple-700">{result.displayText}</span>
-							</div>
-						)}
+						{result.displayText &&
+							result.displayText !== result.description && (
+								<div className="md:col-span-2">
+									<span className="font-semibold text-purple-800">
+										Display Text:{" "}
+									</span>
+									<span className="text-purple-700">{result.displayText}</span>
+								</div>
+							)}
 						{result.structuredFormatting?.mainText && (
 							<div>
 								<span className="font-semibold text-purple-800">
@@ -133,7 +135,7 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								title="Google Map"
 								width="100%"
 								height="250"
-								style={{ border: 0, borderRadius: "8px" }}
+								className="border-0 rounded-lg"
 								loading="lazy"
 								allowFullScreen
 								referrerPolicy="no-referrer-when-downgrade"

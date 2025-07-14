@@ -3,10 +3,10 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
-import { useUIStore } from "~/stores/uiStore";
-import { useIntentStore } from "~/stores/intentStore";
 import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
+import { useIntentStore } from "~/stores/intentStore";
+import { useUIStore } from "~/stores/uiStore";
 
 interface StateDebugPanelProps {
 	// React Query state

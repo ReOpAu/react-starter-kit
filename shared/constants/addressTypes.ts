@@ -104,5 +104,5 @@ export const RURAL_KEYWORD_REGEXES = RURAL_KEYWORDS.map(
 );
 
 // Type exports for better TypeScript support
-export type StreetKeyword = typeof STREET_KEYWORDS[number];
-export type RuralKeyword = typeof RURAL_KEYWORDS[number];
+export type StreetKeyword = (typeof STREET_KEYWORDS)[number];
+export type RuralKeyword = (typeof RURAL_KEYWORDS)[number];

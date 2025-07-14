@@ -3,10 +3,10 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { type RefObject, useCallback, useState } from "react";
+import { useReliableSync } from "~/elevenlabs/hooks/useReliableSync";
 import { useIntentStore } from "~/stores/intentStore";
 import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
 import { classifySelectedResult } from "~/utils/addressFinderUtils";
-import { useReliableSync } from "~/elevenlabs/hooks/useReliableSync";
 
 // Constants for place details enrichment
 const ENRICHMENT_CACHE_KEY = "placeDetails";
@@ -211,9 +211,11 @@ export function useActionHandler({
 				try {
 					// Check if Convex is available before calling the action
 					if (!validateAddressAction) {
-						throw new Error("Address validation service is not available. Please ensure Convex dev server is running.");
+						throw new Error(
+							"Address validation service is not available. Please ensure Convex dev server is running.",
+						);
 					}
-					
+
 					const validation = await validateAddressAction({
 						address: enrichedResult.description,
 					});
@@ -285,7 +287,6 @@ export function useActionHandler({
 						setAgentLastSearchQuery(currentSearchQuery);
 						syncToAgent();
 						resetRecallMode();
-
 					} else if (
 						validation.success &&
 						"isRuralException" in validation &&
@@ -312,17 +313,18 @@ export function useActionHandler({
 				} catch (error: any) {
 					log("💥 VALIDATION ACTION FAILED:", error);
 					console.error("Full error object:", error);
-					
+
 					// Enhanced error handling to catch "require is not defined" errors
 					let errorMessage = "An unknown error occurred";
 					if (error.message?.includes("require is not defined")) {
-						errorMessage = "Server-side code execution error. Please check the server logs.";
+						errorMessage =
+							"Server-side code execution error. Please check the server logs.";
 					} else if (error.data?.message) {
 						errorMessage = error.data.message;
 					} else if (error.message) {
 						errorMessage = error.message;
 					}
-					
+
 					setValidationError(`Validation failed: ${errorMessage}`);
 					addHistory({
 						type: "system",
@@ -334,7 +336,7 @@ export function useActionHandler({
 			} else {
 				// Non-address intents: proceed without validation
 				log(`🎯 Intent is "${intent}", skipping full validation.`);
-				
+
 				// Preserve intent if this is a recall, otherwise update based on selection
 				if (preserveIntent) {
 					setCurrentIntent(preserveIntent);
@@ -344,9 +346,15 @@ export function useActionHandler({
 				}
 
 				setSelectedResult(enrichedResult);
-				setActiveSearch({ query: enrichedResult.description, source: "manual" });
+				setActiveSearch({
+					query: enrichedResult.description,
+					source: "manual",
+				});
 				setAgentRequestedManual(false);
-				addHistory({ type: "user", text: `Selected: "${enrichedResult.description}"` });
+				addHistory({
+					type: "user",
+					text: `Selected: "${enrichedResult.description}"`,
+				});
 				clearSessionToken();
 
 				// Agent communication for non-address selections
@@ -434,9 +442,11 @@ export function useActionHandler({
 				try {
 					// Check if Convex is available before calling the action
 					if (!validateAddressAction) {
-						throw new Error("Address validation service is not available. Please ensure Convex dev server is running.");
+						throw new Error(
+							"Address validation service is not available. Please ensure Convex dev server is running.",
+						);
 					}
-					
+
 					const validation = await validateAddressAction({
 						address: result.description,
 					});
@@ -517,17 +527,18 @@ export function useActionHandler({
 				} catch (error: any) {
 					log("💥 VALIDATION ACTION FAILED:", error);
 					console.error("Full error object:", error);
-					
+
 					// Enhanced error handling to catch "require is not defined" errors
 					let errorMessage = "An unknown error occurred";
 					if (error.message?.includes("require is not defined")) {
-						errorMessage = "Server-side code execution error. Please check the server logs.";
+						errorMessage =
+							"Server-side code execution error. Please check the server logs.";
 					} else if (error.data?.message) {
 						errorMessage = error.data.message;
 					} else if (error.message) {
 						errorMessage = error.message;
 					}
-					
+
 					setValidationError(`Validation failed: ${errorMessage}`);
 					addHistory({
 						type: "system",

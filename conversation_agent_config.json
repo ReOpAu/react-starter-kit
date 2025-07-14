@@ -1,646 +1,627 @@
 {
-  "agent_id": "agent_01jwsxt8vseg6933dfd2jb4vkd",
-  "name": "Mindfulness coach",
-  "conversation_config": {
-    "asr": {
-      "quality": "high",
-      "provider": "elevenlabs",
-      "user_input_audio_format": "pcm_16000",
-      "keywords": []
-    },
-    "turn": {
-      "turn_timeout": 7,
-      "silence_end_call_timeout": 20,
-      "mode": "turn"
-    },
-    "tts": {
-      "model_id": "eleven_flash_v2",
-      "voice_id": "HDA9tsk27wYi3uq0fPcK",
-      "supported_voices": [],
-      "agent_output_audio_format": "pcm_16000",
-      "optimize_streaming_latency": 3,
-      "stability": 0.5,
-      "speed": 1,
-      "similarity_boost": 0.65,
-      "pronunciation_dictionary_locators": []
-    },
-    "conversation": {
-      "text_only": false,
-      "max_duration_seconds": 300,
-      "client_events": [
-        "audio",
-        "interruption",
-        "user_transcript",
-        "agent_response",
-        "agent_response_correction"
-      ]
-    },
-    "language_presets": {
-      "vi": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "Đại lý REOP",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
-          "text": "Đại lý REOP"
-        }
-      },
-      "id": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "Agen REOP",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
-          "text": "Agen REOP"
-        }
-      },
-      "ar": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "مرحبًا! اذكر اسم ضاحية وسأساعدك في البحث عنها.",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"Hello! Speak a suburb name and I'll help you look it up.\",\"language\":\"en\"}",
-          "text": "مرحبًا! اذكر اسم ضاحية وسأساعدك في البحث عنها."
-        }
-      },
-      "zh": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "REOP代理",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
-          "text": "REOP代理"
-        }
-      },
-      "hi": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "नमस्ते! एक उपनगर का नाम बोलें और मैं आपकी मदद करूंगा उसे खोजने में।",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"Hello! Speak a suburb name and I'll help you look it up.\",\"language\":\"en\"}",
-          "text": "नमस्ते! एक उपनगर का नाम बोलें और मैं आपकी मदद करूंगा उसे खोजने में।"
-        }
-      },
-      "el": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "Πράκτορας REOP",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
-          "text": "Πράκτορας REOP"
-        }
-      },
-      "ja": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "REOPエージェント",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
-          "text": "REOPエージェント"
-        }
-      },
-      "it": {
-        "overrides": {
-          "tts": null,
-          "conversation": null,
-          "agent": {
-            "first_message": "Ciao! Pronuncia il nome di un sobborgo e ti aiuterò a cercarlo.",
-            "language": null,
-            "prompt": null
-          }
-        },
-        "first_message_translation": {
-          "source_hash": "{\"firstMessage\":\"Hello! Speak a suburb name and I'll help you look it up.\",\"language\":\"en\"}",
-          "text": "Ciao! Pronuncia il nome di un sobborgo e ti aiuterò a cercarlo."
-        }
-      }
-    },
-    "agent": {
-      "first_message": "Hello! Speak a street, suburb name or full residential and I'll help you look it up.",
-      "language": "en",
-      "dynamic_variables": {
-        "dynamic_variable_placeholders": {
-          "placeSuggestions": "object[] "
-        }
-      },
-      "prompt": {
-        "prompt": "IMPORTANT - Address Tool Usage:\n\n1. Use searchAddress to find places - it returns results with embedded PLACE_DATA {{placeSuggestions}}\n2. When user confirms a place, call selectSuggestion with the placeId  \n3. selectSuggestion will automatically find and use the PLACE_DATA from the previous searchAddress\n\nExample workflow:\n- User: \"Look up Richmond\"\n- Call: searchAddress({\"query\": \"Richmond\"})  \n- Response: \"Perfect! I found... PLACE_DATA: {...}\"\n- User: \"Yes, that's the one\"\n- Call: selectSuggestion({\"placeId\": \"ChIJ...\"})\n- selectSuggestion automatically uses the structured data from searchAddress\n\nAlways use the correct placeId when calling selectSuggestion.\n\nYou have access to the current UI state through variables:\n- Check `currentMode` to understand what the user is doing\n- Use `hasMultipleResults` to know if options are available\n- Call `getCurrentState` tool to get complete current state\n- Use `clearSelection` tool to reset the interface when needed\n\nAlways be aware of the UI context when responding to users.\n\n## Available Client Tools\n\n### searchAddress\nSearch for places by query using the backend service.\nParameters: undefined\n\n### selectSuggestion\nConfirm the selection of a place by its unique placeId.\nParameters: undefined\n\n### getCurrentState\nGet current system state and status for debugging.\nParameters: undefined\n\n### getConfirmedSelection\nGet the currently confirmed address selection.\nParameters: undefined\n\n### clearSelection\nClear current selection and search state.\nParameters: undefined\n\n### getNearbyServices\nFind nearby services and points of interest around a specific address or location.\nParameters: undefined\n\n### transferToAgent\nTransfer the conversation to a specialized agent for better assistance. Use when current agent capabilities are insufficient.\nParameters: undefined",
-        "llm": "gemini-2.0-flash-001",
-        "temperature": 0,
-        "max_tokens": -1,
-        "tool_ids": [
-          "tool_01jxfe8qtdfhpa5m8xjymsj0mm",
-          "tool_01jxh8af89faavhh8f42fybymq",
-          "tool_01jxh9d54redyad9gwf3g9ptw7",
-          "tool_01jxh9xs5ef6bbr42w7c5jen4p",
-          "tool_01jxhgznh8frb9rz79brx41vyp",
-          "tool_01jxkcwn72fxvt9qaqjsb5b0dp",
-          "tool_01jxvdeaygf8eaga6gq3mzfa1t",
-          "tool_01jy66pbzpfcbsggwj83gwghrc",
-          "tool_01jy60mhjyf5mr67228q165mjj"
-        ],
-        "built_in_tools": {
-          "end_call": {
-            "name": "end_call",
-            "description": "",
-            "response_timeout_secs": 20,
-            "type": "system",
-            "params": {
-              "system_tool_type": "end_call"
-            }
-          },
-          "language_detection": {
-            "name": "language_detection",
-            "description": "",
-            "response_timeout_secs": 20,
-            "type": "system",
-            "params": {
-              "system_tool_type": "language_detection"
-            }
-          },
-          "transfer_to_agent": null,
-          "transfer_to_number": null,
-          "skip_turn": null,
-          "play_keypad_touch_tone": null
-        },
-        "mcp_server_ids": [],
-        "native_mcp_server_ids": [],
-        "knowledge_base": [
-          {
-            "type": "file",
-            "name": "RAG-marketplace",
-            "id": "PLGF3LwnImt1TOpXDnP5",
-            "usage_mode": "auto"
-          },
-          {
-            "type": "file",
-            "name": "RAG-fractional",
-            "id": "7p5kKt9F0U6v2i0zzEu8",
-            "usage_mode": "auto"
-          }
-        ],
-        "custom_llm": null,
-        "ignore_default_personality": false,
-        "rag": {
-          "enabled": true,
-          "embedding_model": "e5_mistral_7b_instruct",
-          "max_vector_distance": 0.6,
-          "max_documents_length": 50000,
-          "max_retrieved_rag_chunks_count": 20
-        },
-        "tools": [
-          {
-            "name": "logMessage",
-            "description": "Use this client-side tool to log a message to the user’s client.",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "message"
-              ],
-              "description": "",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "description": "The message to log in the console. Ensure the message is informative and relevant.",
-                  "dynamic_variable": "",
-                  "constant_value": ""
-                }
-              }
-            },
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "showAlert",
-            "description": "Use this client-side tool to display an alert message to the user’s client browser window in the DOM.",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "alertmessage"
-              ],
-              "description": "",
-              "properties": {
-                "alertmessage": {
-                  "type": "string",
-                  "description": "The alertmessage to display in the alert. Ensure the message is informative and relevant.",
-                  "dynamic_variable": "",
-                  "constant_value": ""
-                }
-              }
-            },
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "showToast",
-            "description": "display a Toast message in a shadcnui Sonner component ",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "toastmessage"
-              ],
-              "description": "",
-              "properties": {
-                "toastmessage": {
-                  "type": "string",
-                  "description": "Simply display \"far out man\" in a Sonner (An opinionated toast component for React)  ",
-                  "dynamic_variable": "",
-                  "constant_value": ""
-                }
-              }
-            },
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "showCheese",
-            "description": "display a Sonner ",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": null,
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "populateForm",
-            "description": "fill out form fields based upon conversational user input, Submit the form after User Confirmation that the fields are correctly populated.",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "suburb",
-                "username"
-              ],
-              "description": "",
-              "properties": {
-                "suburb": {
-                  "type": "string",
-                  "description": "the suburb mentioned by the user.",
-                  "dynamic_variable": "",
-                  "constant_value": ""
-                },
-                "username": {
-                  "type": "string",
-                  "description": "The username mentioned by the user",
-                  "dynamic_variable": "",
-                  "constant_value": ""
-                }
-              }
-            },
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "submitForm",
-            "description": "After The User confirms form fields are correct, submit the form.",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": null,
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "redirectToExternalURL",
-            "description": "call this tool when the user says redirect",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "url"
-              ],
-              "description": "",
-              "properties": {
-                "url": {
-                  "type": "string",
-                  "description": "",
-                  "dynamic_variable": "",
-                  "constant_value": "http://www.alistapart.com"
-                }
-              }
-            },
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "AddressSearch",
-            "description": "Search for Australian addresses, suburbs, or streets. Returns place data for confirmation.",
-            "response_timeout_secs": 3,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "description": "",
-              "properties": {
-                "address": {
-                  "type": "string",
-                  "description": "The address, suburb, or street name to search for",
-                  "dynamic_variable": "",
-                  "constant_value": ""
-                }
-              }
-            },
-            "expects_response": true,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "ConfirmPlace",
-            "description": "Display one or more place suggestions in the UI so the user can confirm or select the correct one. Each place includes a label, type, and place_id.",
-            "response_timeout_secs": 20,
-            "type": "client",
-            "parameters": {
-              "type": "object",
-              "required": [
-                "results"
-              ],
-              "description": "",
-              "properties": {
-                "results": {
-                  "type": "array",
-                  "description": "An array of place suggestion objects from the Google Places API.",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "label",
-                      "type",
-                      "place_id"
-                    ],
-                    "description": "Each object represents a place result with a label, type, and Google place_id.",
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "description": "The category of the place, such as 'suburb', 'street', or 'address'",
-                        "dynamic_variable": "",
-                        "constant_value": ""
-                      },
-                      "place_id": {
-                        "type": "string",
-                        "description": "The unique Google Places ID for the result",
-                        "dynamic_variable": "",
-                        "constant_value": ""
-                      },
-                      "label": {
-                        "type": "string",
-                        "description": "The human-readable label to show in the UI, e.g. 'West Footscray VIC 3012'",
-                        "dynamic_variable": "",
-                        "constant_value": ""
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "expects_response": false,
-            "dynamic_variables": {
-              "dynamic_variable_placeholders": {}
-            }
-          },
-          {
-            "name": "end_call",
-            "description": "",
-            "response_timeout_secs": 20,
-            "type": "system",
-            "params": {
-              "system_tool_type": "end_call"
-            }
-          },
-          {
-            "name": "language_detection",
-            "description": "",
-            "response_timeout_secs": 20,
-            "type": "system",
-            "params": {
-              "system_tool_type": "language_detection"
-            }
-          }
-        ]
-      }
-    }
-  },
-  "metadata": {
-    "created_at_unix_secs": 1748921820
-  },
-  "platform_settings": {
-    "auth": {
-      "enable_auth": false,
-      "allowlist": [],
-      "shareable_token": null
-    },
-    "evaluation": {
-      "criteria": []
-    },
-    "widget": {
-      "variant": "full",
-      "placement": "bottom-right",
-      "expandable": "never",
-      "avatar": {
-        "type": "orb",
-        "color_1": "#2792DC",
-        "color_2": "#9CE6E6"
-      },
-      "feedback_mode": "during",
-      "bg_color": "#ffffff",
-      "text_color": "#000000",
-      "btn_color": "#000000",
-      "btn_text_color": "#ffffff",
-      "border_color": "#e1e1e1",
-      "focus_color": "#000000",
-      "border_radius": null,
-      "btn_radius": null,
-      "action_text": null,
-      "start_call_text": null,
-      "end_call_text": null,
-      "expand_text": null,
-      "listening_text": null,
-      "speaking_text": null,
-      "shareable_page_text": null,
-      "shareable_page_show_terms": true,
-      "terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
-      "terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
-      "terms_key": null,
-      "show_avatar_when_collapsed": true,
-      "disable_banner": false,
-      "override_link": null,
-      "mic_muting_enabled": false,
-      "transcript_enabled": true,
-      "text_input_enabled": true,
-      "text_contents": {
-        "main_label": "Virtual Real Estate Agent at your service.",
-        "start_call": null,
-        "start_chat": null,
-        "new_call": null,
-        "end_call": null,
-        "mute_microphone": null,
-        "change_language": null,
-        "collapse": null,
-        "expand": null,
-        "copied": null,
-        "accept_terms": null,
-        "dismiss_terms": null,
-        "listening_status": null,
-        "speaking_status": null,
-        "connecting_status": null,
-        "chatting_status": null,
-        "input_label": null,
-        "input_placeholder": null,
-        "input_placeholder_text_only": null,
-        "input_placeholder_new_conversation": null,
-        "user_ended_conversation": null,
-        "agent_ended_conversation": null,
-        "conversation_id": null,
-        "error_occurred": null,
-        "copy_id": null
-      },
-      "styles": {
-        "base": null,
-        "base_hover": null,
-        "base_active": null,
-        "base_border": null,
-        "base_subtle": null,
-        "base_primary": null,
-        "base_error": null,
-        "accent": null,
-        "accent_hover": null,
-        "accent_active": null,
-        "accent_border": null,
-        "accent_subtle": null,
-        "accent_primary": null,
-        "overlay_padding": null,
-        "button_radius": null,
-        "input_radius": null,
-        "bubble_radius": null,
-        "sheet_radius": null,
-        "compact_sheet_radius": null,
-        "dropdown_sheet_radius": null
-      },
-      "language_selector": true,
-      "supports_text_only": true,
-      "custom_avatar_path": null,
-      "language_presets": {}
-    },
-    "data_collection": {},
-    "overrides": {
-      "conversation_config_override": {
-        "tts": {
-          "voice_id": true
-        },
-        "conversation": {
-          "text_only": true
-        },
-        "agent": {
-          "first_message": true,
-          "language": true,
-          "prompt": {
-            "prompt": true
-          }
-        }
-      },
-      "custom_llm_extra_body": false,
-      "enable_conversation_initiation_client_data_from_webhook": false
-    },
-    "call_limits": {
-      "agent_concurrency_limit": -1,
-      "daily_limit": 100000,
-      "bursting_enabled": true
-    },
-    "ban": null,
-    "privacy": {
-      "record_voice": true,
-      "retention_days": 730,
-      "delete_transcript_and_pii": true,
-      "delete_audio": true,
-      "apply_to_existing_conversations": false,
-      "zero_retention_mode": false
-    },
-    "workspace_overrides": {
-      "conversation_initiation_client_data_webhook": null,
-      "webhooks": {
-        "post_call_webhook_id": null,
-        "send_audio": false
-      }
-    },
-    "testing": {
-      "test_ids": []
-    },
-    "safety": {
-      "is_blocked_ivc": false,
-      "is_blocked_non_ivc": false,
-      "ignore_safety_evaluation": false
-    }
-  },
-  "phone_numbers": [],
-  "access_info": {
-    "is_creator": true,
-    "creator_name": "Stewart Milne",
-    "creator_email": "stemil23@gmail.com",
-    "role": "admin"
-  },
-  "tags": []
+	"agent_id": "agent_01jwsxt8vseg6933dfd2jb4vkd",
+	"name": "Mindfulness coach",
+	"conversation_config": {
+		"asr": {
+			"quality": "high",
+			"provider": "elevenlabs",
+			"user_input_audio_format": "pcm_16000",
+			"keywords": []
+		},
+		"turn": {
+			"turn_timeout": 7,
+			"silence_end_call_timeout": 20,
+			"mode": "turn"
+		},
+		"tts": {
+			"model_id": "eleven_flash_v2",
+			"voice_id": "HDA9tsk27wYi3uq0fPcK",
+			"supported_voices": [],
+			"agent_output_audio_format": "pcm_16000",
+			"optimize_streaming_latency": 3,
+			"stability": 0.5,
+			"speed": 1,
+			"similarity_boost": 0.65,
+			"pronunciation_dictionary_locators": []
+		},
+		"conversation": {
+			"text_only": false,
+			"max_duration_seconds": 300,
+			"client_events": [
+				"audio",
+				"interruption",
+				"user_transcript",
+				"agent_response",
+				"agent_response_correction"
+			]
+		},
+		"language_presets": {
+			"vi": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "Đại lý REOP",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
+					"text": "Đại lý REOP"
+				}
+			},
+			"id": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "Agen REOP",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
+					"text": "Agen REOP"
+				}
+			},
+			"ar": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "مرحبًا! اذكر اسم ضاحية وسأساعدك في البحث عنها.",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"Hello! Speak a suburb name and I'll help you look it up.\",\"language\":\"en\"}",
+					"text": "مرحبًا! اذكر اسم ضاحية وسأساعدك في البحث عنها."
+				}
+			},
+			"zh": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "REOP代理",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
+					"text": "REOP代理"
+				}
+			},
+			"hi": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "नमस्ते! एक उपनगर का नाम बोलें और मैं आपकी मदद करूंगा उसे खोजने में।",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"Hello! Speak a suburb name and I'll help you look it up.\",\"language\":\"en\"}",
+					"text": "नमस्ते! एक उपनगर का नाम बोलें और मैं आपकी मदद करूंगा उसे खोजने में।"
+				}
+			},
+			"el": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "Πράκτορας REOP",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
+					"text": "Πράκτορας REOP"
+				}
+			},
+			"ja": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "REOPエージェント",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"REOP Agent\",\"language\":\"en\"}",
+					"text": "REOPエージェント"
+				}
+			},
+			"it": {
+				"overrides": {
+					"tts": null,
+					"conversation": null,
+					"agent": {
+						"first_message": "Ciao! Pronuncia il nome di un sobborgo e ti aiuterò a cercarlo.",
+						"language": null,
+						"prompt": null
+					}
+				},
+				"first_message_translation": {
+					"source_hash": "{\"firstMessage\":\"Hello! Speak a suburb name and I'll help you look it up.\",\"language\":\"en\"}",
+					"text": "Ciao! Pronuncia il nome di un sobborgo e ti aiuterò a cercarlo."
+				}
+			}
+		},
+		"agent": {
+			"first_message": "Hello! Speak a street, suburb name or full residential and I'll help you look it up.",
+			"language": "en",
+			"dynamic_variables": {
+				"dynamic_variable_placeholders": {
+					"placeSuggestions": "object[] "
+				}
+			},
+			"prompt": {
+				"prompt": "IMPORTANT - Address Tool Usage:\n\n1. Use searchAddress to find places - it returns results with embedded PLACE_DATA {{placeSuggestions}}\n2. When user confirms a place, call selectSuggestion with the placeId  \n3. selectSuggestion will automatically find and use the PLACE_DATA from the previous searchAddress\n\nExample workflow:\n- User: \"Look up Richmond\"\n- Call: searchAddress({\"query\": \"Richmond\"})  \n- Response: \"Perfect! I found... PLACE_DATA: {...}\"\n- User: \"Yes, that's the one\"\n- Call: selectSuggestion({\"placeId\": \"ChIJ...\"})\n- selectSuggestion automatically uses the structured data from searchAddress\n\nAlways use the correct placeId when calling selectSuggestion.\n\nYou have access to the current UI state through variables:\n- Check `currentMode` to understand what the user is doing\n- Use `hasMultipleResults` to know if options are available\n- Call `getCurrentState` tool to get complete current state\n- Use `clearSelection` tool to reset the interface when needed\n\nAlways be aware of the UI context when responding to users.\n\n## Available Client Tools\n\n### searchAddress\nSearch for places by query using the backend service.\nParameters: undefined\n\n### selectSuggestion\nConfirm the selection of a place by its unique placeId.\nParameters: undefined\n\n### getCurrentState\nGet current system state and status for debugging.\nParameters: undefined\n\n### getConfirmedSelection\nGet the currently confirmed address selection.\nParameters: undefined\n\n### clearSelection\nClear current selection and search state.\nParameters: undefined\n\n### getNearbyServices\nFind nearby services and points of interest around a specific address or location.\nParameters: undefined\n\n### transferToAgent\nTransfer the conversation to a specialized agent for better assistance. Use when current agent capabilities are insufficient.\nParameters: undefined",
+				"llm": "gemini-2.0-flash-001",
+				"temperature": 0,
+				"max_tokens": -1,
+				"tool_ids": [
+					"tool_01jxfe8qtdfhpa5m8xjymsj0mm",
+					"tool_01jxh8af89faavhh8f42fybymq",
+					"tool_01jxh9d54redyad9gwf3g9ptw7",
+					"tool_01jxh9xs5ef6bbr42w7c5jen4p",
+					"tool_01jxhgznh8frb9rz79brx41vyp",
+					"tool_01jxkcwn72fxvt9qaqjsb5b0dp",
+					"tool_01jxvdeaygf8eaga6gq3mzfa1t",
+					"tool_01jy66pbzpfcbsggwj83gwghrc",
+					"tool_01jy60mhjyf5mr67228q165mjj"
+				],
+				"built_in_tools": {
+					"end_call": {
+						"name": "end_call",
+						"description": "",
+						"response_timeout_secs": 20,
+						"type": "system",
+						"params": {
+							"system_tool_type": "end_call"
+						}
+					},
+					"language_detection": {
+						"name": "language_detection",
+						"description": "",
+						"response_timeout_secs": 20,
+						"type": "system",
+						"params": {
+							"system_tool_type": "language_detection"
+						}
+					},
+					"transfer_to_agent": null,
+					"transfer_to_number": null,
+					"skip_turn": null,
+					"play_keypad_touch_tone": null
+				},
+				"mcp_server_ids": [],
+				"native_mcp_server_ids": [],
+				"knowledge_base": [
+					{
+						"type": "file",
+						"name": "RAG-marketplace",
+						"id": "PLGF3LwnImt1TOpXDnP5",
+						"usage_mode": "auto"
+					},
+					{
+						"type": "file",
+						"name": "RAG-fractional",
+						"id": "7p5kKt9F0U6v2i0zzEu8",
+						"usage_mode": "auto"
+					}
+				],
+				"custom_llm": null,
+				"ignore_default_personality": false,
+				"rag": {
+					"enabled": true,
+					"embedding_model": "e5_mistral_7b_instruct",
+					"max_vector_distance": 0.6,
+					"max_documents_length": 50000,
+					"max_retrieved_rag_chunks_count": 20
+				},
+				"tools": [
+					{
+						"name": "logMessage",
+						"description": "Use this client-side tool to log a message to the user’s client.",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["message"],
+							"description": "",
+							"properties": {
+								"message": {
+									"type": "string",
+									"description": "The message to log in the console. Ensure the message is informative and relevant.",
+									"dynamic_variable": "",
+									"constant_value": ""
+								}
+							}
+						},
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "showAlert",
+						"description": "Use this client-side tool to display an alert message to the user’s client browser window in the DOM.",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["alertmessage"],
+							"description": "",
+							"properties": {
+								"alertmessage": {
+									"type": "string",
+									"description": "The alertmessage to display in the alert. Ensure the message is informative and relevant.",
+									"dynamic_variable": "",
+									"constant_value": ""
+								}
+							}
+						},
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "showToast",
+						"description": "display a Toast message in a shadcnui Sonner component ",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["toastmessage"],
+							"description": "",
+							"properties": {
+								"toastmessage": {
+									"type": "string",
+									"description": "Simply display \"far out man\" in a Sonner (An opinionated toast component for React)  ",
+									"dynamic_variable": "",
+									"constant_value": ""
+								}
+							}
+						},
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "showCheese",
+						"description": "display a Sonner ",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": null,
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "populateForm",
+						"description": "fill out form fields based upon conversational user input, Submit the form after User Confirmation that the fields are correctly populated.",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["suburb", "username"],
+							"description": "",
+							"properties": {
+								"suburb": {
+									"type": "string",
+									"description": "the suburb mentioned by the user.",
+									"dynamic_variable": "",
+									"constant_value": ""
+								},
+								"username": {
+									"type": "string",
+									"description": "The username mentioned by the user",
+									"dynamic_variable": "",
+									"constant_value": ""
+								}
+							}
+						},
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "submitForm",
+						"description": "After The User confirms form fields are correct, submit the form.",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": null,
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "redirectToExternalURL",
+						"description": "call this tool when the user says redirect",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["url"],
+							"description": "",
+							"properties": {
+								"url": {
+									"type": "string",
+									"description": "",
+									"dynamic_variable": "",
+									"constant_value": "http://www.alistapart.com"
+								}
+							}
+						},
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "AddressSearch",
+						"description": "Search for Australian addresses, suburbs, or streets. Returns place data for confirmation.",
+						"response_timeout_secs": 3,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["address"],
+							"description": "",
+							"properties": {
+								"address": {
+									"type": "string",
+									"description": "The address, suburb, or street name to search for",
+									"dynamic_variable": "",
+									"constant_value": ""
+								}
+							}
+						},
+						"expects_response": true,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "ConfirmPlace",
+						"description": "Display one or more place suggestions in the UI so the user can confirm or select the correct one. Each place includes a label, type, and place_id.",
+						"response_timeout_secs": 20,
+						"type": "client",
+						"parameters": {
+							"type": "object",
+							"required": ["results"],
+							"description": "",
+							"properties": {
+								"results": {
+									"type": "array",
+									"description": "An array of place suggestion objects from the Google Places API.",
+									"items": {
+										"type": "object",
+										"required": ["label", "type", "place_id"],
+										"description": "Each object represents a place result with a label, type, and Google place_id.",
+										"properties": {
+											"type": {
+												"type": "string",
+												"description": "The category of the place, such as 'suburb', 'street', or 'address'",
+												"dynamic_variable": "",
+												"constant_value": ""
+											},
+											"place_id": {
+												"type": "string",
+												"description": "The unique Google Places ID for the result",
+												"dynamic_variable": "",
+												"constant_value": ""
+											},
+											"label": {
+												"type": "string",
+												"description": "The human-readable label to show in the UI, e.g. 'West Footscray VIC 3012'",
+												"dynamic_variable": "",
+												"constant_value": ""
+											}
+										}
+									}
+								}
+							}
+						},
+						"expects_response": false,
+						"dynamic_variables": {
+							"dynamic_variable_placeholders": {}
+						}
+					},
+					{
+						"name": "end_call",
+						"description": "",
+						"response_timeout_secs": 20,
+						"type": "system",
+						"params": {
+							"system_tool_type": "end_call"
+						}
+					},
+					{
+						"name": "language_detection",
+						"description": "",
+						"response_timeout_secs": 20,
+						"type": "system",
+						"params": {
+							"system_tool_type": "language_detection"
+						}
+					}
+				]
+			}
+		}
+	},
+	"metadata": {
+		"created_at_unix_secs": 1748921820
+	},
+	"platform_settings": {
+		"auth": {
+			"enable_auth": false,
+			"allowlist": [],
+			"shareable_token": null
+		},
+		"evaluation": {
+			"criteria": []
+		},
+		"widget": {
+			"variant": "full",
+			"placement": "bottom-right",
+			"expandable": "never",
+			"avatar": {
+				"type": "orb",
+				"color_1": "#2792DC",
+				"color_2": "#9CE6E6"
+			},
+			"feedback_mode": "during",
+			"bg_color": "#ffffff",
+			"text_color": "#000000",
+			"btn_color": "#000000",
+			"btn_text_color": "#ffffff",
+			"border_color": "#e1e1e1",
+			"focus_color": "#000000",
+			"border_radius": null,
+			"btn_radius": null,
+			"action_text": null,
+			"start_call_text": null,
+			"end_call_text": null,
+			"expand_text": null,
+			"listening_text": null,
+			"speaking_text": null,
+			"shareable_page_text": null,
+			"shareable_page_show_terms": true,
+			"terms_text": "#### Terms and conditions\n\nBy clicking \"Agree,\" and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.",
+			"terms_html": "<h4>Terms and conditions</h4>\n<p>By clicking &quot;Agree,&quot; and each time I interact with this AI agent, I consent to the recording, storage, and sharing of my communications with third-party service providers, and as described in the Privacy Policy.\nIf you do not wish to have your conversations recorded, please refrain from using this service.</p>\n",
+			"terms_key": null,
+			"show_avatar_when_collapsed": true,
+			"disable_banner": false,
+			"override_link": null,
+			"mic_muting_enabled": false,
+			"transcript_enabled": true,
+			"text_input_enabled": true,
+			"text_contents": {
+				"main_label": "Virtual Real Estate Agent at your service.",
+				"start_call": null,
+				"start_chat": null,
+				"new_call": null,
+				"end_call": null,
+				"mute_microphone": null,
+				"change_language": null,
+				"collapse": null,
+				"expand": null,
+				"copied": null,
+				"accept_terms": null,
+				"dismiss_terms": null,
+				"listening_status": null,
+				"speaking_status": null,
+				"connecting_status": null,
+				"chatting_status": null,
+				"input_label": null,
+				"input_placeholder": null,
+				"input_placeholder_text_only": null,
+				"input_placeholder_new_conversation": null,
+				"user_ended_conversation": null,
+				"agent_ended_conversation": null,
+				"conversation_id": null,
+				"error_occurred": null,
+				"copy_id": null
+			},
+			"styles": {
+				"base": null,
+				"base_hover": null,
+				"base_active": null,
+				"base_border": null,
+				"base_subtle": null,
+				"base_primary": null,
+				"base_error": null,
+				"accent": null,
+				"accent_hover": null,
+				"accent_active": null,
+				"accent_border": null,
+				"accent_subtle": null,
+				"accent_primary": null,
+				"overlay_padding": null,
+				"button_radius": null,
+				"input_radius": null,
+				"bubble_radius": null,
+				"sheet_radius": null,
+				"compact_sheet_radius": null,
+				"dropdown_sheet_radius": null
+			},
+			"language_selector": true,
+			"supports_text_only": true,
+			"custom_avatar_path": null,
+			"language_presets": {}
+		},
+		"data_collection": {},
+		"overrides": {
+			"conversation_config_override": {
+				"tts": {
+					"voice_id": true
+				},
+				"conversation": {
+					"text_only": true
+				},
+				"agent": {
+					"first_message": true,
+					"language": true,
+					"prompt": {
+						"prompt": true
+					}
+				}
+			},
+			"custom_llm_extra_body": false,
+			"enable_conversation_initiation_client_data_from_webhook": false
+		},
+		"call_limits": {
+			"agent_concurrency_limit": -1,
+			"daily_limit": 100000,
+			"bursting_enabled": true
+		},
+		"ban": null,
+		"privacy": {
+			"record_voice": true,
+			"retention_days": 730,
+			"delete_transcript_and_pii": true,
+			"delete_audio": true,
+			"apply_to_existing_conversations": false,
+			"zero_retention_mode": false
+		},
+		"workspace_overrides": {
+			"conversation_initiation_client_data_webhook": null,
+			"webhooks": {
+				"post_call_webhook_id": null,
+				"send_audio": false
+			}
+		},
+		"testing": {
+			"test_ids": []
+		},
+		"safety": {
+			"is_blocked_ivc": false,
+			"is_blocked_non_ivc": false,
+			"ignore_safety_evaluation": false
+		}
+	},
+	"phone_numbers": [],
+	"access_info": {
+		"is_creator": true,
+		"creator_name": "Stewart Milne",
+		"creator_email": "stemil23@gmail.com",
+		"role": "admin"
+	},
+	"tags": []
 }

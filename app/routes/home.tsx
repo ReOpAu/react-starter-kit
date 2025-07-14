@@ -1,15 +1,15 @@
 import { getAuth } from "@clerk/react-router/ssr.server";
-import type { Route } from "./+types/home";
 import { Conversation } from "~/components/conversation";
-import { Hero } from "~/components/home/Hero";
-import { Features } from "~/components/home/Features";
-import { InvestorTypes } from "~/components/home/InvestorTypes";
 import { BuyerGuide } from "~/components/home/BuyerGuide";
-import { SellerGuide } from "~/components/home/SellerGuide";
-import { HowItWorks } from "~/components/home/HowItWorks";
 import { CallToAction } from "~/components/home/CallToAction";
-import Footer from "~/components/homepage/footer";
-import { Navbar } from "~/components/homepage/navbar";
+import { Features } from "~/components/home/Features";
+import { Hero } from "~/components/home/Hero";
+import { HowItWorks } from "~/components/home/HowItWorks";
+import { InvestorTypes } from "~/components/home/InvestorTypes";
+import { SellerGuide } from "~/components/home/SellerGuide";
+import { Footer } from "~/components/layout/footer";
+import { Header } from "~/components/layout/Header";
+import type { Route } from "./+types/home";
 
 export async function loader(args: Route.LoaderArgs) {
 	const { userId } = await getAuth(args);
@@ -21,7 +21,7 @@ export async function loader(args: Route.LoaderArgs) {
 export default function HomePage({ loaderData }: Route.ComponentProps) {
 	return (
 		<>
-			<Navbar loaderData={loaderData} />
+			<Header loaderData={loaderData} />
 			<main>
 				<Hero />
 				<Features />

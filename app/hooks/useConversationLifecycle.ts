@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useAddressFinderClientTools } from "~/elevenlabs/hooks/useAddressFinderClientTools";
-import { useAudioManager } from "~/hooks/useAudioManager";
 import { useConversationManager } from "~/elevenlabs/hooks/useConversationManager";
+import { useAudioManager } from "~/hooks/useAudioManager";
 import type { Suggestion } from "~/stores/types";
 
 interface UseConversationLifecycleProps {
@@ -25,9 +25,9 @@ export function useConversationLifecycle({
 		clearSessionToken,
 		handleSelectResult,
 	);
-	
+
 	const { conversation } = useConversationManager(clientTools);
-	
+
 	// Store conversation reference for other hooks
 	const conversationRef = useRef<
 		ReturnType<typeof useConversationManager>["conversation"] | null

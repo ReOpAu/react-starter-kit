@@ -1,20 +1,20 @@
-import fs from 'fs';
-import path from 'path';
-import { getElevenLabsConfig } from './env-loader.js';
+import fs from "fs";
+import path from "path";
+import { getElevenLabsConfig } from "./env-loader.js";
 
 /**
  * URGENT: Restore original agent to its previous state
  * This reverses the changes made during testing
  */
 async function restoreOriginalAgent() {
-  try {
-    console.log('🚨 URGENT: Restoring original agent configuration...');
-    const { apiKey, agentId } = getElevenLabsConfig();
-    
-    console.log(`🎯 Target agent: ${agentId}`);
-    
-    // The original prompt without our modifications
-    const originalPrompt = `You are an intelligent address finder assistant. You help users find and select addresses using voice conversation.
+	try {
+		console.log("🚨 URGENT: Restoring original agent configuration...");
+		const { apiKey, agentId } = getElevenLabsConfig();
+
+		console.log(`🎯 Target agent: ${agentId}`);
+
+		// The original prompt without our modifications
+		const originalPrompt = `You are an intelligent address finder assistant. You help users find and select addresses using voice conversation.
 
 #### **Dynamic Context Awareness**
 
@@ -107,66 +107,84 @@ Use \`selectByOrdinal\` for ordinal responses, or \`selectSuggestion\` for other
 
 When asked for your state, use the getCurrentState() tool. Report the result clearly.`;
 
-    // Prepare the restoration payload - this should match the original exactly
-    const payload = {
-      prompt: {
-        prompt: originalPrompt,
-        llm: "gemini-2.0-flash-001",
-        temperature: 0,
-        max_tokens: -1,
-        // Using the original tool structure that was in the agent
-        tools: [] // Will be empty since original used tool_ids
-      }
-    };
-    
-    console.log('📡 Restoring original configuration...');
-    console.log(`📊 Original prompt length: ${originalPrompt.length} characters`);
-    
-    const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
-      method: 'PATCH', 
-      headers: {
-        'Content-Type': 'application/json',
-        'xi-api-key': apiKey,
-      },
-      body: JSON.stringify(payload),
-    });
-    
-    console.log(`📊 Response: ${response.status} ${response.statusText}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Restoration failed!');
-      console.error('Response body:', errorText);
-      throw new Error(`API Error: ${response.status}\\n${errorText}`);
-    }
-    
-    console.log('✅ Original agent configuration restored successfully!');
-    console.log('🔄 Verifying restoration...');
-    
-    // Download the config to verify restoration
-    const verifyResponse = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
-      headers: { 'xi-api-key': apiKey }
-    });
-    
-    if (verifyResponse.ok) {
-      const config = await verifyResponse.json();
-      const restoredPromptLength = config.conversation_config?.agent?.prompt?.prompt?.length || 0;
-      console.log(`📊 Verified prompt length: ${restoredPromptLength} characters`);
-      
-      if (Math.abs(restoredPromptLength - originalPrompt.length) < 50) {
-        console.log('✅ Restoration verified - prompt length matches original!');
-      } else {
-        console.log('⚠️ Prompt length differs from expected - manual verification needed');
-      }
-    }
-    
-    console.log('\\n🎉 Original agent has been restored to its previous state!');
-    console.log('📋 Next: Create duplicate agent properly and test only on that agent');
-    
-  } catch (error) {
-    console.error('❌ Restoration failed:', error);
-    process.exit(1);
-  }
+		// Prepare the restoration payload - this should match the original exactly
+		const payload = {
+			prompt: {
+				prompt: originalPrompt,
+				llm: "gemini-2.0-flash-001",
+				temperature: 0,
+				max_tokens: -1,
+				// Using the original tool structure that was in the agent
+				tools: [], // Will be empty since original used tool_ids
+			},
+		};
+
+		console.log("📡 Restoring original configuration...");
+		console.log(
+			`📊 Original prompt length: ${originalPrompt.length} characters`,
+		);
+
+		const response = await fetch(
+			`https://api.elevenlabs.io/v1/convai/agents/${agentId}`,
+			{
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+					"xi-api-key": apiKey,
+				},
+				body: JSON.stringify(payload),
+			},
+		);
+
+		console.log(`📊 Response: ${response.status} ${response.statusText}`);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error("❌ Restoration failed!");
+			console.error("Response body:", errorText);
+			throw new Error(`API Error: ${response.status}\\n${errorText}`);
+		}
+
+		console.log("✅ Original agent configuration restored successfully!");
+		console.log("🔄 Verifying restoration...");
+
+		// Download the config to verify restoration
+		const verifyResponse = await fetch(
+			`https://api.elevenlabs.io/v1/convai/agents/${agentId}`,
+			{
+				headers: { "xi-api-key": apiKey },
+			},
+		);
+
+		if (verifyResponse.ok) {
+			const config = await verifyResponse.json();
+			const restoredPromptLength =
+				config.conversation_config?.agent?.prompt?.prompt?.length || 0;
+			console.log(
+				`📊 Verified prompt length: ${restoredPromptLength} characters`,
+			);
+
+			if (Math.abs(restoredPromptLength - originalPrompt.length) < 50) {
+				console.log(
+					"✅ Restoration verified - prompt length matches original!",
+				);
+			} else {
+				console.log(
+					"⚠️ Prompt length differs from expected - manual verification needed",
+				);
+			}
+		}
+
+		console.log(
+			"\\n🎉 Original agent has been restored to its previous state!",
+		);
+		console.log(
+			"📋 Next: Create duplicate agent properly and test only on that agent",
+		);
+	} catch (error) {
+		console.error("❌ Restoration failed:", error);
+		process.exit(1);
+	}
 }
 
 restoreOriginalAgent();

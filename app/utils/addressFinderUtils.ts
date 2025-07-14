@@ -1,5 +1,5 @@
-import type { Suggestion } from "~/stores/addressFinderStore";
 import type { LocationIntent } from "@shared/types/location";
+import type { Suggestion } from "~/stores/addressFinderStore";
 
 /**
  * Helper function to classify intent based on what user actually selected

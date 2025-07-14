@@ -3,8 +3,8 @@ import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useCallback, useState } from "react";
 import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
-import { useApiStore } from "~/stores/apiStore";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
+import { useApiStore } from "~/stores/apiStore";
 import { useIntentStore } from "~/stores/intentStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { LocationIntent, Mode } from "~/stores/types";
@@ -21,7 +21,9 @@ export function useAddressRecall() {
 	} = useIntentStore();
 
 	const [isRecallMode, setIsRecallMode] = useState(false);
-	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(null);
+	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(
+		null,
+	);
 
 	const getPlaceSuggestionsAction = useAction(
 		api.address.getPlaceSuggestions.getPlaceSuggestions,

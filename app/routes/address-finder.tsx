@@ -14,7 +14,9 @@ export default function AddressFinder() {
 						handleClear={handlers.handleClear}
 						handleAcceptRuralAddress={handlers.handleAcceptRuralAddress}
 						handleRecallPreviousSearch={handlers.handleRecallPreviousSearch}
-						handleRecallConfirmedSelection={handlers.handleRecallConfirmedSelection}
+						handleRecallConfirmedSelection={
+							handlers.handleRecallConfirmedSelection
+						}
 						handleManualTyping={handlers.handleManualTyping}
 						shouldShowSuggestions={handlers.shouldShowSuggestions}
 						shouldShowManualForm={handlers.shouldShowManualForm}

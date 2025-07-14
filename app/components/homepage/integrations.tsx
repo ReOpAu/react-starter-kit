@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Link } from "react-router";
+import { Header } from "~/components/layout/Header";
 import { LogoIcon } from "~/components/logo";
 import {
 	Convex,
@@ -11,7 +12,6 @@ import {
 } from "~/components/logos";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
-import { Navbar } from "./navbar";
 
 export default function IntegrationsSection({
 	loaderData,
@@ -20,9 +20,9 @@ export default function IntegrationsSection({
 }) {
 	return (
 		<section id="hero">
-			<Navbar loaderData={loaderData} />
+			<Header loaderData={loaderData} />
 			<div className="bg-muted dark:bg-background py-24 md:py-32">
-				<div className="mx-auto max-w-5xl px-6 mt-[2rem]">
+				<div className="mx-auto max-w-5xl px-6 mt-8">
 					<div className="grid items-center sm:grid-cols-2">
 						<div className="dark:bg-muted/50 relative mx-auto w-fit">
 							<div className="bg-radial to-muted dark:to-background absolute inset-0 z-10 from-transparent to-75%" />

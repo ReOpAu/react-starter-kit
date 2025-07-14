@@ -46,4 +46,3 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {
 		</Card>
 	);
 };
-

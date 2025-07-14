@@ -18,7 +18,10 @@ interface AddressInputProps {
 	role?: string;
 }
 
-export const AddressInput = React.forwardRef<HTMLInputElement, AddressInputProps>(
+export const AddressInput = React.forwardRef<
+	HTMLInputElement,
+	AddressInputProps
+>(
 	(
 		{
 			value,

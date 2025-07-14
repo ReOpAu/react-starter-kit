@@ -39,7 +39,9 @@ export const PreviousConfirmedSelectionsPanel: React.FC<
 					>
 						<div>
 							<div className="font-medium">
-								{idx + 1}. {entry.selectedAddress?.displayText || entry.selectedAddress?.description}
+								{idx + 1}.{" "}
+								{entry.selectedAddress?.displayText ||
+									entry.selectedAddress?.description}
 							</div>
 							<div className="text-xs text-gray-500">
 								{new Date(entry.timestamp).toLocaleTimeString()} &middot; from "

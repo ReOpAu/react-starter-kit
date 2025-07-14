@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import {
 	HistoryPanel,
 	ManualSearchForm,
@@ -18,9 +18,9 @@ import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
 import { useIntentStore } from "~/stores/intentStore";
 import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
+import type { Suggestion } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
 import { getIntentColor } from "~/utils/addressFinderUtils";
-import type { Suggestion } from "~/stores/types";
 
 interface AddressFinderUIProps {
 	// Handlers from the brain component
@@ -32,7 +32,7 @@ interface AddressFinderUIProps {
 	handleRecallPreviousSearch: (entry: any) => void;
 	handleRecallConfirmedSelection: (entry: any) => void;
 	handleManualTyping: (query: string) => void;
-	
+
 	// Computed state
 	shouldShowSuggestions: boolean;
 	shouldShowManualForm: boolean;
@@ -40,7 +40,7 @@ interface AddressFinderUIProps {
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
 	autoCorrection: any;
-	
+
 	// Validation state
 	isValidating: boolean;
 	validationError: string | null;
@@ -71,11 +71,16 @@ export function AddressFinderUI({
 	const { suggestions, isLoading, error } = apiResults;
 	const isError = Boolean(error);
 	const { searchQuery, selectedResult, currentIntent } = useIntentStore();
-	
+
 	// Debug: Log when currentIntent changes in UI
 	const prevIntentRef = useRef(currentIntent);
 	if (prevIntentRef.current !== currentIntent) {
-		console.log('🎯 UI Badge Update: currentIntent changed from', prevIntentRef.current, 'to', currentIntent);
+		console.log(
+			"🎯 UI Badge Update: currentIntent changed from",
+			prevIntentRef.current,
+			"to",
+			currentIntent,
+		);
 		prevIntentRef.current = currentIntent;
 	}
 	const { isRecording, isVoiceActive, agentRequestedManual } = useUIStore();
@@ -94,7 +99,7 @@ export function AddressFinderUI({
 		<div className="container mx-auto py-8 px-4 max-w-4xl">
 			{/* Modal overlays */}
 			{showConfirmedSelections && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 					<PreviousConfirmedSelectionsPanel
 						onRecall={(entry) => {
 							handleRecallConfirmedSelection(entry);
@@ -105,7 +110,7 @@ export function AddressFinderUI({
 				</div>
 			)}
 			{showPreviousSearches && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 					<PreviousSearchesPanel
 						onRecall={(entry) => {
 							handleRecallPreviousSearch(entry);
@@ -338,11 +343,13 @@ export function AddressFinderUI({
 
 				{/* Enhanced Low Confidence Result with Intelligent Analysis */}
 				{shouldShowSuggestions && showLowConfidence && (
-					<Card className={
-						autoCorrection?.suburbChanged 
-							? "border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
-							: "border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50"
-					}>
+					<Card
+						className={
+							autoCorrection?.suburbChanged
+								? "border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
+								: "border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50"
+						}
+					>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								{autoCorrection?.suburbChanged ? (
@@ -373,14 +380,20 @@ export function AddressFinderUI({
 						</CardHeader>
 						<CardContent className="space-y-4">
 							{/* Input vs Result Comparison */}
-							<div className={`bg-white p-4 rounded-lg border ${
-								autoCorrection?.suburbChanged ? "border-blue-200" : "border-yellow-200"
-							}`}>
+							<div
+								className={`bg-white p-4 rounded-lg border ${
+									autoCorrection?.suburbChanged
+										? "border-blue-200"
+										: "border-yellow-200"
+								}`}
+							>
 								{autoCorrection?.suburbChanged ? (
 									<div className="space-y-3">
 										<div className="flex items-center gap-2 mb-3">
 											<span className="text-lg">🏘️</span>
-											<h3 className="font-semibold text-blue-800">Suburb Correction Detected</h3>
+											<h3 className="font-semibold text-blue-800">
+												Suburb Correction Detected
+											</h3>
 										</div>
 										<div className="grid md:grid-cols-2 gap-4">
 											<div>
@@ -391,7 +404,8 @@ export function AddressFinderUI({
 													"{searchQuery}"
 												</p>
 												<p className="text-xs text-red-600 mt-1">
-													→ Suburb: <strong>{autoCorrection.originalSuburb}</strong>
+													→ Suburb:{" "}
+													<strong>{autoCorrection.originalSuburb}</strong>
 												</p>
 											</div>
 											<div>
@@ -406,15 +420,19 @@ export function AddressFinderUI({
 													{suggestions[0]?.description}
 												</button>
 												<p className="text-xs text-green-600 mt-1">
-													→ Suburb: <strong>{autoCorrection.correctedSuburb}</strong>
+													→ Suburb:{" "}
+													<strong>{autoCorrection.correctedSuburb}</strong>
 												</p>
 											</div>
 										</div>
 										<div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
 											<p className="text-sm text-blue-800">
-												<strong>🏠 Good news!</strong> I found the correct address. 
-												<strong> {autoCorrection.originalSuburb}</strong> was corrected to 
-												<strong> {autoCorrection.correctedSuburb}</strong> - the actual suburb where this address is located.
+												<strong>🏠 Good news!</strong> I found the correct
+												address.
+												<strong> {autoCorrection.originalSuburb}</strong> was
+												corrected to
+												<strong> {autoCorrection.correctedSuburb}</strong> - the
+												actual suburb where this address is located.
 											</p>
 										</div>
 									</div>

@@ -11,7 +11,7 @@ interface AddressFinderDebugProps {
 	// Handlers from brain component
 	handleRequestAgentState: () => void;
 	handleClear: (source: "user" | "agent") => void;
-	
+
 	// Debug state
 	agentStateForDebug: any;
 	sessionToken: string | null;

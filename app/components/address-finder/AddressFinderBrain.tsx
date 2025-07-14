@@ -2,13 +2,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
 import { useActionHandler } from "~/hooks/useActionHandler";
 import { useAddressAutoSelection } from "~/hooks/useAddressAutoSelection";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressRecall } from "~/hooks/useAddressRecall";
 import { useAddressSession } from "~/hooks/useAddressSession";
-import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
 import { useConversationLifecycle } from "~/hooks/useConversationLifecycle";
+import { useVelocityIntentClassification } from "~/hooks/useVelocityIntentClassification";
 import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { useApiStore } from "~/stores/apiStore";
@@ -22,7 +23,6 @@ import {
 	classifyIntent,
 	classifySelectedResult,
 } from "~/utils/addressFinderUtils";
-import { useVelocityIntentClassification } from "~/hooks/useVelocityIntentClassification";
 
 // Constants
 const DEBOUNCE_DELAY = 300;
@@ -268,11 +268,16 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		searchQuery || "",
 		currentIntent || "general",
 		{
-			enabled: !isRecording && !isRecallMode && !selectedResult && !!searchQuery && searchQuery.length >= 2,
+			enabled:
+				!isRecording &&
+				!isRecallMode &&
+				!selectedResult &&
+				!!searchQuery &&
+				searchQuery.length >= 2,
 			velocityChangeThreshold: 2.0,
 			minBaselineKeystrokes: 3,
 			maxIntervalForBaseline: 1000,
-		}
+		},
 	);
 
 	// Apply velocity-based intent classification
@@ -280,12 +285,22 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		if (shouldClassifyByVelocity && velocityDetectedIntent) {
 			const storeIntent = useIntentStore.getState().currentIntent;
 			if (velocityDetectedIntent !== storeIntent) {
-				log(`🚀 Velocity-based classification: "${searchQuery}" → "${velocityDetectedIntent}" (was: "${storeIntent}")`);
-				console.log('🏪 Before setCurrentIntent - store intent:', storeIntent, 'new intent:', velocityDetectedIntent);
+				log(
+					`🚀 Velocity-based classification: "${searchQuery}" → "${velocityDetectedIntent}" (was: "${storeIntent}")`,
+				);
+				console.log(
+					"🏪 Before setCurrentIntent - store intent:",
+					storeIntent,
+					"new intent:",
+					velocityDetectedIntent,
+				);
 				setCurrentIntent(velocityDetectedIntent);
 				// Force a delay to check if the store actually updated
 				setTimeout(() => {
-					console.log('🏪 After setCurrentIntent (delayed) - store intent:', useIntentStore.getState().currentIntent);
+					console.log(
+						"🏪 After setCurrentIntent (delayed) - store intent:",
+						useIntentStore.getState().currentIntent,
+					);
 				}, 50);
 			}
 		}

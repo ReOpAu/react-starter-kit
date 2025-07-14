@@ -152,9 +152,9 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 				setIsAddressSelected(false);
 
 				// Sync typing with global Brain state for intent updates
-			onTyping?.(query);
+				onTyping?.(query);
 
-			// Debounced internal query update for autocomplete
+				// Debounced internal query update for autocomplete
 				const timer = setTimeout(() => {
 					if (meetsMinimum) {
 						setInternalQuery(query);

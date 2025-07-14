@@ -9,7 +9,12 @@ export interface ValidationTestCase {
 	actualSuburb?: string;
 	actualStreet?: string;
 	postcode?: string;
-	category: "invalid_suburb" | "invalid_street" | "transcription_error" | "borderline" | "valid_address";
+	category:
+		| "invalid_suburb"
+		| "invalid_street"
+		| "transcription_error"
+		| "borderline"
+		| "valid_address";
 	transcriptionVariations?: string[];
 }
 
@@ -33,7 +38,8 @@ export const validationTestCases: ValidationTestCase[] = [
 		id: "collins_richmond",
 		input: "999 Collins Street, Richmond VIC 3121",
 		expected: "SHOULD_FAIL",
-		reason: "Collins Street doesn't extend into Richmond - it's in Melbourne CBD",
+		reason:
+			"Collins Street doesn't extend into Richmond - it's in Melbourne CBD",
 		actualSuburb: "Melbourne",
 		postcode: "3000",
 		category: "invalid_suburb",
@@ -41,7 +47,7 @@ export const validationTestCases: ValidationTestCase[] = [
 	{
 		id: "chapel_st_kilda",
 		input: "500 Chapel Street, St Kilda VIC 3182",
-		expected: "SHOULD_FAIL", 
+		expected: "SHOULD_FAIL",
 		reason: "Chapel Street runs through Prahran/South Yarra, not St Kilda",
 		actualSuburb: "Prahran",
 		postcode: "3181",
@@ -78,7 +84,8 @@ export const validationTestCases: ValidationTestCase[] = [
 		id: "chapel_windsor",
 		input: "789 Chapel Street, Windsor VIC 3181",
 		expected: "SHOULD_FAIL",
-		reason: "Chapel Street in Windsor area should be Windsor postcode 3181, but Chapel Street proper is Prahran",
+		reason:
+			"Chapel Street in Windsor area should be Windsor postcode 3181, but Chapel Street proper is Prahran",
 		category: "invalid_suburb",
 	},
 	{
@@ -96,14 +103,16 @@ export const validationTestCases: ValidationTestCase[] = [
 		id: "high_street_kew_armadale",
 		input: "123 High Street, Armadale VIC 3143",
 		expected: "SHOULD_FAIL",
-		reason: "High Street 123 would be in different suburb - High Street spans many suburbs",
+		reason:
+			"High Street 123 would be in different suburb - High Street spans many suburbs",
 		category: "invalid_suburb",
 	},
 	{
 		id: "station_street_box_hill_fairfield",
-		input: "456 Station Street, Fairfield VIC 3078", 
+		input: "456 Station Street, Fairfield VIC 3078",
 		expected: "SHOULD_FAIL",
-		reason: "Station Street exists in multiple suburbs but 456 wouldn't be in Fairfield",
+		reason:
+			"Station Street exists in multiple suburbs but 456 wouldn't be in Fairfield",
 		category: "invalid_suburb",
 	},
 	{
@@ -223,7 +232,7 @@ export const validationTestCases: ValidationTestCase[] = [
 		category: "transcription_error",
 		transcriptionVariations: [
 			"18 Chapel Street, Prahran VIC 3181", // Likely intended
-			"8 Chapel Street, Prahran VIC 3181",  // Alternative mishearing
+			"8 Chapel Street, Prahran VIC 3181", // Alternative mishearing
 		],
 	},
 	{
@@ -261,7 +270,7 @@ export const validationTestCases: ValidationTestCase[] = [
 		category: "valid_address",
 	},
 	{
-		id: "church_richmond_correct", 
+		id: "church_richmond_correct",
 		input: "234 Church Street, Richmond VIC 3121",
 		expected: "SHOULD_PASS",
 		reason: "Church Street is a major Richmond street",
@@ -301,12 +310,13 @@ export const validationTestCases: ValidationTestCase[] = [
 		id: "chapel_south_yarra_border",
 		input: "600 Chapel Street, South Yarra VIC 3141",
 		expected: "BORDERLINE",
-		reason: "Chapel Street does run through South Yarra, but exact numbers may vary",
+		reason:
+			"Chapel Street does run through South Yarra, but exact numbers may vary",
 		category: "borderline",
 	},
 	{
 		id: "boundary_road_multi_suburb",
-		input: "1 Boundary Road, Canterbury VIC 3124", 
+		input: "1 Boundary Road, Canterbury VIC 3124",
 		expected: "BORDERLINE",
 		reason: "Boundary roads often span multiple postcodes/suburbs",
 		category: "borderline",
@@ -321,7 +331,7 @@ export const validationTestCases: ValidationTestCase[] = [
 	{
 		id: "station_street_generic",
 		input: "12 Station Street, Preston VIC 3072",
-		expected: "BORDERLINE", 
+		expected: "BORDERLINE",
 		reason: "Station Street exists in many suburbs near train stations",
 		category: "borderline",
 	},
@@ -402,19 +412,15 @@ export const validationTestCases: ValidationTestCase[] = [
 		expected: "SHOULD_PASS", // Both could be valid
 		reason: "Control case - both 14 and 40 Collins could exist",
 		category: "transcription_error",
-		transcriptionVariations: [
-			"14 Collins Street, Melbourne VIC 3000",
-		],
+		transcriptionVariations: ["14 Collins Street, Melbourne VIC 3000"],
 	},
 	{
 		id: "fifty_vs_fifteen",
-		input: "50 Chapel Street, Prahran VIC 3181", // "fifteen" misheard as "fifty"  
+		input: "50 Chapel Street, Prahran VIC 3181", // "fifteen" misheard as "fifty"
 		expected: "SHOULD_PASS",
 		reason: "Control case - both 15 and 50 Chapel could exist",
 		category: "transcription_error",
-		transcriptionVariations: [
-			"15 Chapel Street, Prahran VIC 3181",
-		],
+		transcriptionVariations: ["15 Chapel Street, Prahran VIC 3181"],
 	},
 ];
 
@@ -423,13 +429,27 @@ export const transcriptionErrorPatterns = [
 	// === MELBOURNE SUBURB CONFUSION (High Priority) ===
 	{
 		correct: "Canterbury",
-		commonErrors: ["Camberwell", "Cantabury", "Cantebury", "Canterbury", "Canbury", "Kanterbury"],
+		commonErrors: [
+			"Camberwell",
+			"Cantabury",
+			"Cantebury",
+			"Canterbury",
+			"Canbury",
+			"Kanterbury",
+		],
 		similarity: "high",
 		frequency: "very_high", // This is THE critical error case
 	},
 	{
-		correct: "Camberwell", 
-		commonErrors: ["Canterbury", "Campbell", "Camber well", "Camberwell", "Kamberwll", "Camberwell"],
+		correct: "Camberwell",
+		commonErrors: [
+			"Canterbury",
+			"Campbell",
+			"Camber well",
+			"Camberwell",
+			"Kamberwll",
+			"Camberwell",
+		],
 		similarity: "high",
 		frequency: "very_high",
 	},
@@ -441,7 +461,13 @@ export const transcriptionErrorPatterns = [
 	},
 	{
 		correct: "South Yarra",
-		commonErrors: ["Southyarra", "South Yara", "South Yera", "South Yoora", "South Yarra"],
+		commonErrors: [
+			"Southyarra",
+			"South Yara",
+			"South Yera",
+			"South Yoora",
+			"South Yarra",
+		],
 		similarity: "medium",
 		frequency: "high",
 	},
@@ -465,7 +491,13 @@ export const transcriptionErrorPatterns = [
 	},
 	{
 		correct: "St Kilda",
-		commonErrors: ["Saint Kilda", "St Kilda", "St Kilda", "Snt Kilda", "St Killda"],
+		commonErrors: [
+			"Saint Kilda",
+			"St Kilda",
+			"St Kilda",
+			"Snt Kilda",
+			"St Killda",
+		],
 		similarity: "high",
 		frequency: "high",
 	},
@@ -491,7 +523,14 @@ export const transcriptionErrorPatterns = [
 	},
 	{
 		correct: "Crescent",
-		commonErrors: ["Cres", "Cresent", "crescant", "cresant", "Crescent", "Cresant"],
+		commonErrors: [
+			"Cres",
+			"Cresent",
+			"crescant",
+			"cresant",
+			"Crescent",
+			"Cresant",
+		],
 		similarity: "high",
 		frequency: "very_high",
 	},
@@ -608,7 +647,7 @@ export const transcriptionErrorPatterns = [
 		frequency: "very_high",
 	},
 	{
-		correct: "3126", // Camberwell  
+		correct: "3126", // Camberwell
 		commonErrors: ["3124", "3106", "3146", "three one two six", "3216"],
 		similarity: "low",
 		frequency: "very_high",
@@ -622,12 +661,18 @@ export const transcriptionErrorPatterns = [
 	{
 		correct: "3181", // Prahran
 		commonErrors: ["3182", "3180", "3108", "three one eight one", "3118"],
-		similarity: "low", 
+		similarity: "low",
 		frequency: "high",
 	},
 	{
 		correct: "3000", // Melbourne CBD
-		commonErrors: ["3001", "3002", "three thousand", "three zero zero zero", "300"],
+		commonErrors: [
+			"3001",
+			"3002",
+			"three thousand",
+			"three zero zero zero",
+			"300",
+		],
 		similarity: "low",
 		frequency: "medium",
 	},
@@ -740,7 +785,7 @@ export const transcriptionErrorPatterns = [
 // Generate variations of an address with common transcription errors
 export function generateTranscriptionVariations(address: string): string[] {
 	const variations: string[] = [];
-	
+
 	for (const pattern of transcriptionErrorPatterns) {
 		for (const error of pattern.commonErrors) {
 			if (address.includes(pattern.correct)) {
@@ -748,15 +793,23 @@ export function generateTranscriptionVariations(address: string): string[] {
 			}
 		}
 	}
-	
+
 	return [...new Set(variations)]; // Remove duplicates
 }
 
 // Test case categories for organized testing
 export const testCategories = {
-	invalid_suburb: validationTestCases.filter(t => t.category === "invalid_suburb"),
-	invalid_street: validationTestCases.filter(t => t.category === "invalid_street"), 
-	transcription_error: validationTestCases.filter(t => t.category === "transcription_error"),
-	borderline: validationTestCases.filter(t => t.category === "borderline"),
-	valid_address: validationTestCases.filter(t => t.category === "valid_address"),
+	invalid_suburb: validationTestCases.filter(
+		(t) => t.category === "invalid_suburb",
+	),
+	invalid_street: validationTestCases.filter(
+		(t) => t.category === "invalid_street",
+	),
+	transcription_error: validationTestCases.filter(
+		(t) => t.category === "transcription_error",
+	),
+	borderline: validationTestCases.filter((t) => t.category === "borderline"),
+	valid_address: validationTestCases.filter(
+		(t) => t.category === "valid_address",
+	),
 };
