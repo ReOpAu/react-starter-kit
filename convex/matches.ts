@@ -131,6 +131,7 @@ export const findMatches = query({
     options: v.optional(v.object({
       minScore: v.optional(v.number()),
       limit: v.optional(v.number()),
+      offset: v.optional(v.number()),
       includeScoreBreakdown: v.optional(v.boolean()),
     })),
   },
@@ -227,8 +228,23 @@ export const findMatches = query({
     }
     scoredMatches = scoredMatches.filter(match => match.score >= (options?.minScore || 0));
     scoredMatches.sort((a, b) => b.score - a.score);
-    if (options?.limit) scoredMatches = scoredMatches.slice(0, options.limit);
-    return scoredMatches;
+    
+    // Apply pagination with offset and limit
+    const totalCount = scoredMatches.length;
+    const offset = options?.offset || 0;
+    const limit = options?.limit || 50;
+    
+    const paginatedMatches = scoredMatches.slice(offset, offset + limit);
+    
+    return {
+      matches: paginatedMatches,
+      pagination: {
+        totalCount,
+        offset,
+        limit,
+        hasMore: offset + limit < totalCount,
+      }
+    };
   },
 });
 

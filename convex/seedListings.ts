@@ -369,8 +369,8 @@ export const deleteSampleData = action({
 		let deletedUsers = 0;
 
 		// Delete all sample listings
-		const allListings = await ctx.runQuery(api.listings.listListings, {});
-		for (const listing of allListings) {
+		const listingsResult = await ctx.runQuery(api.listings.listListings, {});
+		for (const listing of listingsResult.listings) {
 			if (listing.sample) {
 				await ctx.runMutation(api.listings.deleteListing, { id: listing._id });
 				deletedListings++;
@@ -399,10 +399,10 @@ export const deleteSampleData = action({
 export const deleteAllListings = action({
 	args: {},
 	handler: async (ctx) => {
-		const allListings = await ctx.runQuery(api.listings.listListings, {});
+		const listingsResult = await ctx.runQuery(api.listings.listListings, {});
 		let deletedCount = 0;
 
-		for (const listing of allListings) {
+		for (const listing of listingsResult.listings) {
 			await ctx.runMutation(api.listings.deleteListing, { id: listing._id });
 			deletedCount++;
 		}

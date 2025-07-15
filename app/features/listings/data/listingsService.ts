@@ -12,20 +12,27 @@ interface UseListingsArgs {
 }
 
 // Fetch listings with filters (type, state, suburb, pagination)
-export function useListings({ listingType, state, suburb, page = 1, pageSize = 10 }: UseListingsArgs) {
+export function useListings({ listingType, state, suburb, page = 1, pageSize = 12 }: UseListingsArgs) {
   // Convex query expects filters as args
   const result = useQuery(api.listings.listListings, {
     listingType: listingType === "all" ? undefined : listingType,
     state: state || undefined,
     suburb: suburb || undefined,
-    // Pagination can be added to backend and here if needed
+    page,
+    pageSize,
   });
   
-  const listings = result || [];
   const isLoading = result === undefined;
   
-  // TODO: Add pagination support if backend supports it
-  return { listings, totalPages: 1, isLoading };
+  return {
+    listings: result?.listings || [],
+    totalPages: result?.pagination.totalPages || 1,
+    totalCount: result?.pagination.totalCount || 0,
+    currentPage: result?.pagination.currentPage || page,
+    hasNextPage: result?.pagination.hasNextPage || false,
+    hasPreviousPage: result?.pagination.hasPreviousPage || false,
+    isLoading,
+  };
 }
 
 // Fetch a single listing by ID
@@ -35,7 +42,35 @@ export function useListingById(id: string) {
 
 // Fetch matches for a listing (by ID)
 export function useMatchesForListing(listingId: string, options = {}) {
-  return useQuery(api.matches.findMatches, { listingId: listingId as Id<"listings">, options });
+  const result = useQuery(api.matches.findMatches, { listingId: listingId as Id<"listings">, options });
+  
+  // Handle new paginated structure
+  if (result && 'matches' in result) {
+    return {
+      matches: result.matches,
+      totalCount: result.pagination.totalCount,
+      hasMore: result.pagination.hasMore,
+      isLoading: false,
+    };
+  }
+  
+  // Handle loading state
+  if (result === undefined) {
+    return {
+      matches: undefined,
+      totalCount: 0,
+      hasMore: false,
+      isLoading: true,
+    };
+  }
+  
+  // Fallback for old structure (backward compatibility)
+  return {
+    matches: result,
+    totalCount: Array.isArray(result) ? result.length : 0,
+    hasMore: false,
+    isLoading: false,
+  };
 }
 
 // Fetch match details between two specific listings (more efficient than client-side filtering)

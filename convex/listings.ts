@@ -115,8 +115,10 @@ export const listListings = query({
     listingType: v.optional(v.union(v.literal("buyer"), v.literal("seller"))),
     state: v.optional(v.string()),
     suburb: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
-  handler: async (ctx, { listingType, state, suburb }) => {
+  handler: async (ctx, { listingType, state, suburb, page = 1, pageSize = 12 }) => {
     let results;
     if (listingType) {
       results = await ctx.db
@@ -128,7 +130,7 @@ export const listListings = query({
     }
     
     // Debug: log filter inputs and total count
-    console.log("Filter inputs:", { listingType, state, suburb, totalListings: results.length });
+    console.log("Filter inputs:", { listingType, state, suburb, page, pageSize, totalListings: results.length });
     
     if (state) {
       // Case insensitive state matching
@@ -149,22 +151,63 @@ export const listListings = query({
       console.log(`Suburb filter: ${beforeSuburbFilter} -> ${results.length}`);
     }
     
-    console.log("Final results:", results.length);
-    return results;
+    // Calculate pagination
+    const totalCount = results.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    
+    // Apply pagination
+    const paginatedResults = results.slice(startIndex, endIndex);
+    
+    console.log(`Pagination: page ${page}/${totalPages}, showing ${paginatedResults.length}/${totalCount} results`);
+    
+    return {
+      listings: paginatedResults,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        pageSize,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      }
+    };
   }
 });
 
-// Debug query to see all listings
+// Debug query to see all listings with pagination
 export const getAllListingsDebug = query({
-  args: {},
-  handler: async (ctx) => {
-    const listings = await ctx.db.query("listings").collect();
-    return listings.map(l => ({ 
-      id: l._id, 
-      listingType: l.listingType, 
-      state: l.state, 
-      suburb: l.suburb 
-    }));
+  args: {
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, { page = 1, pageSize = 50 }) => {
+    const allListings = await ctx.db.query("listings").collect();
+    
+    // Calculate pagination
+    const totalCount = allListings.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    
+    // Apply pagination
+    const paginatedListings = allListings.slice(startIndex, endIndex);
+    
+    return {
+      listings: paginatedListings.map(l => ({ 
+        id: l._id, 
+        listingType: l.listingType, 
+        state: l.state, 
+        suburb: l.suburb 
+      })),
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        pageSize,
+      }
+    };
   }
 }); 
 

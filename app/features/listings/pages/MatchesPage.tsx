@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 import { useParams } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -15,17 +16,64 @@ import { MatchScore } from "../components/MatchScore";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { generateListingUrl, generateMatchDetailUrl, parseListingParams } from "../utils/urlHelpers";
 import { calculateDistance, formatDistance, isBuyerListing } from "../utils";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from "../../../components/ui/pagination";
+
+// Helper function for pagination (reused from ListingsGrid)
+function generatePaginationItems(currentPage: number, totalPages: number) {
+	const items: Array<{ type: 'page' | 'ellipsis'; page?: number }> = [];
+	
+	if (totalPages > 0) {
+		items.push({ type: 'page', page: 1 });
+	}
+	
+	const startPage = Math.max(2, currentPage - 1);
+	const endPage = Math.min(totalPages - 1, currentPage + 1);
+	
+	if (startPage > 2) {
+		items.push({ type: 'ellipsis' });
+	}
+	
+	for (let page = startPage; page <= endPage; page++) {
+		if (page !== 1 && page !== totalPages) {
+			items.push({ type: 'page', page });
+		}
+	}
+	
+	if (endPage < totalPages - 1) {
+		items.push({ type: 'ellipsis' });
+	}
+	
+	if (totalPages > 1) {
+		items.push({ type: 'page', page: totalPages });
+	}
+	
+	return items;
+}
 
 const MatchesPage: React.FC = () => {
 	const params = useParams();
 	const { id: listingId } = parseListingParams(params);
+	const [currentPage, setCurrentPage] = useState(1);
+	const pageSize = 12; // 12 matches per page
 
 	const listing = useListingById(listingId!);
-	const matches = useMatchesForListing(listingId!, {
+	const { matches, totalCount, hasMore, isLoading: matchesLoading } = useMatchesForListing(listingId!, {
 		minScore: 0,
-		limit: 50,
+		limit: pageSize,
+		offset: (currentPage - 1) * pageSize,
 		includeScoreBreakdown: true
 	});
+
+	// Calculate total pages for pagination
+	const totalPages = Math.ceil(totalCount / pageSize);
 
 
 	if (!listing) {
@@ -99,20 +147,31 @@ const MatchesPage: React.FC = () => {
 			{/* Matches Table */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Matching Properties</CardTitle>
-					{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
-						<p className="text-sm text-gray-600 mt-1">
-							Showing matches within {listing.radiusKm}km radius
-						</p>
-					)}
-					{listing.listingType === "seller" && (
-						<p className="text-sm text-gray-600 mt-1">
-							Street buyer matches are filtered by their search radius
-						</p>
-					)}
+					<div className="flex justify-between items-start">
+						<div>
+							<CardTitle>Matching Properties</CardTitle>
+							{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+								<p className="text-sm text-gray-600 mt-1">
+									Showing matches within {listing.radiusKm}km radius
+								</p>
+							)}
+							{listing.listingType === "seller" && (
+								<p className="text-sm text-gray-600 mt-1">
+									Street buyer matches are filtered by their search radius
+								</p>
+							)}
+						</div>
+						{!matchesLoading && totalCount > 0 && (
+							<div className="text-sm text-gray-500">
+								Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount} matches
+							</div>
+						)}
+					</div>
 				</CardHeader>
 				<CardContent>
-					{!matches || matches.length === 0 ? (
+					{matchesLoading ? (
+						<div className="text-center py-8">Loading matches...</div>
+					) : !matches || matches.length === 0 ? (
 						<Alert>
 							<AlertDescription>No matches found for this listing.</AlertDescription>
 						</Alert>
@@ -220,6 +279,66 @@ const MatchesPage: React.FC = () => {
 								))}
 							</TableBody>
 						</Table>
+					)}
+					
+					{/* Pagination Controls */}
+					{!matchesLoading && matches && matches.length > 0 && totalPages > 1 && (
+						<div className="mt-6">
+							<Pagination>
+								<PaginationContent>
+									<PaginationItem>
+										<PaginationPrevious 
+											href="#"
+											onClick={(e) => {
+												e.preventDefault();
+												if (currentPage > 1) {
+													setCurrentPage(currentPage - 1);
+												}
+											}}
+											className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+										/>
+									</PaginationItem>
+									
+									{generatePaginationItems(currentPage, totalPages).map((item, index) => (
+										<PaginationItem key={item.type === 'page' ? `page-${item.page}` : `ellipsis-${index}`}>
+											{item.type === 'page' ? (
+												<PaginationLink
+													href="#"
+													onClick={(e) => {
+														e.preventDefault();
+														if (item.page) {
+															setCurrentPage(item.page);
+														}
+													}}
+													isActive={item.page === currentPage}
+													className={item.page === currentPage ? 
+														"bg-primary text-primary-foreground hover:bg-primary/90 font-bold ring-2 ring-primary/20 shadow-md" : 
+														""
+													}
+												>
+													{item.page}
+												</PaginationLink>
+											) : (
+												<PaginationEllipsis />
+											)}
+										</PaginationItem>
+									))}
+									
+									<PaginationItem>
+										<PaginationNext 
+											href="#"
+											onClick={(e) => {
+												e.preventDefault();
+												if (currentPage < totalPages) {
+													setCurrentPage(currentPage + 1);
+												}
+											}}
+											className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+										/>
+									</PaginationItem>
+								</PaginationContent>
+							</Pagination>
+						</div>
 					)}
 				</CardContent>
 			</Card>
