@@ -5,6 +5,7 @@ import { ListingFullCard } from "../components/ListingFullCard";
 import { ListingActions } from "../components/ListingActions";
 import { CampaignCountdown } from "../components/CampaignCountdown";
 import { MatchCard } from "../components/MatchCard";
+import { MicroNavigation } from "../components/MicroNavigation";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
@@ -53,17 +54,26 @@ const ListingDetailPage: React.FC = () => {
               Back to Listings
             </Link>
           </Button>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Link to="/listings" className="hover:text-gray-700">Listings</Link>
-            <span>/</span>
-            <Link to={`/listings/${state?.toLowerCase()}`} className="hover:text-gray-700">{state}</Link>
-            <span>/</span>
-            <Link to={`/listings/${state?.toLowerCase()}/${type?.toLowerCase()}`} className="hover:text-gray-700">{type}</Link>
-            <span>/</span>
-            <Link to={generateSuburbUrl(state || '', type || '', suburb || '')} className="hover:text-gray-700">{suburb}</Link>
-            <span>/</span>
-            <span>{listing.headline}</span>
-          </div>
+          <MicroNavigation 
+            paths={[
+              {
+                label: state?.toUpperCase() || "",
+                href: `/listings/${state?.toLowerCase()}`,
+              },
+              {
+                label: `${type?.charAt(0).toUpperCase() + type?.slice(1)}`,
+                href: `/listings/${state?.toLowerCase()}/${type?.toLowerCase()}`,
+              },
+              {
+                label: suburb?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || "",
+                href: generateSuburbUrl(state || '', type || '', suburb || ''),
+              },
+              {
+                label: listing.headline,
+                href: `#`,
+              },
+            ]} 
+          />
         </div>
 
         {/* Main content area */}
