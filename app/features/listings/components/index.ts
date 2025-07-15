@@ -20,3 +20,5 @@ export * from "./ComparisonMap";
 export * from "./QuickViewButton";
 export * from "./ViewOnDomainButton";
 export * from "./ViewOnRealEstateButton";
+export * from "./forms";
+export * from "./admin";

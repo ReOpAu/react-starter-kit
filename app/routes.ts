@@ -27,6 +27,15 @@ export default [
 	route("listings/:state/:type/:suburb/:id", "features/listings/pages/ListingDetailPage.tsx"),
 	route("listings/:state/:type/:suburb/:id/matches", "features/listings/pages/MatchesPage.tsx"),
 	route("listings/:state/:type/:suburb/:id/matches/:matchId", "features/listings/pages/MatchDetailPage.tsx"),
+	// User listings management routes
+	route("listings/create", "features/listings/pages/CreateListingPage.tsx"),
+	route("listings/edit/:id", "features/listings/pages/EditListingPage.tsx"),
+	route("listings/my-listings", "features/listings/pages/MyListingsPage.tsx"),
+	// Admin routes
+	route("admin", "routes/admin/index.tsx"),
+	route("admin/listings", "routes/admin/listings/index.tsx"),
+	route("admin/listings/create", "routes/admin/listings/create.tsx"),
+	route("admin/listings/edit/:id", "routes/admin/listings/edit/$id.tsx"),
 	layout("routes/dashboard/layout.tsx", [
 		route("dashboard", "routes/dashboard/index.tsx"),
 		route("dashboard/chat", "routes/dashboard/chat.tsx"),
