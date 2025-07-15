@@ -23,6 +23,7 @@ export default function AddressFinder() {
 						shouldShowSelectedResult={handlers.shouldShowSelectedResult}
 						shouldShowValidationStatus={handlers.shouldShowValidationStatus}
 						showLowConfidence={handlers.showLowConfidence}
+						showingOptionsAfterConfirmation={handlers.showingOptionsAfterConfirmation}
 						autoCorrection={handlers.autoCorrection}
 						isValidating={handlers.isValidating}
 						validationError={handlers.validationError}

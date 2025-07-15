@@ -89,7 +89,21 @@ export function useAddressFinderClientTools(
 							`🔬 Intent is "address", using validateThenEnrichAddress flow for agent.`,
 						);
 
-						// Wrap API call with retry logic
+						// First, get multiple suggestions to preserve options for "show options again"
+						const multipleResultsCall = await withRetry(
+							() =>
+								getPlaceSuggestionsAction({
+									query,
+									intent: "general", // Use general to get multiple options
+									isAutocomplete: true,
+									sessionToken: getSessionToken(),
+								}),
+							API_RETRY_CONFIG,
+							`multiple suggestions for "${query}"`,
+						);
+						
+
+						// Then, validate the top result for address intent
 						const validationResult = await withRetry(
 							() =>
 								getPlaceSuggestionsAction({
@@ -142,18 +156,25 @@ export function useAddressFinderClientTools(
 								structuredFormatting: suggestion.structuredFormatting,
 							};
 
+							// Store all suggestions in cache to preserve options for "show options again"
+							const allSuggestions = (multipleResultsCall.success && multipleResultsCall.result?.success && multipleResultsCall.result.suggestions)
+								? multipleResultsCall.result.suggestions 
+								: [validatedSuggestion];
+							
 							queryClient.setQueryData(
 								["addressSearch", query],
-								[validatedSuggestion],
+								allSuggestions,
 							);
 							setAgentLastSearchQuery(query);
 							setActiveSearch({ query, source: "voice" });
 
+							log(`🔧 Stored ${allSuggestions.length} suggestions in cache for potential "show options again"`);
+
 							return JSON.stringify({
 								status: "validated",
-								suggestions: [validatedSuggestion],
-								message:
-									"Address was successfully validated by the system and is ready for selection.",
+								count: 1,
+								message: "Address was successfully validated and is now displayed on screen for selection.",
+								note: "Validated address is displayed visually - do not read it aloud"
 							});
 						}
 						const errorMessage = validation.success
@@ -224,8 +245,13 @@ export function useAddressFinderClientTools(
 						// Update the main search query in the "Brain" to make the UI display these results.
 						setActiveSearch({ query, source: "voice" });
 
-						// Return the suggestions to the agent
-						return JSON.stringify(result.suggestions);
+						// Return summary to agent (DO NOT return full suggestions to prevent reading aloud)
+						return JSON.stringify({
+							status: "suggestions_available",
+							count: result.suggestions.length,
+							message: `Found ${result.suggestions.length} address options. They are now displayed on screen for you to choose from.`,
+							note: "Suggestions are displayed visually - do not read them aloud"
+						});
 					}
 
 					log("🔧 Search returned no results or failed.");
@@ -261,14 +287,13 @@ export function useAddressFinderClientTools(
 				});
 
 				return JSON.stringify({
-					suggestions: suggestions,
 					count: suggestions.length,
 					source: suggestions.length > 0 ? "unified" : "none",
 					mode: isRecordingFromState ? "conversation" : "manual",
-					availableArrays: {
-						unified: suggestions.length,
-						note: "single source of truth via React Query",
-					},
+					message: suggestions.length > 0 
+						? `${suggestions.length} address options are available on screen`
+						: "No address suggestions currently available",
+					note: "Suggestions are displayed visually - do not read them aloud"
 				});
 			},
 
@@ -648,15 +673,15 @@ export function useAddressFinderClientTools(
 					index = Number.parseInt(lowerOrdinal, 10) - 1; // Convert to 0-based index
 				}
 				// Handle word ordinals
-				else if (lowerOrdinal === "first" || lowerOrdinal === "1st") {
+				else if (lowerOrdinal === "first" || lowerOrdinal === "1st" || lowerOrdinal === "one") {
 					index = 0;
-				} else if (lowerOrdinal === "second" || lowerOrdinal === "2nd") {
+				} else if (lowerOrdinal === "second" || lowerOrdinal === "2nd" || lowerOrdinal === "two") {
 					index = 1;
-				} else if (lowerOrdinal === "third" || lowerOrdinal === "3rd") {
+				} else if (lowerOrdinal === "third" || lowerOrdinal === "3rd" || lowerOrdinal === "three") {
 					index = 2;
-				} else if (lowerOrdinal === "fourth" || lowerOrdinal === "4th") {
+				} else if (lowerOrdinal === "fourth" || lowerOrdinal === "4th" || lowerOrdinal === "four") {
 					index = 3;
-				} else if (lowerOrdinal === "fifth" || lowerOrdinal === "5th") {
+				} else if (lowerOrdinal === "fifth" || lowerOrdinal === "5th" || lowerOrdinal === "five") {
 					index = 4;
 				} else {
 					log(`❌ Unrecognized ordinal: ${ordinal}`);
@@ -693,6 +718,60 @@ export function useAddressFinderClientTools(
 			setSelectionAcknowledged: async (params: { acknowledged: boolean }) => {
 				useUIStore.getState().setSelectionAcknowledged(params.acknowledged);
 				return JSON.stringify({ status: "ok" });
+			},
+
+			showOptionsAgain: async () => {
+				log("🔧 Tool Call: showOptionsAgain");
+				
+				// Get current state
+				const { selectedResult } = useIntentStore.getState();
+				const { agentLastSearchQuery } = useIntentStore.getState();
+				
+				if (!selectedResult) {
+					log("❌ No confirmed selection found - cannot show options again");
+					return JSON.stringify({
+						status: "error",
+						error: "No confirmed selection found. Must have a confirmed address to show options again."
+					});
+				}
+
+				if (!agentLastSearchQuery) {
+					log("❌ No previous search query found");
+					return JSON.stringify({
+						status: "error", 
+						error: "No previous search context found. Cannot show options again."
+					});
+				}
+
+				// Check if suggestions exist in cache
+				const suggestions = queryClient.getQueryData<Suggestion[]>([
+					"addressSearch",
+					agentLastSearchQuery,
+				]) || [];
+
+				if (suggestions.length === 0) {
+					log("❌ No previous suggestions found in cache");
+					return JSON.stringify({
+						status: "error",
+						error: "No previous address options found to display."
+					});
+				}
+
+				// Toggle UI to show options again
+				useUIStore.getState().setShowingOptionsAfterConfirmation(true);
+				
+				log(`✅ Showing ${suggestions.length} previous options again`);
+				addHistory({
+					type: "agent",
+					text: `📋 Showing ${suggestions.length} previous address options again`
+				});
+
+				return JSON.stringify({
+					status: "options_displayed",
+					message: `Showing ${suggestions.length} previous address options on screen again. You can select a different option or confirm the current selection.`,
+					optionsCount: suggestions.length,
+					currentSelection: selectedResult.description
+				});
 			},
 
 			getNearbyServices: async (params: {

@@ -7,7 +7,7 @@ import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { useApiStore } from "~/stores/apiStore";
 import { useIntentStore } from "~/stores/intentStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
-import type { LocationIntent, Mode } from "~/stores/types";
+import type { LocationIntent, Mode, Suggestion } from "~/stores/types";
 
 export function useAddressRecall() {
 	const queryClient = useQueryClient();
@@ -92,10 +92,17 @@ export function useAddressRecall() {
 				source: entry.context.mode as Mode,
 			});
 			setSelectedResult(entry.selectedAddress);
-			queryClient.setQueryData(
-				["addressSearch", entry.originalQuery],
-				[entry.selectedAddress],
-			);
+			// IMPORTANT: Don't overwrite the original suggestions cache
+			// Keep the original search results for "show options again" functionality
+			// Only set the cache if it doesn't already exist with multiple suggestions
+			const existingSuggestions = queryClient.getQueryData<Suggestion[]>(["addressSearch", entry.originalQuery]);
+			if (!existingSuggestions || existingSuggestions.length <= 1) {
+				// Only set if cache is empty or has single result
+				queryClient.setQueryData(
+					["addressSearch", entry.originalQuery],
+					[entry.selectedAddress],
+				);
+			}
 			setIsRecallMode(true);
 			syncToAgent();
 		},

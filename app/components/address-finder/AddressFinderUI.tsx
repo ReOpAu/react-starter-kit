@@ -39,6 +39,7 @@ interface AddressFinderUIProps {
 	shouldShowSelectedResult: boolean;
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
+	showingOptionsAfterConfirmation: boolean;
 	autoCorrection: any;
 
 	// Validation state
@@ -61,6 +62,7 @@ export function AddressFinderUI({
 	shouldShowSelectedResult,
 	shouldShowValidationStatus,
 	showLowConfidence,
+	showingOptionsAfterConfirmation,
 	autoCorrection,
 	isValidating,
 	validationError,
@@ -320,14 +322,27 @@ export function AddressFinderUI({
 					<Card className="border-blue-200 bg-blue-50">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								🤖 Place Suggestions
+								{showingOptionsAfterConfirmation ? "📋 Address Options" : "🤖 Place Suggestions"}
 								<Badge variant="outline" className="bg-blue-100 text-blue-800">
 									{suggestions.length} results
 								</Badge>
 							</CardTitle>
 							<p className="text-sm text-blue-600">
-								Agent-generated suggestions during conversation
+								{showingOptionsAfterConfirmation 
+									? "Previous address options displayed again - you can select a different option"
+									: "Agent-generated suggestions during conversation"
+								}
 							</p>
+							{showingOptionsAfterConfirmation && (
+								<Button 
+									size="sm" 
+									variant="outline" 
+									onClick={() => useUIStore.getState().setShowingOptionsAfterConfirmation(false)}
+									className="mt-2"
+								>
+									Hide Options
+								</Button>
+							)}
 						</CardHeader>
 						<CardContent>
 							<SuggestionsDisplay

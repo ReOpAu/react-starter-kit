@@ -49,6 +49,7 @@ export interface AddressFinderBrainHandlers {
 	shouldShowSelectedResult: boolean;
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
+	showingOptionsAfterConfirmation: boolean;
 
 	// Auto-correction state
 	autoCorrection: any;
@@ -74,6 +75,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	const {
 		isRecording,
 		agentRequestedManual,
+		showingOptionsAfterConfirmation,
 		setAgentRequestedManual,
 		setSelectionAcknowledged,
 	} = useUIStore();
@@ -83,6 +85,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		selectedResult,
 		currentIntent,
 		activeSearchSource,
+		agentLastSearchQuery,
 		setActiveSearch,
 		setSelectedResult,
 		setCurrentIntent,
@@ -181,23 +184,27 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		conversationRef.current = conversation;
 	}, [conversation]);
 
-	// Query management
+	// Query management - use correct cache key based on mode
+	const effectiveQueryKey = showingOptionsAfterConfirmation && agentLastSearchQuery 
+		? agentLastSearchQuery 
+		: searchQuery;
+	
 	const {
 		data: suggestions = [],
 		isLoading,
 		isError,
 		error,
 	} = useQuery<Suggestion[]>({
-		queryKey: ["addressSearch", searchQuery],
+		queryKey: ["addressSearch", effectiveQueryKey],
 		queryFn: () => {
 			return (
 				queryClient.getQueryData<Suggestion[]>([
 					"addressSearch",
-					searchQuery,
+					effectiveQueryKey,
 				]) || []
 			);
 		},
-		enabled: isRecording,
+		enabled: isRecording || showingOptionsAfterConfirmation,
 		staleTime: Number.POSITIVE_INFINITY,
 		refetchOnMount: false,
 		refetchOnWindowFocus: false,
@@ -215,7 +222,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	// Sync React Query state to stores
 	useEffect(() => {
 		const suggestionsFromCache =
-			queryClient.getQueryData<Suggestion[]>(["addressSearch", searchQuery]) ||
+			queryClient.getQueryData<Suggestion[]>(["addressSearch", effectiveQueryKey]) ||
 			[];
 		setApiResults({
 			suggestions: suggestionsFromCache,
@@ -224,8 +231,8 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 			source: activeSearchSource,
 		});
 
-		// Add searches with multiple results to search history
-		if (searchQuery && suggestionsFromCache.length >= 2 && !isRecallMode) {
+		// Add searches with multiple results to search history (only for new searches, not "show options again")
+		if (searchQuery && suggestionsFromCache.length >= 2 && !isRecallMode && !showingOptionsAfterConfirmation) {
 			addSearchToHistory({
 				query: searchQuery,
 				resultCount: suggestionsFromCache.length,
@@ -240,13 +247,14 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	}, [
 		isLoading,
 		error,
-		searchQuery,
+		effectiveQueryKey,
 		activeSearchSource,
 		syncToAgent,
 		queryClient,
 		addSearchToHistory,
 		isRecallMode,
 		currentIntent,
+		showingOptionsAfterConfirmation,
 	]);
 
 	// Debounced search query effect
@@ -318,9 +326,10 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 
 	// Computed state
 	const shouldShowSuggestions =
-		suggestions.length > 0 && !selectedResult && !isLoading;
+		(suggestions.length > 0 && !selectedResult && !isLoading) ||
+		(showingOptionsAfterConfirmation && suggestions.length > 0);
 	const shouldShowManualForm = !isRecording || agentRequestedManual;
-	const shouldShowSelectedResult = Boolean(selectedResult && !isValidating);
+	const shouldShowSelectedResult = Boolean(selectedResult && !isValidating && !showingOptionsAfterConfirmation);
 	const shouldShowValidationStatus = Boolean(isValidating || validationError);
 
 	// Debug state
@@ -380,6 +389,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		shouldShowSelectedResult,
 		shouldShowValidationStatus,
 		showLowConfidence,
+		showingOptionsAfterConfirmation,
 
 		// Auto-correction state
 		autoCorrection,

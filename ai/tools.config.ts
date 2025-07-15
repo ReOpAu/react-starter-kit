@@ -58,6 +58,8 @@ export const setSelectionAcknowledgedSchema = z.object({
 		),
 });
 
+export const showOptionsAgainSchema = z.object({});
+
 export const getNearbyServicesSchema = z.object({
 	address: z.string().describe("The address or location to search around."),
 	serviceType: z
@@ -164,6 +166,10 @@ export const toolDefinitions = {
 	setSelectionAcknowledged: {
 		description: "Set selection acknowledgment status for UI synchronization.",
 		parametersSchema: setSelectionAcknowledgedSchema,
+	},
+	showOptionsAgain: {
+		description: "Show the previous address options again after a selection has been confirmed. Toggles visibility between confirmed result and suggestion list.",
+		parametersSchema: showOptionsAgainSchema,
 	},
 	getNearbyServices: {
 		description:

@@ -6,6 +6,7 @@ import { type RefObject, useCallback, useState } from "react";
 import { useReliableSync } from "~/elevenlabs/hooks/useReliableSync";
 import { useIntentStore } from "~/stores/intentStore";
 import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
+import { useUIStore } from "~/stores/uiStore";
 import { classifySelectedResult } from "~/utils/addressFinderUtils";
 
 // Constants for place details enrichment
@@ -182,7 +183,10 @@ export function useActionHandler({
 			}
 
 			// Step 2: Add to suggestions cache for agent context
-			const currentSearchQuery = searchQuery || enrichedResult.description;
+			// CRITICAL: Use agentLastSearchQuery to maintain cache consistency for "show options again"
+			const { agentLastSearchQuery } = useIntentStore.getState();
+			const currentSearchQuery = agentLastSearchQuery || searchQuery || enrichedResult.description;
+			
 			const currentSuggestions =
 				queryClient.getQueryData<Suggestion[]>([
 					"addressSearch",
@@ -241,6 +245,8 @@ export function useActionHandler({
 							source: "manual",
 						});
 						setAgentRequestedManual(false);
+						// Reset options display when making a new selection
+						useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 						addHistory({
 							type: "user",
 							text: `Selected: "${finalResult.description}"`,
@@ -351,6 +357,8 @@ export function useActionHandler({
 					source: "manual",
 				});
 				setAgentRequestedManual(false);
+				// Reset options display when making a new selection
+				useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 				addHistory({
 					type: "user",
 					text: `Selected: "${enrichedResult.description}"`,
@@ -472,6 +480,8 @@ export function useActionHandler({
 							source: "manual",
 						});
 						setAgentRequestedManual(false);
+						// Reset options display when making a new selection
+						useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 						addHistory({
 							type: "user",
 							text: `Selected: "${enrichedResult.description}"`,
@@ -552,6 +562,8 @@ export function useActionHandler({
 				setSelectedResult(result);
 				setActiveSearch({ query: result.description, source: "manual" });
 				setAgentRequestedManual(false);
+				// Reset options display when making a new selection
+				useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 				addHistory({ type: "user", text: `Selected: "${result.description}"` });
 				clearSessionToken();
 
@@ -660,6 +672,8 @@ export function useActionHandler({
 			setSelectedResult(enrichedResult);
 			setActiveSearch({ query: enrichedResult.description, source: "manual" });
 			setAgentRequestedManual(false);
+			// Reset options display when making a new selection
+			useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 			addHistory({
 				type: "user",
 				text: `User confirmed rural address: "${enrichedResult.description}"`,

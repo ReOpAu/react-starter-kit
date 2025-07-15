@@ -8,6 +8,7 @@ interface UIState {
 	isLoggingEnabled: boolean;
 	agentRequestedManual: boolean;
 	selectionAcknowledged: boolean;
+	showingOptionsAfterConfirmation: boolean; // Toggle between confirmed result and options
 
 	// VAD Configuration
 	vadThresholds: {
@@ -21,6 +22,7 @@ interface UIState {
 	setIsLoggingEnabled: (enabled: boolean) => void;
 	setAgentRequestedManual: (requested: boolean) => void;
 	setSelectionAcknowledged: (ack: boolean) => void;
+	setShowingOptionsAfterConfirmation: (showing: boolean) => void;
 	setVadThresholds: (thresholds: Partial<UIState["vadThresholds"]>) => void;
 
 	// Action to reset UI state
@@ -33,6 +35,7 @@ const initialUiState = {
 	isLoggingEnabled: true,
 	agentRequestedManual: false,
 	selectionAcknowledged: false,
+	showingOptionsAfterConfirmation: false,
 	vadThresholds: {
 		activationThreshold: 0.5, // Previous hardcoded value
 		deactivationThreshold: 0.3, // Previous hardcoded value
@@ -52,6 +55,8 @@ export const useUIStore = create<UIState>()(
 				set({ agentRequestedManual: requested }),
 			setSelectionAcknowledged: (ack: boolean) =>
 				set({ selectionAcknowledged: ack }),
+			setShowingOptionsAfterConfirmation: (showing: boolean) =>
+				set({ showingOptionsAfterConfirmation: showing }),
 			setVadThresholds: (thresholds: Partial<UIState["vadThresholds"]>) =>
 				set((state) => ({
 					vadThresholds: { ...state.vadThresholds, ...thresholds },

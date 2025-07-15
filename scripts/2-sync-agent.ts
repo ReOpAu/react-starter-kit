@@ -6,46 +6,65 @@ import { getElevenLabsConfig } from "./env-loader.js";
 
 /**
  * Sync local configuration to ElevenLabs agent
- * This script reads your local config and updates the agent in the cloud
+ * Uses correct ElevenLabs API format for conversation_config
  */
 async function syncAgent(dryRun = false) {
 	try {
 		console.log("🔍 Loading environment and configuration...");
 		const { apiKey, agentId } = getElevenLabsConfig();
 
-		// Generate API-compatible tool definitions from our centralized config
-		console.log("🔧 Generating tool definitions...");
-		const apiTools = Object.entries(toolDefinitions).map(([name, def]) => {
+		// Generate ElevenLabs-compatible client tool definitions
+		console.log("🔧 Generating ElevenLabs client tool definitions...");
+		const elevenLabsTools = Object.entries(toolDefinitions).map(([name, def]) => {
 			const schema = zodToJsonSchema(def.parametersSchema, {
 				$refStrategy: "none",
 			});
-			const schemaObj = schema as any; // Type assertion for schema properties
+			const schemaObj = schema as any;
+
+			// Convert to ElevenLabs client tool format
+			const properties: Record<string, any> = {};
+			const required: string[] = [];
+
+			if (schemaObj.properties) {
+				Object.entries(schemaObj.properties).forEach(([propName, propSchema]: [string, any]) => {
+					properties[propName] = {
+						type: propSchema.type || "string",
+						description: propSchema.description || propName,
+						dynamic_variable: "",
+						constant_value: ""
+					};
+				});
+			}
+
+			if (schemaObj.required && Array.isArray(schemaObj.required)) {
+				required.push(...schemaObj.required);
+			}
+
 			return {
-				type: "function",
-				function: {
-					name,
-					description: def.description,
-					parameters: {
-						type: "object",
-						properties: schemaObj.properties || {},
-						required: schemaObj.required || [],
-					},
-				},
+				name,
+				description: def.description,
+				response_timeout_secs: 20,
+				type: "client",
+				parameters: Object.keys(properties).length > 0 ? {
+					type: "object",
+					required,
+					description: "",
+					properties
+				} : null,
+				expects_response: true,
+				dynamic_variables: {
+					dynamic_variable_placeholders: {}
+				}
 			};
 		});
 
-		console.log(`📋 Generated ${apiTools.length} tool definitions`);
+		console.log(`📋 Generated ${elevenLabsTools.length} ElevenLabs client tool definitions`);
 
-		// Generate the tools section for the prompt
-		let toolsPrompt = "#### **AVAILABLE TOOLS:**\n";
-		apiTools.forEach((tool) => {
-			toolsPrompt += `*   \`${tool.function.name}\`: ${tool.function.description}\n`;
-		});
-
-		// Assemble the final prompt
+		// Load base prompt
 		const basePromptPath = path.resolve(
 			process.cwd(),
 			"ai",
+			"address-finder",
 			"master_prompt_base.txt",
 		);
 
@@ -54,31 +73,75 @@ async function syncAgent(dryRun = false) {
 		}
 
 		const basePrompt = fs.readFileSync(basePromptPath, "utf-8");
-		const finalPrompt = `${basePrompt}\n\n${toolsPrompt}`;
 
-		// Prepare the payload (note: using tool_ids format for current API)
+		// Generate tools section for prompt (for reference only)
+		let toolsPrompt = "\n\n### **AVAILABLE TOOLS:**\n";
+		elevenLabsTools.forEach((tool) => {
+			toolsPrompt += `*   \`${tool.name}\`: ${tool.description}\n`;
+		});
+
+		const finalPrompt = `${basePrompt}${toolsPrompt}`;
+
+		// Prepare payload in correct ElevenLabs format
 		const payload = {
-			prompt: {
-				prompt: finalPrompt,
-				llm: "gemini-2.0-flash-001",
-				temperature: 0,
-				max_tokens: -1,
-				// Note: We'll need to create/map tool_ids, for now using tools format
-				tools: apiTools,
-			},
+			conversation_config: {
+				agent: {
+					prompt: {
+						prompt: finalPrompt,
+						llm: "gemini-2.0-flash-001",
+						temperature: 0,
+						max_tokens: -1,
+						tools: elevenLabsTools,
+						built_in_tools: {
+							end_call: {
+								name: "end_call",
+								description: "",
+								response_timeout_secs: 20,
+								type: "system",
+								params: {
+									system_tool_type: "end_call"
+								}
+							},
+							language_detection: null,
+							transfer_to_agent: null,
+							transfer_to_number: null,
+							skip_turn: {
+								name: "skip_turn",
+								description: "",
+								response_timeout_secs: 20,
+								type: "system",
+								params: {
+									system_tool_type: "skip_turn"
+								}
+							},
+							play_keypad_touch_tone: null
+						},
+						mcp_server_ids: [],
+						native_mcp_server_ids: [],
+						knowledge_base: [],
+						custom_llm: null,
+						ignore_default_personality: false,
+						rag: {
+							enabled: false,
+							embedding_model: "e5_mistral_7b_instruct",
+							max_vector_distance: 0.6,
+							max_documents_length: 50000,
+							max_retrieved_rag_chunks_count: 20
+						}
+					}
+				}
+			}
 		};
-
-		const payloadJson = JSON.stringify(payload, null, 2);
 
 		if (dryRun) {
 			console.log("\n--- DRY RUN: This payload would be sent to the API ---\n");
 			console.log("📊 Payload Preview:");
-			console.log("- Tools count:", apiTools.length);
+			console.log("- Client Tools count:", elevenLabsTools.length);
 			console.log("- Prompt length:", finalPrompt.length, "characters");
 			console.log("- Base prompt file:", basePromptPath);
 			console.log(
 				"\n🔧 Tool names:",
-				apiTools.map((t) => t.function.name).join(", "),
+				elevenLabsTools.map((t) => t.name).join(", "),
 			);
 			console.log("\n📄 First 500 characters of final prompt:");
 			console.log(finalPrompt.substring(0, 500) + "...");
@@ -100,7 +163,7 @@ async function syncAgent(dryRun = false) {
 					"Content-Type": "application/json",
 					"xi-api-key": apiKey,
 				},
-				body: payloadJson,
+				body: JSON.stringify(payload),
 			},
 		);
 
@@ -108,27 +171,34 @@ async function syncAgent(dryRun = false) {
 			`📊 Response status: ${response.status} ${response.statusText}`,
 		);
 
-		const result = await response.text();
-
 		if (!response.ok) {
+			const errorText = await response.text();
 			console.error("❌ Sync failed!");
 			if (response.status === 422) {
 				console.error(
 					"💡 Unprocessable Entity - Check tool configuration format and required fields",
 				);
+				console.error("📋 Tools being sent:", elevenLabsTools.map(t => t.name));
 			}
-			console.error("Response body:", result);
-			throw new Error(`API Error: ${response.status}\n${result}`);
+			console.error("Response body:", errorText);
+			throw new Error(`API Error: ${response.status}\n${errorText}`);
 		}
 
+		const result = await response.json();
 		console.log("✅ Agent configuration synced successfully!");
 		console.log("📋 Updated:");
 		console.log(`   - Prompt: ${finalPrompt.length} characters`);
-		console.log(`   - Tools: ${apiTools.length} definitions`);
+		console.log(`   - Client Tools: ${elevenLabsTools.length} definitions`);
 		console.log(`   - Agent: ${agentId}`);
 
+		// Verify tools were applied
+		if (result?.conversation_config?.agent?.prompt?.tools) {
+			const appliedTools = result.conversation_config.agent.prompt.tools;
+			console.log(`   - Applied Tools: ${appliedTools.length} (${appliedTools.map((t: any) => t.name).join(", ")})`);
+		}
+
 		console.log(
-			"\n🎉 Sync complete! Your agent is now using the centralized configuration.",
+			"\n🎉 Sync complete! Agent is now using the updated configuration.",
 		);
 	} catch (error) {
 		console.error("❌ Sync failed:", error);
@@ -139,7 +209,7 @@ async function syncAgent(dryRun = false) {
 // Parse command line arguments
 const isDryRun = process.argv.includes("--dry-run");
 
-console.log("🚀 ElevenLabs Agent Configuration Sync");
+console.log("🚀 ElevenLabs Agent Configuration Sync (Fixed)");
 console.log(`📋 Mode: ${isDryRun ? "DRY RUN (preview only)" : "LIVE SYNC"}`);
 console.log("");
 
