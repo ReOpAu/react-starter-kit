@@ -49,9 +49,7 @@ export interface ListingBase {
 	updatedAt: number;
 }
 
-export type Listing = ListingBase;
-
-// Optionally, define BuyerListing and SellerListing for stricter typing
+// Discriminated union for type-safe listing handling
 export interface BuyerListing extends ListingBase {
 	listingType: "buyer";
 	pricePreference: PriceRange;
@@ -64,4 +62,24 @@ export interface SellerListing extends ListingBase {
 	listingType: "seller";
 	price: PriceRange;
 	features?: string[];
+}
+
+// Main Listing type as discriminated union
+export type Listing = BuyerListing | SellerListing;
+
+// Convex document types that include system fields
+// More flexible type that doesn't rely on discriminated union constraints
+export type ConvexListing = ListingBase & {
+	_id?: string;
+	_creationTime?: number;
+	[key: string]: any; // Allow additional Convex fields
+};
+
+// Type guards for runtime type checking - handles both clean types and Convex data
+export function isBuyerListing(listing: ConvexListing | any): listing is BuyerListing {
+	return listing && listing.listingType === "buyer";
+}
+
+export function isSellerListing(listing: ConvexListing | any): listing is SellerListing {
+	return listing && listing.listingType === "seller";
 }

@@ -1,6 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Listing } from "../app/features/listings/types";
+import type { Listing, BuyerListing, SellerListing } from "../app/features/listings/types";
 import { getSearchGeohashes } from "./geohashUtils";
 
 const MATCHING_CONFIG = {
@@ -153,27 +153,33 @@ export const findMatches = query({
       allowedStates.includes(listing.state.toLowerCase())
     );
     
-    // GEOHASH-BASED GEOGRAPHIC FILTERING WITH RADIUS SUPPORT
+    // GEOGRAPHIC FILTERING BASED ON LISTING SUBTYPES
     if (originalListing.geohash) {
       // Get proper geohash neighbors using legacy algorithm (5x5 grid)
       const searchGeohashes = getSearchGeohashes(originalListing.geohash, 5);
       
-      // Filter by geohash neighborhood or same suburb, considering buyer radius
       candidates = candidates.filter(listing => {
-        // Include if in same suburb (for suburb listings)
+        // RULE 1: Always include exact suburb matches regardless of subtype
         if (listing.suburb.toLowerCase() === originalListing.suburb.toLowerCase()) {
           return true;
         }
         
-        // Include if in geohash neighborhood (for street listings)
-        if (listing.geohash) {
+        // RULE 2: For suburb listings, ONLY allow exact suburb matches (no geohash expansion)
+        if (originalListing.subtype === "suburb" || listing.subtype === "suburb") {
+          return false; // Already checked exact suburb match above, so exclude
+        }
+        
+        // RULE 3: For street listings, allow geohash neighborhood matching with radius constraints
+        if (originalListing.subtype === "street" && listing.subtype === "street" && listing.geohash) {
           const isInGeohashNeighborhood = searchGeohashes.some(searchHash => 
             listing.geohash.startsWith(searchHash.substring(0, 5))
           );
           
-          // If original listing is a buyer with radius, check distance constraint
+          if (!isInGeohashNeighborhood) return false;
+          
+          // If original listing is a street buyer with radius, check distance constraint
           const originalRadiusKm = (originalListing as any).radiusKm;
-          if (originalListing.listingType === "buyer" && originalListing.subtype === "street" && originalRadiusKm) {
+          if (originalListing.listingType === "buyer" && originalRadiusKm) {
             if (originalListing.latitude && originalListing.longitude && listing.latitude && listing.longitude) {
               const distance = haversine(
                 originalListing.latitude, originalListing.longitude,
@@ -187,7 +193,7 @@ export const findMatches = query({
           
           // If candidate is a street buyer with radius, check their constraint
           const candidateRadiusKm = (listing as any).radiusKm;
-          if (listing.listingType === "buyer" && listing.subtype === "street" && candidateRadiusKm) {
+          if (listing.listingType === "buyer" && candidateRadiusKm) {
             if (listing.latitude && listing.longitude && originalListing.latitude && originalListing.longitude) {
               const distance = haversine(
                 listing.latitude, listing.longitude,
@@ -223,5 +229,51 @@ export const findMatches = query({
     scoredMatches.sort((a, b) => b.score - a.score);
     if (options?.limit) scoredMatches = scoredMatches.slice(0, options.limit);
     return scoredMatches;
+  },
+});
+
+/**
+ * Get match details for two specific listings
+ * This is more efficient than fetching all matches and filtering client-side
+ */
+export const getMatchDetails = query({
+  args: {
+    originalListingId: v.id("listings"),
+    matchedListingId: v.id("listings"),
+    includeScoreBreakdown: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { originalListingId, matchedListingId, includeScoreBreakdown = false }) => {
+    // Fetch both listings
+    const [originalListing, matchedListing] = await Promise.all([
+      ctx.db.get(originalListingId),
+      ctx.db.get(matchedListingId),
+    ]);
+
+    if (!originalListing) {
+      throw new Error("Original listing not found");
+    }
+    
+    if (!matchedListing) {
+      throw new Error("Matched listing not found");
+    }
+
+    // Calculate match score and breakdown
+    const { score, breakdown } = calculateMatchScore(originalListing as any, matchedListing as any);
+    
+    return {
+      originalListing,
+      matchedListing,
+      score,
+      breakdown: includeScoreBreakdown ? breakdown : undefined,
+      distance: originalListing.latitude && originalListing.longitude && 
+                matchedListing.latitude && matchedListing.longitude
+        ? haversine(
+            originalListing.latitude, 
+            originalListing.longitude,
+            matchedListing.latitude, 
+            matchedListing.longitude
+          )
+        : undefined,
+    };
   },
 }); 

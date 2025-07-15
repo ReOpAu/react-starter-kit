@@ -5,6 +5,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Separator } from "../../../components/ui/separator";
 import { MapPin, Home, Bed, Bath, Car } from "lucide-react";
 import type { Listing } from "../types";
+import { calculateListingDistance, formatDistance } from "../utils/distance";
 
 interface ComparisonMapProps {
 	originalListing: Listing;
@@ -28,31 +29,9 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 	// Determine if suburbs match
 	const suburbsMatch = originalListing.suburb.toLowerCase() === matchedListing.suburb.toLowerCase();
 
-	// Calculate distance if not provided (simplified geohash-based estimate)
-	const calculateDistance = (): number => {
-		if (distance !== undefined) return distance;
-		
-		// Simplified distance calculation based on geohash similarity
-		const originalGeo = originalListing.geohash;
-		const matchGeo = matchedListing.geohash;
-		
-		if (originalGeo === matchGeo) return 0;
-		
-		// Count matching characters from the start
-		let matchingChars = 0;
-		for (let i = 0; i < Math.min(originalGeo.length, matchGeo.length); i++) {
-			if (originalGeo[i] === matchGeo[i]) {
-				matchingChars++;
-			} else {
-				break;
-			}
-		}
-		
-		// Rough approximation: each geohash character represents ~5km
-		return Math.max(0.1, (7 - matchingChars) * 5);
-	};
-
-	const estimatedDistance = calculateDistance();
+	// Calculate accurate distance between listings
+	const calculatedDistance = distance ?? calculateListingDistance(originalListing, matchedListing);
+	const distanceDisplay = calculatedDistance ? formatDistance(calculatedDistance) : "Distance unknown";
 
 	return (
 		<div className="space-y-6">
@@ -198,7 +177,7 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 						<div className="flex items-center gap-2">
 							<MapPin className="w-5 h-5 text-blue-600" />
 							<span className="font-semibold text-lg">
-								Distance: {estimatedDistance.toFixed(1)}km
+								Distance: {distanceDisplay}
 							</span>
 						</div>
 						{suburbsMatch && (

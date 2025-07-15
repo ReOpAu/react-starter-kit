@@ -1,10 +1,10 @@
-import type { Listing } from "../types";
+import type { ConvexListing } from "../types";
 
 /**
  * Generates the complete URL path for a listing following the saaskit specification:
  * /listings/[state]/[type]/[suburb]/[id]
  */
-export function generateListingUrl(listing: Listing): string {
+export function generateListingUrl(listing: ConvexListing): string {
 	const state = listing.state.toLowerCase();
 	const type = listing.listingType.toLowerCase();
 	const suburb = listing.suburb.toLowerCase().replace(/\s+/g, '-');
@@ -16,14 +16,14 @@ export function generateListingUrl(listing: Listing): string {
 /**
  * Generates the matches URL for a listing
  */
-export function generateMatchesUrl(listing: Listing): string {
+export function generateMatchesUrl(listing: ConvexListing): string {
 	return `${generateListingUrl(listing)}/matches`;
 }
 
 /**
  * Generates the match detail URL for comparing two listings
  */
-export function generateMatchDetailUrl(originalListing: Listing, matchedListing: Listing): string {
+export function generateMatchDetailUrl(originalListing: ConvexListing, matchedListing: ConvexListing): string {
 	return `${generateListingUrl(originalListing)}/matches/${matchedListing._id}`;
 }
 

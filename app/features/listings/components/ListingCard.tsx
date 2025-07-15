@@ -6,12 +6,13 @@ import { SaveButton } from "./SaveButton";
 import { Map } from "./Map";
 import { StatusRibbon } from "./StatusRibbon";
 import { PropertyIcons } from "./PropertyIcons";
-import type { Listing } from "../types";
+import type { ConvexListing } from "../types";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { generateListingUrl } from "../utils/urlHelpers";
+import { isBuyerListing } from "../utils";
 
 export interface ListingCardProps {
-	listing: Listing;
+	listing: ConvexListing;
 }
 
 export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
@@ -83,9 +84,9 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 							{listing.listingType}
 						</Badge>
 						<Badge variant="outline">{listing.subtype}</Badge>
-						{listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && (
+						{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
 							<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-								{(listing as any).radiusKm}km radius
+								{listing.radiusKm}km radius
 							</Badge>
 						)}
 					</div>

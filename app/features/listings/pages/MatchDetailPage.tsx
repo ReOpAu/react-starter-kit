@@ -1,8 +1,6 @@
 import type React from "react";
 import { useParams } from "react-router";
-import { useListingById } from "../data/listingsService";
-import { useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
+import { useMatchDetails } from "../data/listingsService";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -15,28 +13,35 @@ import { ArrowLeft, Check, X, MapPin } from "lucide-react";
 import { PropertyFeatures } from "../components/PropertyFeatures";
 import { MatchScore } from "../components/MatchScore";
 import { ScoreBreakdown } from "../components/ScoreBreakdown";
-import type { Listing } from "../types";
-import type { Id } from "../../../../convex/_generated/dataModel";
 import { parseListingParams, generateMatchesUrl } from "../utils/urlHelpers";
+import { calculateAndFormatListingDistance, isBuyerListing } from "../utils";
+import type { ConvexListing } from "../types";
 
 const MatchDetailPage: React.FC = () => {
 	const params = useParams();
 	const { id: originalListingId } = parseListingParams(params);
 	const matchedListingId = params.matchId;
 
-	const originalListing = useListingById(originalListingId!);
-	const matchedListing = useListingById(matchedListingId!);
+	// Get match details efficiently - no client-side filtering needed
+	const matchDetails = useMatchDetails(originalListingId!, matchedListingId!, true);
 	
-	// Get detailed match data with score breakdown
-	const matchData = useQuery(api.matches.findMatches, {
-		listingId: originalListingId as Id<"listings">,
-		options: { includeScoreBreakdown: true, limit: 100 }
-	});
-	
-	// Find the specific match for this comparison
-	const currentMatch = matchData?.find(match => match.listing._id === matchedListingId);
-	const score = currentMatch?.score || 0;
-	const breakdown = currentMatch?.breakdown;
+	const originalListing = matchDetails?.originalListing;
+	const matchedListing = matchDetails?.matchedListing;
+	const score = matchDetails?.score || 0;
+	const breakdown = matchDetails?.breakdown;
+
+	// Show loading state while data is being fetched
+	const isLoading = !matchDetails;
+
+	if (isLoading) {
+		return (
+			<div className="container mx-auto py-8">
+				<Alert>
+					<AlertDescription>Loading match details...</AlertDescription>
+				</Alert>
+			</div>
+		);
+	}
 
 	if (!originalListing || !matchedListing) {
 		return (
@@ -57,7 +62,7 @@ const MatchDetailPage: React.FC = () => {
 		return <X className="w-4 h-4 text-red-500" />;
 	};
 
-	const renderPriceComparison = (listing1: Listing, listing2: Listing) => {
+	const renderPriceComparison = (listing1: ConvexListing, listing2: ConvexListing) => {
 		const price1 = listing1.price || listing1.pricePreference;
 		const price2 = listing2.price || listing2.pricePreference;
 		
@@ -80,22 +85,6 @@ const MatchDetailPage: React.FC = () => {
 		);
 	};
 
-	const calculateDistance = (listing1: Listing, listing2: Listing) => {
-		if (!listing1.latitude || !listing1.longitude || !listing2.latitude || !listing2.longitude) {
-			return "Distance unknown";
-		}
-		
-		const R = 6371; // Earth's radius in km
-		const dLat = (listing2.latitude - listing1.latitude) * Math.PI / 180;
-		const dLon = (listing2.longitude - listing1.longitude) * Math.PI / 180;
-		const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-			Math.cos(listing1.latitude * Math.PI / 180) * Math.cos(listing2.latitude * Math.PI / 180) *
-			Math.sin(dLon/2) * Math.sin(dLon/2);
-		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-		const distance = R * c;
-		
-		return distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`;
-	};
 
 	return (
 		<div className="container mx-auto py-8">
@@ -129,9 +118,9 @@ const MatchDetailPage: React.FC = () => {
 							<Badge variant={originalListing.listingType === "buyer" ? "default" : "secondary"}>
 								{originalListing.listingType}
 							</Badge>
-							{originalListing.listingType === "buyer" && originalListing.subtype === "street" && (originalListing as any).radiusKm && (
+							{isBuyerListing(originalListing) && originalListing.subtype === "street" && originalListing.radiusKm && (
 								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-									{(originalListing as any).radiusKm}km radius
+									{originalListing.radiusKm}km radius
 								</Badge>
 							)}
 						</CardTitle>
@@ -163,9 +152,9 @@ const MatchDetailPage: React.FC = () => {
 							<Badge variant={matchedListing.listingType === "buyer" ? "default" : "secondary"}>
 								{matchedListing.listingType}
 							</Badge>
-							{matchedListing.listingType === "buyer" && matchedListing.subtype === "street" && (matchedListing as any).radiusKm && (
+							{isBuyerListing(matchedListing) && matchedListing.subtype === "street" && matchedListing.radiusKm && (
 								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-									{(matchedListing as any).radiusKm}km radius
+									{matchedListing.radiusKm}km radius
 								</Badge>
 							)}
 						</CardTitle>
@@ -205,7 +194,7 @@ const MatchDetailPage: React.FC = () => {
 							<MapPin className="w-4 h-4 text-gray-500" />
 							<span className="font-medium">Distance between properties:</span>
 							<Badge variant="outline">
-								{calculateDistance(originalListing, matchedListing)}
+								{calculateAndFormatListingDistance(originalListing, matchedListing)}
 							</Badge>
 						</div>
 					</CardContent>

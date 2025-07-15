@@ -8,6 +8,7 @@ import { PropertyFeatures } from "./PropertyFeatures";
 import { Map } from "./Map";
 import { StreetViewButton } from "./StreetViewButton";
 import type { Listing } from "../types";
+import { isBuyerListing } from "../utils";
 
 export interface ListingFullCardProps {
 	listing: Listing;
@@ -86,9 +87,9 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 									{listing.listingType}
 								</Badge>
 								<Badge variant="outline">{listing.subtype}</Badge>
-								{listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && (
+								{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
 									<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-										{(listing as any).radiusKm}km radius
+										{listing.radiusKm}km radius
 									</Badge>
 								)}
 								{listing.isPremium && <Badge variant="destructive">Premium</Badge>}
@@ -148,10 +149,10 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 									<TableCell className="font-medium">Building Type</TableCell>
 									<TableCell>{listing.buildingType}</TableCell>
 								</TableRow>
-								{listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && (
+								{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
 									<TableRow>
 										<TableCell className="font-medium">Search Radius</TableCell>
-										<TableCell>{(listing as any).radiusKm}km</TableCell>
+										<TableCell>{listing.radiusKm}km</TableCell>
 									</TableRow>
 								)}
 							</TableBody>

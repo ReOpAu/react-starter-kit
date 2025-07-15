@@ -1,6 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
-import type { Listing, ListingType } from "../types";
+import type { Listing, ListingType, ConvexListing } from "../types";
 import type { Id } from "@/convex/_generated/dataModel";
 
 interface UseListingsArgs {
@@ -36,6 +36,15 @@ export function useListingById(id: string) {
 // Fetch matches for a listing (by ID)
 export function useMatchesForListing(listingId: string, options = {}) {
   return useQuery(api.matches.findMatches, { listingId: listingId as Id<"listings">, options });
+}
+
+// Fetch match details between two specific listings (more efficient than client-side filtering)
+export function useMatchDetails(originalListingId: string, matchedListingId: string, includeScoreBreakdown = true) {
+  return useQuery(api.matches.getMatchDetails, { 
+    originalListingId: originalListingId as Id<"listings">,
+    matchedListingId: matchedListingId as Id<"listings">,
+    includeScoreBreakdown 
+  });
 }
 
 // Mutations for create/update/delete can be added as needed

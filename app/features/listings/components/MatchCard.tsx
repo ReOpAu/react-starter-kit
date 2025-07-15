@@ -7,6 +7,7 @@ import { Eye, ArrowRightLeft, MapPin } from "lucide-react";
 import { MatchScore } from "./MatchScore";
 import type { Listing } from "../types";
 import { generateListingUrl, generateMatchDetailUrl } from "../utils/urlHelpers";
+import { isBuyerListing } from "../utils";
 
 interface MatchCardProps {
 	originalListing: Listing;
@@ -49,9 +50,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 								{matchedListing.listingType}
 							</Badge>
 							<Badge variant="outline">{matchedListing.buildingType}</Badge>
-							{matchedListing.listingType === "buyer" && matchedListing.subtype === "street" && (matchedListing as any).radiusKm && (
+							{isBuyerListing(matchedListing) && matchedListing.subtype === "street" && matchedListing.radiusKm && (
 								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-									{(matchedListing as any).radiusKm}km
+									{matchedListing.radiusKm}km
 								</Badge>
 							)}
 						</div>

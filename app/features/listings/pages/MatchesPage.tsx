@@ -14,6 +14,7 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { MatchScore } from "../components/MatchScore";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { generateListingUrl, generateMatchDetailUrl, parseListingParams } from "../utils/urlHelpers";
+import { calculateDistance, formatDistance, isBuyerListing } from "../utils";
 
 const MatchesPage: React.FC = () => {
 	const params = useParams();
@@ -26,21 +27,6 @@ const MatchesPage: React.FC = () => {
 		includeScoreBreakdown: true
 	});
 
-	// Helper function to calculate distance
-	const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-		const R = 6371; // Earth's radius in km
-		const dLat = (lat2 - lat1) * Math.PI / 180;
-		const dLon = (lon2 - lon1) * Math.PI / 180;
-		const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-			Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-			Math.sin(dLon/2) * Math.sin(dLon/2);
-		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-		return R * c;
-	};
-
-	const formatDistance = (distance: number) => {
-		return distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`;
-	};
 
 	if (!listing) {
 		return (
@@ -79,9 +65,9 @@ const MatchesPage: React.FC = () => {
 							{listing.listingType}
 						</Badge>
 						<Badge variant="outline">{listing.subtype}</Badge>
-						{listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && (
+						{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
 							<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-								{(listing as any).radiusKm}km radius
+								{listing.radiusKm}km radius
 							</Badge>
 						)}
 					</CardTitle>
@@ -102,8 +88,8 @@ const MatchesPage: React.FC = () => {
 							{listing.pricePreference && (
 								<p><strong>Price Preference:</strong> ${listing.pricePreference.min.toLocaleString()} - ${listing.pricePreference.max.toLocaleString()}</p>
 							)}
-							{listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && (
-								<p><strong>Search Radius:</strong> {(listing as any).radiusKm}km</p>
+							{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+								<p><strong>Search Radius:</strong> {listing.radiusKm}km</p>
 							)}
 						</div>
 					</div>
@@ -114,9 +100,9 @@ const MatchesPage: React.FC = () => {
 			<Card>
 				<CardHeader>
 					<CardTitle>Matching Properties</CardTitle>
-					{listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && (
+					{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
 						<p className="text-sm text-gray-600 mt-1">
-							Showing matches within {(listing as any).radiusKm}km radius
+							Showing matches within {listing.radiusKm}km radius
 						</p>
 					)}
 					{listing.listingType === "seller" && (
@@ -154,9 +140,9 @@ const MatchesPage: React.FC = () => {
 														{match.listing.listingType}
 													</Badge>
 													<Badge variant="outline" className="text-xs">{match.listing.subtype}</Badge>
-													{match.listing.listingType === "buyer" && match.listing.subtype === "street" && (match.listing as any).radiusKm && (
+													{isBuyerListing(match.listing) && match.listing.subtype === "street" && match.listing.radiusKm && (
 														<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-															{(match.listing as any).radiusKm}km
+															{match.listing.radiusKm}km
 														</Badge>
 													)}
 												</div>
@@ -180,8 +166,8 @@ const MatchesPage: React.FC = () => {
 															match.listing.latitude, match.listing.longitude
 														);
 														const isWithinRadius = 
-															(listing.listingType === "buyer" && listing.subtype === "street" && (listing as any).radiusKm && distance <= (listing as any).radiusKm) ||
-															(match.listing.listingType === "buyer" && match.listing.subtype === "street" && (match.listing as any).radiusKm && distance <= (match.listing as any).radiusKm);
+															(isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && distance <= listing.radiusKm) ||
+															(isBuyerListing(match.listing) && match.listing.subtype === "street" && match.listing.radiusKm && distance <= match.listing.radiusKm);
 														
 														return (
 															<div>

@@ -151,7 +151,12 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 		if (!isVisible || !mapContainer.current || map.current) return;
 
 		const center = ngeohash.decode(centerGeohash);
-		mapboxgl.accessToken = "pk.eyJ1IjoibWV0YWJ1cmVhdSIsImEiOiJjbTM2ZXdwNzQwNGVlMnNzZm9zcGN5b2kyIn0.Wdu9YTjWYHNqZ5h5oY-Ubg";
+		const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+		if (!mapboxToken) {
+			console.error('VITE_MAPBOX_ACCESS_TOKEN is not set in environment variables');
+			return;
+		}
+		mapboxgl.accessToken = mapboxToken;
 
 		map.current = new mapboxgl.Map({
 			container: mapContainer.current,

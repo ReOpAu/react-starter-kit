@@ -7,37 +7,19 @@ import { Progress } from "../../../components/ui/progress";
 import { Separator } from "../../../components/ui/separator";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { X, Home, MapPin, DollarSign, Star, Eye, Users } from "lucide-react";
-import type { Listing } from "../types";
+import type { ConvexListing } from "../types";
 import { generateListingUrl, generateMatchDetailUrl } from "../utils/urlHelpers";
 import { Link } from "react-router";
+import { useMatchComparison } from "../hooks/useMatchComparison";
 
 interface MatchPreviewModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	originalListing: Listing;
-	matchedListing: Listing;
+	originalListing: ConvexListing;
+	matchedListing: ConvexListing;
 	matchScore?: number;
 }
 
-interface PriceComparison {
-	original: { min: number; max: number };
-	match: { min: number; max: number };
-	difference: number;
-	overlap: boolean;
-}
-
-interface PropertyComparison {
-	bedrooms: { original: number; match: number; matches: boolean };
-	bathrooms: { original: number; match: number; matches: boolean };
-	parkingSpaces: { original: number; match: number; matches: boolean };
-}
-
-interface FeatureComparison {
-	common: string[];
-	onlyInOriginal: string[];
-	onlyInMatch: string[];
-	matchScore: number;
-}
 
 export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 	isOpen,
@@ -48,93 +30,14 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 }) => {
 	const [loading, setLoading] = useState(false);
 
-	// Calculate price comparison
-	const calculatePriceComparison = (): PriceComparison | null => {
-		const originalPrice = originalListing.price || originalListing.pricePreference;
-		const matchPrice = matchedListing.price || matchedListing.pricePreference;
-
-		if (!originalPrice || !matchPrice) return null;
-
-		const overlap = originalPrice.max >= matchPrice.min && matchPrice.max >= originalPrice.min;
-		const avgOriginal = (originalPrice.min + originalPrice.max) / 2;
-		const avgMatch = (matchPrice.min + matchPrice.max) / 2;
-		const difference = Math.abs(avgOriginal - avgMatch);
-
-		return {
-			original: originalPrice,
-			match: matchPrice,
-			difference,
-			overlap,
-		};
-	};
-
-	// Calculate property details comparison
-	const calculatePropertyComparison = (): PropertyComparison => {
-		return {
-			bedrooms: {
-				original: originalListing.propertyDetails.bedrooms,
-				match: matchedListing.propertyDetails.bedrooms,
-				matches: originalListing.propertyDetails.bedrooms === matchedListing.propertyDetails.bedrooms,
-			},
-			bathrooms: {
-				original: originalListing.propertyDetails.bathrooms,
-				match: matchedListing.propertyDetails.bathrooms,
-				matches: originalListing.propertyDetails.bathrooms === matchedListing.propertyDetails.bathrooms,
-			},
-			parkingSpaces: {
-				original: originalListing.propertyDetails.parkingSpaces,
-				match: matchedListing.propertyDetails.parkingSpaces,
-				matches: originalListing.propertyDetails.parkingSpaces === matchedListing.propertyDetails.parkingSpaces,
-			},
-		};
-	};
-
-	// Calculate feature comparison
-	const calculateFeatureComparison = (): FeatureComparison => {
-		const originalFeatures = originalListing.features || [];
-		const matchFeatures = matchedListing.features || [];
-
-		const common = originalFeatures.filter(feature => matchFeatures.includes(feature));
-		const onlyInOriginal = originalFeatures.filter(feature => !matchFeatures.includes(feature));
-		const onlyInMatch = matchFeatures.filter(feature => !originalFeatures.includes(feature));
-
-		const totalFeatures = originalFeatures.length + matchFeatures.length;
-		const matchScore = totalFeatures > 0 ? (common.length * 2) / totalFeatures : 0;
-
-		return {
-			common,
-			onlyInOriginal,
-			onlyInMatch,
-			matchScore,
-		};
-	};
-
-	// Calculate distance (simplified - assumes geohash distance)
-	const calculateDistance = (): number => {
-		// Simplified distance calculation based on geohash similarity
-		const originalGeo = originalListing.geohash;
-		const matchGeo = matchedListing.geohash;
-		
-		if (originalGeo === matchGeo) return 0;
-		
-		// Count matching characters from the start
-		let matchingChars = 0;
-		for (let i = 0; i < Math.min(originalGeo.length, matchGeo.length); i++) {
-			if (originalGeo[i] === matchGeo[i]) {
-				matchingChars++;
-			} else {
-				break;
-			}
-		}
-		
-		// Rough approximation: each geohash character represents ~5km
-		return Math.max(0.1, (7 - matchingChars) * 5);
-	};
-
-	const priceComparison = calculatePriceComparison();
-	const propertyComparison = calculatePropertyComparison();
-	const featureComparison = calculateFeatureComparison();
-	const distance = calculateDistance();
+	// Use custom hook for match comparison calculations
+	const {
+		priceComparison,
+		propertyComparison,
+		featureComparison,
+		distance,
+		distanceDisplay,
+	} = useMatchComparison(originalListing, matchedListing);
 
 	const getScoreColor = (score: number) => {
 		if (score >= 80) return "text-green-600";
@@ -185,7 +88,7 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 							<Progress value={matchScore} className="mb-4" />
 							<div className="grid grid-cols-2 gap-4 text-sm">
 								<div>
-									<span className="font-medium">Distance:</span> {distance.toFixed(1)}km
+									<span className="font-medium">Distance:</span> {distanceDisplay}
 								</div>
 								<div>
 									<span className="font-medium">Same Suburb:</span>{" "}

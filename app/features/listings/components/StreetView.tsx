@@ -26,8 +26,13 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 
 		// Load Google Maps JavaScript API
 		if (!window.google) {
+			const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+			if (!googleApiKey) {
+				console.error('VITE_GOOGLE_MAPS_API_KEY is not set in environment variables');
+				return;
+			}
 			const script = document.createElement("script");
-			script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAQF779GvMrfHCJoKF5sjd4ZpG_p7lfvIw&callback=initStreetView`;
+			script.src = `https://maps.googleapis.com/maps/api/js?key=${googleApiKey}&callback=initStreetView`;
 			script.async = true;
 			script.defer = true;
 			document.head.appendChild(script);

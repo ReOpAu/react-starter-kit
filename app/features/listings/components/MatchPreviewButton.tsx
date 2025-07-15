@@ -11,6 +11,7 @@ interface MatchPreviewButtonProps {
 	variant?: "default" | "outline" | "ghost";
 	size?: "default" | "sm" | "lg";
 	className?: string;
+	text?: string;
 }
 
 export const MatchPreviewButton: React.FC<MatchPreviewButtonProps> = ({
@@ -20,6 +21,7 @@ export const MatchPreviewButton: React.FC<MatchPreviewButtonProps> = ({
 	variant = "outline",
 	size = "sm",
 	className = "",
+	text = "Quick Preview",
 }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -32,7 +34,7 @@ export const MatchPreviewButton: React.FC<MatchPreviewButtonProps> = ({
 				className={className}
 			>
 				<Eye className="w-4 h-4 mr-2" />
-				Quick Preview
+				{text}
 			</Button>
 
 			<MatchPreviewModal
