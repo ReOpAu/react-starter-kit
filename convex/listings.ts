@@ -343,3 +343,24 @@ export const getUserSavedListings = query({
     return listingsWithDetails.filter(item => item.listing !== null);
   }
 });
+
+// Get listing statistics for a specific state
+export const getStateListingStats = query({
+  args: { state: v.string() },
+  handler: async (ctx, { state }) => {
+    // Get all listings for the state (case insensitive)
+    const allListings = await ctx.db.query("listings").collect();
+    const stateListings = allListings.filter(l => l.state.toLowerCase() === state.toLowerCase());
+    
+    // Calculate stats
+    const totalListings = stateListings.length;
+    const buyerListings = stateListings.filter(l => l.listingType === "buyer").length;
+    const sellerListings = stateListings.filter(l => l.listingType === "seller").length;
+    
+    return {
+      totalListings,
+      buyerListings,
+      sellerListings
+    };
+  }
+});

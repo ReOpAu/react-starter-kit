@@ -6,6 +6,8 @@ import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
 import { MapPin, Home, Users, TrendingUp, ArrowLeft } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 const StateListingsPage: React.FC = () => {
 	const { state } = useParams<{ state: string }>();
@@ -23,6 +25,11 @@ const StateListingsPage: React.FC = () => {
 	};
 
 	const currentState = state ? stateInfo[state.toUpperCase() as keyof typeof stateInfo] : null;
+	
+	// Fetch listing statistics for the state
+	const stats = useQuery(api.listings.getStateListingStats, 
+		currentState ? { state: currentState.abbr } : "skip"
+	);
 
 	return (
 		<>
@@ -69,7 +76,7 @@ const StateListingsPage: React.FC = () => {
 								<Home className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">--</div>
+								<div className="text-2xl font-bold">{stats?.totalListings ?? "--"}</div>
 								<p className="text-xs text-muted-foreground">
 									Active listings in {currentState?.name || state}
 								</p>
@@ -81,7 +88,7 @@ const StateListingsPage: React.FC = () => {
 								<Users className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">--</div>
+								<div className="text-2xl font-bold">{stats?.buyerListings ?? "--"}</div>
 								<p className="text-xs text-muted-foreground">
 									Active buyer listings
 								</p>
@@ -93,7 +100,7 @@ const StateListingsPage: React.FC = () => {
 								<TrendingUp className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">--</div>
+								<div className="text-2xl font-bold">{stats?.sellerListings ?? "--"}</div>
 								<p className="text-xs text-muted-foreground">
 									Active seller listings
 								</p>
