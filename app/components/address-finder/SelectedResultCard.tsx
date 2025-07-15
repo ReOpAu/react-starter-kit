@@ -2,7 +2,8 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { Suggestion } from "~/stores/types";
 import { NearbyAldiStores } from "./NearbyAldiStores";
-import { Home, MapPin, CheckCircle } from "lucide-react";
+import { Home, MapPin, CheckCircle, Store } from "lucide-react";
+import { useState } from "react";
 
 interface SelectedResultCardProps {
 	result: Suggestion | null;
@@ -17,6 +18,8 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 	lat,
 	lng,
 }) => {
+	const [showAldiStores, setShowAldiStores] = useState(false);
+	
 	if (!result) return null;
 
 	const address = result.displayText || result.description;
@@ -91,7 +94,18 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								/>
 							</div>
 						</div>
-						<NearbyAldiStores lat={lat} lng={lng} />
+						<div>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setShowAldiStores(!showAldiStores)}
+								className="flex items-center gap-2 text-purple-700 border-purple-200 hover:bg-purple-50"
+							>
+								<Store className="w-4 h-4" />
+								{showAldiStores ? "Hide" : "Show"} nearby Aldi stores
+							</Button>
+							{showAldiStores && <NearbyAldiStores lat={lat} lng={lng} />}
+						</div>
 					</div>
 				)}
 			</CardContent>

@@ -217,6 +217,95 @@ FRONTEND_URL=http://localhost:5173
 
 **Reference**: AFOP major cleanup completed. Address finder now has clean, maintainable architecture.
 
+### Service Layer Implementation Project (SLIP)
+**Status**: 📋 **PLANNED** - Ready for implementation when architectural refactoring is needed
+**Priority**: Medium (architectural improvement, not critical functionality)
+**Goal**: Replace scattered business logic with centralized, testable service layer to make features "trivial to implement and impossible to break"
+
+#### 🎯 **Business Case**:
+Current "show options again" feature required:
+- **45+ lines** of logic scattered across **6 files**
+- **Multiple iterations** to fix cache key mismatches
+- **Manual coordination** between stores, cache, and UI state
+- **Error-prone** - easy to break business rules accidentally
+
+Service layer would reduce this to:
+- **5 lines** of code in **1 file**: `addressService.getOptionsForCurrentSelection()`
+- **Impossible to break** - business rules enforced by architecture
+- **100% testable** - clear contracts and single responsibility
+
+#### 🛠 **Implementation Scope**:
+
+**Core Service Interface**:
+```typescript
+interface IAddressSearchService {
+  // Core operations
+  search(query: string, context?: SearchContext): Promise<SearchResult>;
+  selectSuggestion(suggestion: Suggestion, context?: SelectionContext): Promise<SelectionResult>;
+  
+  // Business capabilities  
+  getOptionsForCurrentSelection(): Suggestion[];
+  canShowOptionsAgain(): boolean;
+  clearCurrentSearch(): void;
+  
+  // State access
+  getCurrentSelection(): SelectionState | null;
+  getCurrentSearch(): SearchState | null;
+  getSearchHistory(): SearchHistoryEntry[];
+}
+```
+
+**Business Rules to Enforce**:
+1. **Cache Preservation Rule**: "Selection never destroys original search results"
+2. **Complete Options Rule**: "Show options again always returns ALL original suggestions"  
+3. **Cache Consistency Rule**: "Cache keys are normalized and always consistent"
+4. **State Integrity Rule**: "Service maintains consistent internal state"
+5. **Error Clarity Rule**: "All errors provide clear business context"
+
+**Key Components**:
+- `AddressSearchService` - Main service class with business logic
+- `AddressCache` - Centralized cache management with consistent key generation
+- `SearchState & SelectionState` - Immutable domain models
+- `AddressSearchError` - Business-specific error types
+
+**File Structure**:
+```
+app/services/
+├── address-search/
+│   ├── AddressSearchService.ts        # Main service class
+│   ├── AddressCache.ts               # Cache management
+│   ├── types.ts                      # Domain types
+│   ├── errors.ts                     # Domain errors
+│   └── __tests__/
+│       ├── AddressSearchService.test.ts
+│       ├── business-rules.test.ts
+│       └── integration.test.ts
+├── hooks/
+│   └── useAddressSearchService.ts    # React hook wrapper
+└── index.ts                          # Public exports
+```
+
+**Migration Strategy**:
+1. **Phase 1**: Create service layer (new code, no existing changes)
+2. **Phase 2**: Update agent tools to use service calls
+3. **Phase 3**: Simplify UI components with service integration
+4. **Phase 4**: Remove scattered business logic from old files
+
+**Success Criteria**:
+- "Show options again" becomes 5 lines: `addressService.getOptionsForCurrentSelection()`
+- Business rules impossible to break (enforced by architecture)
+- 100% test coverage for all business rules and edge cases
+- Clear error messages with business context
+- New features require changes in only one place
+
+**When to Implement**: 
+- When adding complex address search features that would benefit from centralized business logic
+- During architectural refactoring phases
+- When the current scattered approach becomes too difficult to maintain
+- As a foundation for advanced features like search analytics or personalized recommendations
+
+**Reference**: Complete implementation prompt available in conversation history. This architectural improvement would significantly reduce the complexity of address search feature development.
+
 ## Common Pitfalls to Avoid
 1. **Don't** import global stores in widget components
 2. **Don't** sync cosmetic state changes to AI agents

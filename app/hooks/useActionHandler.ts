@@ -291,8 +291,9 @@ export function useActionHandler({
 							},
 						});
 						setAgentLastSearchQuery(currentSearchQuery);
-						syncToAgent();
 						resetRecallMode();
+						// Single consolidated sync at the end
+						syncToAgent();
 					} else if (
 						validation.success &&
 						"isRuralException" in validation &&
@@ -399,8 +400,9 @@ export function useActionHandler({
 					},
 				});
 				setAgentLastSearchQuery(currentSearchQuery);
-				syncToAgent();
 				resetRecallMode();
+				// Single consolidated sync at the end
+				syncToAgent();
 			}
 			log("🎯 === CONSOLIDATED SELECTION FLOW END ===");
 		},

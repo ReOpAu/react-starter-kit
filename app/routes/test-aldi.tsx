@@ -5,6 +5,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../components/ui/card";
+import { PublicLayout } from "../components/layout/PublicLayout";
 
 const CAMBERWELL = {
 	suburb: "Camberwell",
@@ -17,32 +18,34 @@ const CAMBERWELL = {
 
 export default function TestAldi() {
 	return (
-		<div className="container mx-auto py-8 max-w-lg">
-			<Card>
-				<CardHeader>
-					<CardTitle>Test: Nearby Aldi Stores (Camberwell VIC)</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="mb-4 text-sm text-gray-700">
-						<div>
-							<strong>Suburb:</strong> {CAMBERWELL.suburb}
+		<PublicLayout>
+			<div className="container mx-auto py-8 max-w-lg">
+				<Card>
+					<CardHeader>
+						<CardTitle>Test: Nearby Aldi Stores (Camberwell VIC)</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="mb-4 text-sm text-gray-700">
+							<div>
+								<strong>Suburb:</strong> {CAMBERWELL.suburb}
+							</div>
+							<div>
+								<strong>Place ID:</strong> {CAMBERWELL.placeId}
+							</div>
+							<div>
+								<strong>Coordinates:</strong> {CAMBERWELL.lat}, {CAMBERWELL.lng}
+							</div>
+							<div>
+								<strong>Result Type:</strong> {CAMBERWELL.resultType}
+							</div>
+							<div>
+								<strong>Types:</strong> {CAMBERWELL.types.join(", ")}
+							</div>
 						</div>
-						<div>
-							<strong>Place ID:</strong> {CAMBERWELL.placeId}
-						</div>
-						<div>
-							<strong>Coordinates:</strong> {CAMBERWELL.lat}, {CAMBERWELL.lng}
-						</div>
-						<div>
-							<strong>Result Type:</strong> {CAMBERWELL.resultType}
-						</div>
-						<div>
-							<strong>Types:</strong> {CAMBERWELL.types.join(", ")}
-						</div>
-					</div>
-					<NearbyAldiStores lat={CAMBERWELL.lat} lng={CAMBERWELL.lng} />
-				</CardContent>
-			</Card>
-		</div>
+						<NearbyAldiStores lat={CAMBERWELL.lat} lng={CAMBERWELL.lng} />
+					</CardContent>
+				</Card>
+			</div>
+		</PublicLayout>
 	);
 }

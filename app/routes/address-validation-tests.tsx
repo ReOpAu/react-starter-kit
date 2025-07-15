@@ -8,6 +8,7 @@ import { Input } from "~/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import type { LocationIntent } from "~/stores/types";
 import { classifyIntent } from "~/utils/addressFinderUtils";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 
 // Constants for testing
 const MAX_RESULTS = 5;
@@ -393,303 +394,305 @@ export default function AddressValidationTests() {
 	};
 
 	return (
-		<div className="container mx-auto py-8 px-4 max-w-7xl">
-			<div className="space-y-6">
-				{/* Header */}
-				<div className="text-center space-y-2">
-					<h1 className="text-3xl font-bold">Address API Test Suite</h1>
-					<p className="text-gray-600">
-						Test our Convex APIs with visibility into request/response flow
-					</p>
-				</div>
+		<PublicLayout>
+			<div className="container mx-auto py-8 px-4 max-w-7xl">
+				<div className="space-y-6">
+					{/* Header */}
+					<div className="text-center space-y-2">
+						<h1 className="text-3xl font-bold">Address API Test Suite</h1>
+						<p className="text-gray-600">
+							Test our Convex APIs with visibility into request/response flow
+						</p>
+					</div>
 
-				{/* Test Controls */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center justify-between">
-							Quick Tests
-							<div className="flex gap-2">
-								{testResults.length > 0 && (
+					{/* Test Controls */}
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center justify-between">
+								Quick Tests
+								<div className="flex gap-2">
+									{testResults.length > 0 && (
+										<Button
+											variant="default"
+											size="sm"
+											onClick={copyAllResults}
+											disabled={isRunning}
+											className="bg-blue-600 hover:bg-blue-700"
+										>
+											📋 Copy All Results
+										</Button>
+									)}
 									<Button
-										variant="default"
+										variant="outline"
 										size="sm"
-										onClick={copyAllResults}
+										onClick={clearResults}
 										disabled={isRunning}
-										className="bg-blue-600 hover:bg-blue-700"
 									>
-										📋 Copy All Results
+										Clear Results
 									</Button>
-								)}
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={clearResults}
+									{isRunning && <Badge>Running...</Badge>}
+								</div>
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<Tabs defaultValue="street" className="w-full">
+								<TabsList className="grid w-full grid-cols-3">
+									<TabsTrigger value="street">Street Names</TabsTrigger>
+									<TabsTrigger value="suburb">Suburb Names</TabsTrigger>
+									<TabsTrigger value="full_address">Full Addresses</TabsTrigger>
+								</TabsList>
+
+								<TabsContent value="street" className="space-y-2">
+									<div className="grid grid-cols-2 gap-2">
+										{quickTestCases.street.map((address) => (
+											<Button
+												key={address}
+												variant="outline"
+												size="sm"
+												onClick={() => runQuickTest(address, "street")}
+												disabled={isRunning}
+												className="text-xs"
+											>
+												{address}
+											</Button>
+										))}
+									</div>
+								</TabsContent>
+
+								<TabsContent value="suburb" className="space-y-2">
+									<div className="grid grid-cols-2 gap-2">
+										{quickTestCases.suburb.map((address) => (
+											<Button
+												key={address}
+												variant="outline"
+												size="sm"
+												onClick={() => runQuickTest(address, "suburb")}
+												disabled={isRunning}
+												className="text-xs"
+											>
+												{address}
+											</Button>
+										))}
+									</div>
+								</TabsContent>
+
+								<TabsContent value="full_address" className="space-y-2">
+									<div className="grid grid-cols-1 gap-2">
+										{quickTestCases.full_address.map((address) => (
+											<Button
+												key={address}
+												variant="outline"
+												size="sm"
+												onClick={() => runQuickTest(address, "full_address")}
+												disabled={isRunning}
+												className="text-xs text-left"
+											>
+												{address}
+											</Button>
+										))}
+									</div>
+								</TabsContent>
+							</Tabs>
+						</CardContent>
+					</Card>
+
+					{/* Manual Address Test */}
+					<Card>
+						<CardHeader>
+							<CardTitle>Manual Address Test</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div className="flex gap-2">
+								<Input
+									value={manualAddress}
+									onChange={(e) => setManualAddress(e.target.value)}
+									placeholder="Enter any address to test (e.g., Collins Street, Footscray, or 123 Main St, Melbourne)"
 									disabled={isRunning}
+									className="flex-1"
+									onKeyDown={(e) => e.key === "Enter" && runManualTest()}
+								/>
+								<Button
+									onClick={runManualTest}
+									disabled={isRunning || !manualAddress.trim()}
 								>
-									Clear Results
+									Test
 								</Button>
-								{isRunning && <Badge>Running...</Badge>}
 							</div>
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<Tabs defaultValue="street" className="w-full">
-							<TabsList className="grid w-full grid-cols-3">
-								<TabsTrigger value="street">Street Names</TabsTrigger>
-								<TabsTrigger value="suburb">Suburb Names</TabsTrigger>
-								<TabsTrigger value="full_address">Full Addresses</TabsTrigger>
-							</TabsList>
+						</CardContent>
+					</Card>
 
-							<TabsContent value="street" className="space-y-2">
-								<div className="grid grid-cols-2 gap-2">
-									{quickTestCases.street.map((address) => (
-										<Button
-											key={address}
-											variant="outline"
-											size="sm"
-											onClick={() => runQuickTest(address, "street")}
-											disabled={isRunning}
-											className="text-xs"
-										>
-											{address}
-										</Button>
-									))}
-								</div>
-							</TabsContent>
-
-							<TabsContent value="suburb" className="space-y-2">
-								<div className="grid grid-cols-2 gap-2">
-									{quickTestCases.suburb.map((address) => (
-										<Button
-											key={address}
-											variant="outline"
-											size="sm"
-											onClick={() => runQuickTest(address, "suburb")}
-											disabled={isRunning}
-											className="text-xs"
-										>
-											{address}
-										</Button>
-									))}
-								</div>
-							</TabsContent>
-
-							<TabsContent value="full_address" className="space-y-2">
-								<div className="grid grid-cols-1 gap-2">
-									{quickTestCases.full_address.map((address) => (
-										<Button
-											key={address}
-											variant="outline"
-											size="sm"
-											onClick={() => runQuickTest(address, "full_address")}
-											disabled={isRunning}
-											className="text-xs text-left"
-										>
-											{address}
-										</Button>
-									))}
-								</div>
-							</TabsContent>
-						</Tabs>
-					</CardContent>
-				</Card>
-
-				{/* Manual Address Test */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Manual Address Test</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="flex gap-2">
-							<Input
-								value={manualAddress}
-								onChange={(e) => setManualAddress(e.target.value)}
-								placeholder="Enter any address to test (e.g., Collins Street, Footscray, or 123 Main St, Melbourne)"
-								disabled={isRunning}
-								className="flex-1"
-								onKeyDown={(e) => e.key === "Enter" && runManualTest()}
-							/>
-							<Button
-								onClick={runManualTest}
-								disabled={isRunning || !manualAddress.trim()}
-							>
-								Test
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Test Results */}
-				{testResults.length > 0 && (
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-						{/* Test Results List */}
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center justify-between">
-									Test Results
-									<Badge variant="outline">{testResults.length} tests</Badge>
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-3 max-h-96 overflow-y-auto">
-									{testResults.map((result) => (
-										<div
-											key={result.id}
-											className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer"
-											onClick={() => setSelectedApiCall(null)}
-										>
-											<div className="flex items-start justify-between mb-2">
-												<div className="flex-1">
-													<div className="font-medium text-sm">
-														{result.input}
+					{/* Test Results */}
+					{testResults.length > 0 && (
+						<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							{/* Test Results List */}
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center justify-between">
+										Test Results
+										<Badge variant="outline">{testResults.length} tests</Badge>
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="space-y-3 max-h-96 overflow-y-auto">
+										{testResults.map((result) => (
+											<div
+												key={result.id}
+												className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer"
+												onClick={() => setSelectedApiCall(null)}
+											>
+												<div className="flex items-start justify-between mb-2">
+													<div className="flex-1">
+														<div className="font-medium text-sm">
+															{result.input}
+														</div>
+														<div className="text-xs text-gray-500">
+															Intent: {result.intent} •{" "}
+															{formatExecutionTime(result.executionTime)}
+														</div>
 													</div>
-													<div className="text-xs text-gray-500">
-														Intent: {result.intent} •{" "}
-														{formatExecutionTime(result.executionTime)}
+													<div className="flex gap-2">
+														<Badge
+															className={getAddressTypeColor(result.addressType)}
+														>
+															{result.addressType.replace("_", " ")}
+														</Badge>
+														<Badge variant="outline">
+															{result.apiCalls.length} API calls
+														</Badge>
 													</div>
 												</div>
-												<div className="flex gap-2">
+
+												{/* API Call Timeline */}
+												<div className="space-y-1">
+													{result.apiCalls.map((call, index) => (
+														<div
+															key={call.id}
+															className="flex items-center gap-2 text-xs p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+															onClick={(e) => {
+																e.stopPropagation();
+																setSelectedApiCall(call);
+															}}
+														>
+															<span className="font-mono">{index + 1}.</span>
+															<span className="font-medium">{call.api}</span>
+															{call.executionTime && (
+																<Badge className={getApiStatusColor(!call.error)}>
+																	{formatExecutionTime(call.executionTime)}
+																</Badge>
+															)}
+															{call.error && (
+																<Badge className="bg-red-100 text-red-800">
+																	ERROR
+																</Badge>
+															)}
+														</div>
+													))}
+												</div>
+											</div>
+										))}
+									</div>
+								</CardContent>
+							</Card>
+
+							{/* API Call Details */}
+							<Card>
+								<CardHeader>
+									<CardTitle>API Call Details</CardTitle>
+								</CardHeader>
+								<CardContent>
+									{selectedApiCall ? (
+										<div className="space-y-4">
+											<div className="flex items-center gap-2">
+												<Badge variant="outline">{selectedApiCall.api}</Badge>
+												{selectedApiCall.executionTime && (
 													<Badge
-														className={getAddressTypeColor(result.addressType)}
+														className={getApiStatusColor(!selectedApiCall.error)}
 													>
-														{result.addressType.replace("_", " ")}
+														{formatExecutionTime(selectedApiCall.executionTime)}
 													</Badge>
-													<Badge variant="outline">
-														{result.apiCalls.length} API calls
-													</Badge>
+												)}
+											</div>
+
+											<div>
+												<h4 className="font-semibold mb-2">
+													Request Parameters:
+												</h4>
+												<pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-32">
+													{JSON.stringify(selectedApiCall.params, null, 2)}
+												</pre>
+											</div>
+
+											{selectedApiCall.error ? (
+												<div>
+													<h4 className="font-semibold mb-2 text-red-600">
+														Error:
+													</h4>
+													<pre className="text-xs bg-red-50 p-3 rounded overflow-auto max-h-32">
+														{selectedApiCall.error}
+													</pre>
 												</div>
-											</div>
-
-											{/* API Call Timeline */}
-											<div className="space-y-1">
-												{result.apiCalls.map((call, index) => (
-													<div
-														key={call.id}
-														className="flex items-center gap-2 text-xs p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
-														onClick={(e) => {
-															e.stopPropagation();
-															setSelectedApiCall(call);
-														}}
-													>
-														<span className="font-mono">{index + 1}.</span>
-														<span className="font-medium">{call.api}</span>
-														{call.executionTime && (
-															<Badge className={getApiStatusColor(!call.error)}>
-																{formatExecutionTime(call.executionTime)}
-															</Badge>
-														)}
-														{call.error && (
-															<Badge className="bg-red-100 text-red-800">
-																ERROR
-															</Badge>
-														)}
-													</div>
-												))}
-											</div>
-										</div>
-									))}
-								</div>
-							</CardContent>
-						</Card>
-
-						{/* API Call Details */}
-						<Card>
-							<CardHeader>
-								<CardTitle>API Call Details</CardTitle>
-							</CardHeader>
-							<CardContent>
-								{selectedApiCall ? (
-									<div className="space-y-4">
-										<div className="flex items-center gap-2">
-											<Badge variant="outline">{selectedApiCall.api}</Badge>
-											{selectedApiCall.executionTime && (
-												<Badge
-													className={getApiStatusColor(!selectedApiCall.error)}
-												>
-													{formatExecutionTime(selectedApiCall.executionTime)}
-												</Badge>
+											) : (
+												<div>
+													<h4 className="font-semibold mb-2">Response:</h4>
+													<pre className="text-xs bg-green-50 p-3 rounded overflow-auto max-h-64">
+														{JSON.stringify(selectedApiCall.response, null, 2)}
+													</pre>
+												</div>
 											)}
 										</div>
-
-										<div>
-											<h4 className="font-semibold mb-2">
-												Request Parameters:
-											</h4>
-											<pre className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-32">
-												{JSON.stringify(selectedApiCall.params, null, 2)}
-											</pre>
+									) : (
+										<div className="text-center text-gray-500 py-8">
+											Click on an API call to see details
 										</div>
+									)}
+								</CardContent>
+							</Card>
+						</div>
+					)}
 
-										{selectedApiCall.error ? (
-											<div>
-												<h4 className="font-semibold mb-2 text-red-600">
-													Error:
-												</h4>
-												<pre className="text-xs bg-red-50 p-3 rounded overflow-auto max-h-32">
-													{selectedApiCall.error}
-												</pre>
-											</div>
-										) : (
-											<div>
-												<h4 className="font-semibold mb-2">Response:</h4>
-												<pre className="text-xs bg-green-50 p-3 rounded overflow-auto max-h-64">
-													{JSON.stringify(selectedApiCall.response, null, 2)}
-												</pre>
-											</div>
-										)}
-									</div>
-								) : (
-									<div className="text-center text-gray-500 py-8">
-										Click on an API call to see details
-									</div>
-								)}
-							</CardContent>
-						</Card>
-					</div>
-				)}
-
-				{/* Usage Instructions */}
-				<Card>
-					<CardHeader>
-						<CardTitle>How to Use This Test Suite</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-3 text-sm text-gray-600">
-						<div>
-							<strong>Quick Tests:</strong> Click buttons to test common address
-							patterns
-						</div>
-						<div>
-							<strong>Manual Test:</strong> Type any address to see how our APIs
-							handle it
-						</div>
-						<div>
-							<strong>API Flow:</strong> See the sequence of API calls and their
-							responses
-						</div>
-						<div>
-							<strong>Address Types:</strong>
-						</div>
-						<ul className="ml-4 space-y-1">
-							<li>
-								• <strong>Street Names:</strong> Tests intent classification and
-								suggestions
-							</li>
-							<li>
-								• <strong>Suburb Names:</strong> Tests suburb correction logic
-								(Victoria/Australia fix)
-							</li>
-							<li>
-								• <strong>Full Addresses:</strong> Tests complete address
-								validation flow
-							</li>
-						</ul>
-						<div>
-							<strong>Click on API calls</strong> to see detailed
-							request/response data
-						</div>
-					</CardContent>
-				</Card>
+					{/* Usage Instructions */}
+					<Card>
+						<CardHeader>
+							<CardTitle>How to Use This Test Suite</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-3 text-sm text-gray-600">
+							<div>
+								<strong>Quick Tests:</strong> Click buttons to test common address
+								patterns
+							</div>
+							<div>
+								<strong>Manual Test:</strong> Type any address to see how our APIs
+								handle it
+							</div>
+							<div>
+								<strong>API Flow:</strong> See the sequence of API calls and their
+								responses
+							</div>
+							<div>
+								<strong>Address Types:</strong>
+							</div>
+							<ul className="ml-4 space-y-1">
+								<li>
+									• <strong>Street Names:</strong> Tests intent classification and
+									suggestions
+								</li>
+								<li>
+									• <strong>Suburb Names:</strong> Tests suburb correction logic
+									(Victoria/Australia fix)
+								</li>
+								<li>
+									• <strong>Full Addresses:</strong> Tests complete address
+									validation flow
+								</li>
+							</ul>
+							<div>
+								<strong>Click on API calls</strong> to see detailed
+								request/response data
+							</div>
+						</CardContent>
+					</Card>
+				</div>
 			</div>
-		</div>
+		</PublicLayout>
 	);
 }

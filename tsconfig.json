@@ -1,7 +1,7 @@
 {
 	"extends": "./tsconfig.base.json",
 	"include": ["app", "shared", "remix.env.d.ts", "**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "convex", "public", "_archive"],
+	"exclude": ["node_modules", "public", "_archive"],
 	"compilerOptions": {
 		"lib": ["DOM", "DOM.Iterable", "ES2022"],
 		"types": ["node", "vite/client"],

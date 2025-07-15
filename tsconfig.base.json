@@ -3,7 +3,8 @@
 		"baseUrl": ".",
 		"paths": {
 			"~/*": ["./app/*"],
-			"@shared/*": ["./shared/*"]
+			"@shared/*": ["./shared/*"],
+			"@/convex/*": ["./convex/*"]
 		},
 		"strict": true,
 		"target": "ES2022",

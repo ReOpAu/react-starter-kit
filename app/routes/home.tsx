@@ -7,8 +7,7 @@ import { Hero } from "~/components/home/Hero";
 import { HowItWorks } from "~/components/home/HowItWorks";
 import { InvestorTypes } from "~/components/home/InvestorTypes";
 import { SellerGuide } from "~/components/home/SellerGuide";
-import { Footer } from "~/components/layout/footer";
-import { Header } from "~/components/layout/Header";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 import type { Route } from "./+types/home";
 
 export async function loader(args: Route.LoaderArgs) {
@@ -20,21 +19,17 @@ export async function loader(args: Route.LoaderArgs) {
 
 export default function HomePage({ loaderData }: Route.ComponentProps) {
 	return (
-		<>
-			<Header loaderData={loaderData} />
-			<main>
-				<Hero />
-				<Features />
-				<InvestorTypes />
-				<div className="my-12">
-					<Conversation />
-				</div>
-				<BuyerGuide />
-				<SellerGuide />
-				<HowItWorks />
-				<CallToAction />
-			</main>
-			<Footer />
-		</>
+		<PublicLayout loaderData={loaderData}>
+			<Hero />
+			<Features />
+			<InvestorTypes />
+			<div className="my-12">
+				<Conversation />
+			</div>
+			<BuyerGuide />
+			<SellerGuide />
+			<HowItWorks />
+			<CallToAction />
+		</PublicLayout>
 	);
 }

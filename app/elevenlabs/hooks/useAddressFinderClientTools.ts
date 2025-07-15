@@ -8,6 +8,21 @@ import {
 } from "~/utils/addressFinderUtils";
 import { API_RETRY_CONFIG, withRetry } from "~/utils/retryMechanism";
 
+// Constants for place details enrichment (shared with useActionHandler)
+const ENRICHMENT_CACHE_KEY = "placeDetails";
+
+// Type for place details
+interface PlaceDetailsResult {
+	placeId: string;
+	formattedAddress: string;
+	lat: number;
+	lng: number;
+	types: string[];
+	postcode?: string;
+	suburb?: string;
+	state?: string;
+}
+
 import {
 	getAgentByTransferIndex,
 	getAvailableTransferTargets,
@@ -33,6 +48,48 @@ export function useAddressFinderClientTools(
 	);
 	const getPlaceDetailsAction = useAction(
 		api.address.getPlaceDetails.getPlaceDetails,
+	);
+
+	// Cache-first function for place details to prevent duplicate API calls
+	const getCachedOrFetchPlaceDetails = useCallback(
+		async (placeId: string) => {
+			// Check cache first
+			const cached = queryClient.getQueryData([
+				ENRICHMENT_CACHE_KEY,
+				placeId,
+			]) as
+				| { success: true; details: PlaceDetailsResult }
+				| { success: false; error: string }
+				| undefined;
+			if (cached?.success) {
+				// Return cached result in the format expected by client tools
+				return {
+					success: true,
+					result: cached,
+				};
+			}
+
+			// Fetch from API with retry logic
+			const result = await withRetry(
+				() =>
+					getPlaceDetailsAction({
+						placeId,
+					}),
+				API_RETRY_CONFIG,
+				`place details for "${placeId}"`,
+			);
+
+			// Cache the result if successful
+			if (result.success && result.result?.success) {
+				queryClient.setQueryData(
+					[ENRICHMENT_CACHE_KEY, placeId],
+					result.result,
+				);
+			}
+
+			return result;
+		},
+		[queryClient, getPlaceDetailsAction],
 	);
 
 	// ✅ FIX: All required state values and setters are destructured at the top level.
@@ -101,7 +158,6 @@ export function useAddressFinderClientTools(
 							API_RETRY_CONFIG,
 							`multiple suggestions for "${query}"`,
 						);
-						
 
 						// Then, validate the top result for address intent
 						const validationResult = await withRetry(
@@ -157,10 +213,13 @@ export function useAddressFinderClientTools(
 							};
 
 							// Store all suggestions in cache to preserve options for "show options again"
-							const allSuggestions = (multipleResultsCall.success && multipleResultsCall.result?.success && multipleResultsCall.result.suggestions)
-								? multipleResultsCall.result.suggestions 
-								: [validatedSuggestion];
-							
+							const allSuggestions =
+								multipleResultsCall.success &&
+								multipleResultsCall.result?.success &&
+								multipleResultsCall.result.suggestions
+									? multipleResultsCall.result.suggestions
+									: [validatedSuggestion];
+
 							queryClient.setQueryData(
 								["addressSearch", query],
 								allSuggestions,
@@ -168,13 +227,16 @@ export function useAddressFinderClientTools(
 							setAgentLastSearchQuery(query);
 							setActiveSearch({ query, source: "voice" });
 
-							log(`🔧 Stored ${allSuggestions.length} suggestions in cache for potential "show options again"`);
+							log(
+								`🔧 Stored ${allSuggestions.length} suggestions in cache for potential "show options again"`,
+							);
 
 							return JSON.stringify({
 								status: "validated",
 								count: 1,
-								message: "Address was successfully validated and is now displayed on screen for selection.",
-								note: "Validated address is displayed visually - do not read it aloud"
+								message:
+									"Address was successfully validated and is now displayed on screen for selection.",
+								note: "Validated address is displayed visually - do not read it aloud",
 							});
 						}
 						const errorMessage = validation.success
@@ -250,7 +312,7 @@ export function useAddressFinderClientTools(
 							status: "suggestions_available",
 							count: result.suggestions.length,
 							message: `Found ${result.suggestions.length} address options. They are now displayed on screen for you to choose from.`,
-							note: "Suggestions are displayed visually - do not read them aloud"
+							note: "Suggestions are displayed visually - do not read them aloud",
 						});
 					}
 
@@ -290,10 +352,11 @@ export function useAddressFinderClientTools(
 					count: suggestions.length,
 					source: suggestions.length > 0 ? "unified" : "none",
 					mode: isRecordingFromState ? "conversation" : "manual",
-					message: suggestions.length > 0 
-						? `${suggestions.length} address options are available on screen`
-						: "No address suggestions currently available",
-					note: "Suggestions are displayed visually - do not read them aloud"
+					message:
+						suggestions.length > 0
+							? `${suggestions.length} address options are available on screen`
+							: "No address suggestions currently available",
+					note: "Suggestions are displayed visually - do not read them aloud",
 				});
 			},
 
@@ -338,14 +401,9 @@ export function useAddressFinderClientTools(
 						(selection.lat === undefined || selection.lng === undefined) &&
 						selection.placeId
 					) {
-						// Wrap place details call with retry logic
-						const detailsResult = await withRetry(
-							() =>
-								getPlaceDetailsAction({
-									placeId: selection.placeId,
-								}),
-							API_RETRY_CONFIG,
-							`place details for "${selection.placeId}"`,
+						// Use cache-first function to prevent duplicate API calls
+						const detailsResult = await getCachedOrFetchPlaceDetails(
+							selection.placeId,
 						);
 
 						if (
@@ -359,9 +417,21 @@ export function useAddressFinderClientTools(
 								lng: detailsResult.result.details.lng,
 							};
 						} else {
+							const errorMessage = (() => {
+								if ("error" in detailsResult && detailsResult.error)
+									return detailsResult.error;
+								if (
+									"result" in detailsResult &&
+									detailsResult.result &&
+									"error" in detailsResult.result
+								) {
+									return (detailsResult.result as { error: string }).error;
+								}
+								return "Unknown error";
+							})();
 							log(
 								"⚠️ Place details retrieval failed after retries:",
-								detailsResult.error,
+								errorMessage,
 							);
 							// Continue with selection even if details fail
 						}
@@ -673,15 +743,35 @@ export function useAddressFinderClientTools(
 					index = Number.parseInt(lowerOrdinal, 10) - 1; // Convert to 0-based index
 				}
 				// Handle word ordinals
-				else if (lowerOrdinal === "first" || lowerOrdinal === "1st" || lowerOrdinal === "one") {
+				else if (
+					lowerOrdinal === "first" ||
+					lowerOrdinal === "1st" ||
+					lowerOrdinal === "one"
+				) {
 					index = 0;
-				} else if (lowerOrdinal === "second" || lowerOrdinal === "2nd" || lowerOrdinal === "two") {
+				} else if (
+					lowerOrdinal === "second" ||
+					lowerOrdinal === "2nd" ||
+					lowerOrdinal === "two"
+				) {
 					index = 1;
-				} else if (lowerOrdinal === "third" || lowerOrdinal === "3rd" || lowerOrdinal === "three") {
+				} else if (
+					lowerOrdinal === "third" ||
+					lowerOrdinal === "3rd" ||
+					lowerOrdinal === "three"
+				) {
 					index = 2;
-				} else if (lowerOrdinal === "fourth" || lowerOrdinal === "4th" || lowerOrdinal === "four") {
+				} else if (
+					lowerOrdinal === "fourth" ||
+					lowerOrdinal === "4th" ||
+					lowerOrdinal === "four"
+				) {
 					index = 3;
-				} else if (lowerOrdinal === "fifth" || lowerOrdinal === "5th" || lowerOrdinal === "five") {
+				} else if (
+					lowerOrdinal === "fifth" ||
+					lowerOrdinal === "5th" ||
+					lowerOrdinal === "five"
+				) {
 					index = 4;
 				} else {
 					log(`❌ Unrecognized ordinal: ${ordinal}`);
@@ -722,55 +812,58 @@ export function useAddressFinderClientTools(
 
 			showOptionsAgain: async () => {
 				log("🔧 Tool Call: showOptionsAgain");
-				
+
 				// Get current state
 				const { selectedResult } = useIntentStore.getState();
 				const { agentLastSearchQuery } = useIntentStore.getState();
-				
+
 				if (!selectedResult) {
 					log("❌ No confirmed selection found - cannot show options again");
 					return JSON.stringify({
 						status: "error",
-						error: "No confirmed selection found. Must have a confirmed address to show options again."
+						error:
+							"No confirmed selection found. Must have a confirmed address to show options again.",
 					});
 				}
 
 				if (!agentLastSearchQuery) {
 					log("❌ No previous search query found");
 					return JSON.stringify({
-						status: "error", 
-						error: "No previous search context found. Cannot show options again."
+						status: "error",
+						error:
+							"No previous search context found. Cannot show options again.",
 					});
 				}
 
 				// Check if suggestions exist in cache
-				const suggestions = queryClient.getQueryData<Suggestion[]>([
-					"addressSearch",
-					agentLastSearchQuery,
-				]) || [];
+				const suggestions =
+					queryClient.getQueryData<Suggestion[]>([
+						"addressSearch",
+						agentLastSearchQuery,
+					]) || [];
 
 				if (suggestions.length === 0) {
 					log("❌ No previous suggestions found in cache");
 					return JSON.stringify({
 						status: "error",
-						error: "No previous address options found to display."
+						error: "No previous address options found to display.",
 					});
 				}
 
 				// Toggle UI to show options again
 				useUIStore.getState().setShowingOptionsAfterConfirmation(true);
-				
+
 				log(`✅ Showing ${suggestions.length} previous options again`);
 				addHistory({
 					type: "agent",
-					text: `📋 Showing ${suggestions.length} previous address options again`
+					text: `📋 Showing ${suggestions.length} previous address options again`,
 				});
 
 				return JSON.stringify({
 					status: "options_displayed",
 					message: `Showing ${suggestions.length} previous address options on screen again. You can select a different option or confirm the current selection.`,
 					optionsCount: suggestions.length,
-					currentSelection: selectedResult.description
+					currentSelection: selectedResult.description,
 				});
 			},
 
@@ -823,14 +916,9 @@ export function useAddressFinderClientTools(
 
 					const addressSuggestion = searchResult.result.suggestions[0];
 
-					// Get place details to get coordinates
-					const detailsResult = await withRetry(
-						() =>
-							getPlaceDetailsAction({
-								placeId: addressSuggestion.placeId,
-							}),
-						API_RETRY_CONFIG,
-						`place details for nearby services: "${addressSuggestion.placeId}"`,
+					// Get place details to get coordinates - use cache-first approach
+					const detailsResult = await getCachedOrFetchPlaceDetails(
+						addressSuggestion.placeId,
 					);
 
 					if (
@@ -1015,7 +1103,6 @@ export function useAddressFinderClientTools(
 		[
 			queryClient,
 			getPlaceSuggestionsAction,
-			getPlaceDetailsAction,
 			getSessionToken,
 			clearSessionToken,
 			log,
@@ -1028,6 +1115,7 @@ export function useAddressFinderClientTools(
 			clearSelectionAndSearch,
 			onSelectResult,
 			currentIntent,
+			getCachedOrFetchPlaceDetails,
 		],
 	);
 

@@ -29,33 +29,41 @@ export const NearbyAldiStores: React.FC<NearbyAldiStoresProps> = ({
 
 	useEffect(() => {
 		if (lat == null || lng == null) return;
-		let cancelled = false;
-		const fetchStores = async () => {
-			setLoading(true);
-			setError(null);
-			setStores([]);
-			try {
-				const result = await getNearbyAldiStores({ lat, lng });
-				if (!cancelled) {
-					if (result.success) {
-						setStores(result.places);
-					} else {
-						setError(result.error);
+		
+		// Debounce the API call to prevent multiple rapid calls
+		const timeoutId = setTimeout(() => {
+			let cancelled = false;
+			const fetchStores = async () => {
+				setLoading(true);
+				setError(null);
+				setStores([]);
+				try {
+					const result = await getNearbyAldiStores({ lat, lng });
+					if (!cancelled) {
+						if (result.success) {
+							setStores(result.places);
+						} else {
+							setError(result.error);
+						}
 					}
+				} catch (err: unknown) {
+					if (!cancelled) {
+						setError(
+							err instanceof Error ? err.message : "Failed to fetch stores.",
+						);
+					}
+				} finally {
+					if (!cancelled) setLoading(false);
 				}
-			} catch (err: unknown) {
-				if (!cancelled) {
-					setError(
-						err instanceof Error ? err.message : "Failed to fetch stores.",
-					);
-				}
-			} finally {
-				if (!cancelled) setLoading(false);
-			}
-		};
-		fetchStores();
+			};
+			fetchStores();
+			return () => {
+				cancelled = true;
+			};
+		}, 300); // 300ms debounce delay
+
 		return () => {
-			cancelled = true;
+			clearTimeout(timeoutId);
 		};
 	}, [lat, lng, getNearbyAldiStores]);
 

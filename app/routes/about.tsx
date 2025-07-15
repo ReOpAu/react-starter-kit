@@ -3,8 +3,7 @@ import { Benefits } from "~/components/about/Benefits";
 import { FAQ } from "~/components/about/FAQ";
 import { AboutHero } from "~/components/about/Hero";
 import { HowItWorksDetailed } from "~/components/about/HowItWorksDetailed";
-import { Footer } from "~/components/layout/footer";
-import { Header } from "~/components/layout/Header";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 import type { Route } from "./+types/about";
 
 export async function loader(args: Route.LoaderArgs) {
@@ -16,15 +15,11 @@ export async function loader(args: Route.LoaderArgs) {
 
 export default function AboutPage({ loaderData }: Route.ComponentProps) {
 	return (
-		<>
-			<Header loaderData={loaderData} />
-			<main>
-				<AboutHero />
-				<HowItWorksDetailed />
-				<Benefits />
-				<FAQ />
-			</main>
-			<Footer />
-		</>
+		<PublicLayout loaderData={loaderData}>
+			<AboutHero />
+			<HowItWorksDetailed />
+			<Benefits />
+			<FAQ />
+		</PublicLayout>
 	);
 }

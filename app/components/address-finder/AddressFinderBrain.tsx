@@ -249,7 +249,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		error,
 		effectiveQueryKey,
 		activeSearchSource,
-		syncToAgent,
 		queryClient,
 		addSearchToHistory,
 		isRecallMode,

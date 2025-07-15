@@ -25,6 +25,21 @@ export const findUserByToken = query({
 	},
 });
 
+export const listAllUsers = query({
+	args: {},
+	handler: async (ctx) => {
+		return await ctx.db.query("users").collect();
+	},
+});
+
+export const deleteUser = mutation({
+	args: { id: v.id("users") },
+	handler: async (ctx, { id }) => {
+		await ctx.db.delete(id);
+		return { success: true };
+	},
+});
+
 export const upsertUser = mutation({
 	handler: async (ctx) => {
 		const identity = await ctx.auth.getUserIdentity();
