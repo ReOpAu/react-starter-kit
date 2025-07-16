@@ -655,7 +655,6 @@ export function CreateListingFormComponent() {
 						</div>
 					</form>
 				</Form>
-			</RouterForm>
 		</>
 	);
 }
