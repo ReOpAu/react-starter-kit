@@ -1,8 +1,19 @@
-import React from "react";
+import type React from "react";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../../../components/ui/card";
 import { Input } from "../../../../../components/ui/input";
 import { Label } from "../../../../../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../../components/ui/card";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../../../../components/ui/select";
 
 const AUSTRALIAN_STATES = [
 	{ value: "NSW", label: "New South Wales" },
@@ -12,7 +23,7 @@ const AUSTRALIAN_STATES = [
 	{ value: "SA", label: "South Australia" },
 	{ value: "TAS", label: "Tasmania" },
 	{ value: "ACT", label: "Australian Capital Territory" },
-	{ value: "NT", label: "Northern Territory" }
+	{ value: "NT", label: "Northern Territory" },
 ];
 
 interface LocationFieldsProps {
@@ -34,7 +45,7 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 	showAddress = false,
 	addressLabel = "Address",
 	addressPlaceholder = "Enter address",
-	onChange
+	onChange,
 }) => {
 	return (
 		<Card>
@@ -69,16 +80,16 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 
 					<div className="space-y-2">
 						<Label htmlFor="state">State</Label>
-						<Select 
+						<Select
 							key={`state-${state}`}
-							value={state || ""} 
+							value={state || ""}
 							onValueChange={(value) => onChange("state", value)}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Select state" />
 							</SelectTrigger>
 							<SelectContent>
-								{AUSTRALIAN_STATES.map(stateOption => (
+								{AUSTRALIAN_STATES.map((stateOption) => (
 									<SelectItem key={stateOption.value} value={stateOption.value}>
 										{stateOption.label}
 									</SelectItem>

@@ -7,9 +7,9 @@ import type { ConvexListing } from "../types";
 export function generateListingUrl(listing: ConvexListing): string {
 	const state = listing.state.toLowerCase();
 	const type = listing.listingType.toLowerCase();
-	const suburb = listing.suburb.toLowerCase().replace(/\s+/g, '-');
+	const suburb = listing.suburb.toLowerCase().replace(/\s+/g, "-");
 	const id = listing._id;
-	
+
 	return `/listings/${state}/${type}/${suburb}/${id}`;
 }
 
@@ -23,7 +23,10 @@ export function generateMatchesUrl(listing: ConvexListing): string {
 /**
  * Generates the match detail URL for comparing two listings
  */
-export function generateMatchDetailUrl(originalListing: ConvexListing, matchedListing: ConvexListing): string {
+export function generateMatchDetailUrl(
+	originalListing: ConvexListing,
+	matchedListing: ConvexListing,
+): string {
 	return `${generateListingUrl(originalListing)}/matches/${matchedListing._id}`;
 }
 
@@ -37,8 +40,12 @@ export function generateTypeUrl(state: string, type: string): string {
 /**
  * Generates the suburb-specific URL (all listings of a type in a suburb)
  */
-export function generateSuburbUrl(state: string, type: string, suburb: string): string {
-	const cleanSuburb = suburb.toLowerCase().replace(/\s+/g, '-');
+export function generateSuburbUrl(
+	state: string,
+	type: string,
+	suburb: string,
+): string {
+	const cleanSuburb = suburb.toLowerCase().replace(/\s+/g, "-");
 	return `/listings/${state.toLowerCase()}/${type.toLowerCase()}/${cleanSuburb}`;
 }
 
@@ -52,9 +59,9 @@ export function parseListingParams(params: {
 	id?: string;
 }) {
 	return {
-		state: params.state?.toUpperCase() || '',
-		type: params.type as 'buyer' | 'seller' | undefined,
-		suburb: params.suburb?.replace(/-/g, ' ') || '',
-		id: params.id || ''
+		state: params.state?.toUpperCase() || "",
+		type: params.type as "buyer" | "seller" | undefined,
+		suburb: params.suburb?.replace(/-/g, " ") || "",
+		id: params.id || "",
 	};
 }

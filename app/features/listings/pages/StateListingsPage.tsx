@@ -1,17 +1,22 @@
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
+import { ArrowLeft, Home, MapPin, TrendingUp, Users } from "lucide-react";
 import type React from "react";
-import { useParams, Link } from "react-router";
+import { Link, useParams } from "react-router";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
 import { ListingsDisplay } from "../components/ListingsDisplay";
 import { MicroNavigation } from "../components/MicroNavigation";
-import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Badge } from "../../../components/ui/badge";
-import { MapPin, Home, Users, TrendingUp, ArrowLeft } from "lucide-react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 
 const StateListingsPage: React.FC = () => {
 	const { state } = useParams<{ state: string }>();
-	
+
 	// State-specific info (could be moved to a config file)
 	const stateInfo = {
 		NSW: { name: "New South Wales", capital: "Sydney", abbr: "NSW" },
@@ -20,15 +25,22 @@ const StateListingsPage: React.FC = () => {
 		WA: { name: "Western Australia", capital: "Perth", abbr: "WA" },
 		SA: { name: "South Australia", capital: "Adelaide", abbr: "SA" },
 		TAS: { name: "Tasmania", capital: "Hobart", abbr: "TAS" },
-		ACT: { name: "Australian Capital Territory", capital: "Canberra", abbr: "ACT" },
+		ACT: {
+			name: "Australian Capital Territory",
+			capital: "Canberra",
+			abbr: "ACT",
+		},
 		NT: { name: "Northern Territory", capital: "Darwin", abbr: "NT" },
 	};
 
-	const currentState = state ? stateInfo[state.toUpperCase() as keyof typeof stateInfo] : null;
-	
+	const currentState = state
+		? stateInfo[state.toUpperCase() as keyof typeof stateInfo]
+		: null;
+
 	// Fetch listing statistics for the state
-	const stats = useQuery(api.listings.getStateListingStats, 
-		currentState ? { state: currentState.abbr } : "skip"
+	const stats = useQuery(
+		api.listings.getStateListingStats,
+		currentState ? { state: currentState.abbr } : "skip",
 	);
 
 	return (
@@ -43,13 +55,13 @@ const StateListingsPage: React.FC = () => {
 								All Listings
 							</Link>
 						</Button>
-						<MicroNavigation 
+						<MicroNavigation
 							paths={[
 								{
 									label: currentState?.name || state || "",
 									href: `/listings/${state?.toLowerCase()}`,
 								},
-							]} 
+							]}
 						/>
 					</div>
 
@@ -72,11 +84,15 @@ const StateListingsPage: React.FC = () => {
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">Total Listings</CardTitle>
+								<CardTitle className="text-sm font-medium">
+									Total Listings
+								</CardTitle>
 								<Home className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">{stats?.totalListings ?? "--"}</div>
+								<div className="text-2xl font-bold">
+									{stats?.totalListings ?? "--"}
+								</div>
 								<p className="text-xs text-muted-foreground">
 									Active listings in {currentState?.name || state}
 								</p>
@@ -88,7 +104,9 @@ const StateListingsPage: React.FC = () => {
 								<Users className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">{stats?.buyerListings ?? "--"}</div>
+								<div className="text-2xl font-bold">
+									{stats?.buyerListings ?? "--"}
+								</div>
 								<p className="text-xs text-muted-foreground">
 									Active buyer listings
 								</p>
@@ -100,7 +118,9 @@ const StateListingsPage: React.FC = () => {
 								<TrendingUp className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">{stats?.sellerListings ?? "--"}</div>
+								<div className="text-2xl font-bold">
+									{stats?.sellerListings ?? "--"}
+								</div>
 								<p className="text-xs text-muted-foreground">
 									Active seller listings
 								</p>
@@ -109,7 +129,9 @@ const StateListingsPage: React.FC = () => {
 					</div>
 
 					{/* Listings Display */}
-					<ListingsDisplay initialFilters={{ state: currentState?.abbr || state || "" }} />
+					<ListingsDisplay
+						initialFilters={{ state: currentState?.abbr || state || "" }}
+					/>
 				</div>
 			</div>
 		</>

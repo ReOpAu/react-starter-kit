@@ -1,15 +1,15 @@
 import type React from "react";
 import { Link } from "react-router";
-import { Card, CardContent, CardFooter } from "../../../components/ui/card";
-import { Badge } from "../../../components/ui/badge";
-import { SaveButton } from "./SaveButton";
-import { Map } from "./Map";
-import { StatusRibbon } from "./StatusRibbon";
-import { PropertyIcons } from "./PropertyIcons";
-import type { ConvexListing } from "../types";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { generateListingUrl } from "../utils/urlHelpers";
+import { Badge } from "../../../components/ui/badge";
+import { Card, CardContent, CardFooter } from "../../../components/ui/card";
+import type { ConvexListing } from "../types";
 import { isBuyerListing } from "../utils";
+import { generateListingUrl } from "../utils/urlHelpers";
+import { Map } from "./Map";
+import { PropertyIcons } from "./PropertyIcons";
+import { SaveButton } from "./SaveButton";
+import { StatusRibbon } from "./StatusRibbon";
 
 export interface ListingCardProps {
 	listing: ConvexListing;
@@ -19,7 +19,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 	// Helper functions
 	const formatPrice = () => {
 		if (!listing.priceMin || !listing.priceMax) return "Price not specified";
-		
+
 		const formatCurrency = (num: number) => {
 			if (num >= 1000000) {
 				return `$${(num / 1000000).toFixed(1)}M`;
@@ -47,24 +47,27 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 	};
 
 	return (
-		<Card className={`relative bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-100 overflow-hidden ${
-			listing.listingType === "buyer" 
-				? "hover:shadow-blue-500/10" 
-				: "hover:shadow-purple-500/10"
-		}`}>
+		<Card
+			className={`relative bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-100 overflow-hidden ${
+				listing.listingType === "buyer"
+					? "hover:shadow-blue-500/10"
+					: "hover:shadow-purple-500/10"
+			}`}
+		>
 			{/* Status Ribbon */}
-			{listing.sample 
-				? <StatusRibbon variant="SAMPLE" />
-				: isNewListing() && <StatusRibbon variant="NEW" />
-			}
-			
+			{listing.sample ? (
+				<StatusRibbon variant="SAMPLE" />
+			) : (
+				isNewListing() && <StatusRibbon variant="NEW" />
+			)}
+
 			<Link to={generateListingUrl(listing)} className="block">
 				{/* Map preview */}
 				<div className="h-64 relative -m-6 mb-6">
 					<Map
 						location={{
 							latitude: listing.latitude,
-							longitude: listing.longitude
+							longitude: listing.longitude,
 						}}
 						zoom={15}
 						interactive={false}
@@ -76,7 +79,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 				<CardContent className="p-6 space-y-4">
 					{/* Badges */}
 					<div className="flex flex-wrap gap-2 items-center">
-						<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
+						<Badge
+							variant={
+								listing.listingType === "buyer" ? "default" : "secondary"
+							}
+						>
 							{listing.listingType}
 						</Badge>
 						{listing.listingType === "buyer" && listing.buyerType && (
@@ -85,11 +92,16 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 						{listing.listingType === "seller" && listing.sellerType && (
 							<Badge variant="outline">{listing.sellerType}</Badge>
 						)}
-						{listing.listingType === "buyer" && listing.buyerType === "street" && listing.searchRadius && (
-							<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-								{listing.searchRadius}km radius
-							</Badge>
-						)}
+						{listing.listingType === "buyer" &&
+							listing.buyerType === "street" &&
+							listing.searchRadius && (
+								<Badge
+									variant="outline"
+									className="bg-blue-50 text-blue-700 border-blue-200"
+								>
+									{listing.searchRadius}km radius
+								</Badge>
+							)}
 					</div>
 
 					{/* Title */}

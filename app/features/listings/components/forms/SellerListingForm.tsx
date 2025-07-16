@@ -1,24 +1,36 @@
-import React, { useState, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { useUser } from "@clerk/clerk-react";
-import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
-import { Label } from "../../../../components/ui/label";
-import { Textarea } from "../../../../components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
-import { Switch } from "../../../../components/ui/switch";
-import { Skeleton } from "../../../../components/ui/skeleton";
-import { Home, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { SellerType, BuildingType, Feature } from "../../types";
-import { LocationFields } from "./shared/LocationFields";
-import { PropertyDetailsFields } from "./shared/PropertyDetailsFields";
-import { PriceFields } from "./shared/PriceFields";
-import { FeaturesFields } from "./shared/FeaturesFields";
+import { useUser } from "@clerk/clerk-react";
+import { useMutation, useQuery } from "convex/react";
+import { AlertCircle, Home } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
+import { Alert, AlertDescription } from "../../../../components/ui/alert";
+import { Button } from "../../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../../components/ui/card";
+import { Input } from "../../../../components/ui/input";
+import { Label } from "../../../../components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../../../components/ui/select";
+import { Skeleton } from "../../../../components/ui/skeleton";
+import { Switch } from "../../../../components/ui/switch";
+import { Textarea } from "../../../../components/ui/textarea";
+import type { BuildingType, Feature, SellerType } from "../../types";
+import { FeaturesFields } from "./shared/FeaturesFields";
+import { LocationFields } from "./shared/LocationFields";
+import { PriceFields } from "./shared/PriceFields";
+import { PropertyDetailsFields } from "./shared/PropertyDetailsFields";
 
 interface SellerListingFormProps {
 	listingId: Id<"listings">;
@@ -52,7 +64,7 @@ interface SellerFormData {
 export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 	listingId,
 	onSuccess,
-	onCancel
+	onCancel,
 }) => {
 	const { user } = useUser();
 	const listing = useQuery(api.listings.getListing, { id: listingId });
@@ -77,7 +89,7 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 		features: [],
 		contactEmail: "",
 		contactPhone: "",
-		isPremium: false
+		isPremium: false,
 	});
 
 	const [isLoading, setIsLoading] = useState(false);
@@ -93,17 +105,19 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				state: listing.state,
 				priceMin: listing.priceMin,
 				priceMax: listing.priceMax,
-				sellerType: listing.sellerType
+				sellerType: listing.sellerType,
 			});
-			
+
 			// Helper function to find closest valid price option
 			const findClosestPrice = (price: number): number => {
-				const validPrices = PRICE_OPTIONS.map(opt => opt.value);
-				return validPrices.reduce((closest, current) => 
-					Math.abs(current - price) < Math.abs(closest - price) ? current : closest
+				const validPrices = PRICE_OPTIONS.map((opt) => opt.value);
+				return validPrices.reduce((closest, current) =>
+					Math.abs(current - price) < Math.abs(closest - price)
+						? current
+						: closest,
 				);
 			};
-			
+
 			const newFormData: SellerFormData = {
 				sellerType: listing.sellerType || "sale",
 				buildingType: listing.buildingType || undefined,
@@ -123,17 +137,17 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				features: listing.features || [],
 				contactEmail: listing.contactEmail || "",
 				contactPhone: listing.contactPhone || "",
-				isPremium: listing.isPremium || false
+				isPremium: listing.isPremium || false,
 			};
-			
+
 			console.log("🔍 SellerListingForm: Setting form data:", {
 				buildingType: newFormData.buildingType,
 				state: newFormData.state,
 				priceMin: newFormData.priceMin,
 				priceMax: newFormData.priceMax,
-				sellerType: newFormData.sellerType
+				sellerType: newFormData.sellerType,
 			});
-			
+
 			setFormData(newFormData);
 			setIsInitialized(true);
 		}
@@ -181,14 +195,14 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		
+
 		if (!validatePrice()) {
 			return;
 		}
 
 		setIsLoading(true);
 		setError(null);
-		
+
 		try {
 			const updates = {
 				sellerType: formData.sellerType,
@@ -210,7 +224,7 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				contactEmail: formData.contactEmail,
 				contactPhone: formData.contactPhone,
 				isPremium: formData.isPremium,
-				updatedAt: Date.now()
+				updatedAt: Date.now(),
 			};
 
 			const result = await updateListing({ id: listingId, updates });
@@ -226,16 +240,16 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 
 	// Field update handlers
 	const handleFieldChange = (field: string, value: string | number) => {
-		setFormData(prev => ({ ...prev, [field]: value }));
+		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
 	const handlePriceChange = (field: "priceMin" | "priceMax", value: number) => {
-		setFormData(prev => ({ ...prev, [field]: value }));
-		
+		setFormData((prev) => ({ ...prev, [field]: value }));
+
 		// Validate price range
 		const newMin = field === "priceMin" ? value : formData.priceMin;
 		const newMax = field === "priceMax" ? value : formData.priceMax;
-		
+
 		if (newMin >= newMax) {
 			setPriceError("Maximum price must be greater than minimum price.");
 		} else {
@@ -244,7 +258,7 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 	};
 
 	const handleFeaturesChange = (features: Feature[]) => {
-		setFormData(prev => ({ ...prev, features }));
+		setFormData((prev) => ({ ...prev, features }));
 	};
 
 	return (
@@ -260,10 +274,12 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				<CardContent className="space-y-6">
 					<div className="space-y-2">
 						<Label htmlFor="sellerType">Listing Type</Label>
-						<Select 
+						<Select
 							key={`sellerType-${formData.sellerType}`}
-							value={formData.sellerType || ""} 
-							onValueChange={(value: SellerType) => handleFieldChange("sellerType", value)}
+							value={formData.sellerType || ""}
+							onValueChange={(value: SellerType) =>
+								handleFieldChange("sellerType", value)
+							}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Select listing type" />
@@ -354,7 +370,9 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 								id="contactEmail"
 								type="email"
 								value={formData.contactEmail}
-								onChange={(e) => handleFieldChange("contactEmail", e.target.value)}
+								onChange={(e) =>
+									handleFieldChange("contactEmail", e.target.value)
+								}
 								placeholder="your@email.com"
 							/>
 						</div>
@@ -365,7 +383,9 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 								id="contactPhone"
 								type="tel"
 								value={formData.contactPhone}
-								onChange={(e) => handleFieldChange("contactPhone", e.target.value)}
+								onChange={(e) =>
+									handleFieldChange("contactPhone", e.target.value)
+								}
 								placeholder="0412 345 678"
 							/>
 						</div>
@@ -383,9 +403,13 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 						<Switch
 							id="isPremium"
 							checked={formData.isPremium}
-							onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPremium: checked }))}
+							onCheckedChange={(checked) =>
+								setFormData((prev) => ({ ...prev, isPremium: checked }))
+							}
 						/>
-						<Label htmlFor="isPremium">Premium Listing (Featured placement)</Label>
+						<Label htmlFor="isPremium">
+							Premium Listing (Featured placement)
+						</Label>
 					</div>
 				</CardContent>
 			</Card>

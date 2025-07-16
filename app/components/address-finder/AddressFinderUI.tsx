@@ -322,22 +322,27 @@ export function AddressFinderUI({
 					<Card className="border-blue-200 bg-blue-50">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								{showingOptionsAfterConfirmation ? "📋 Address Options" : "🤖 Place Suggestions"}
+								{showingOptionsAfterConfirmation
+									? "📋 Address Options"
+									: "🤖 Place Suggestions"}
 								<Badge variant="outline" className="bg-blue-100 text-blue-800">
 									{suggestions.length} results
 								</Badge>
 							</CardTitle>
 							<p className="text-sm text-blue-600">
-								{showingOptionsAfterConfirmation 
+								{showingOptionsAfterConfirmation
 									? "Previous address options displayed again - you can select a different option"
-									: "Agent-generated suggestions during conversation"
-								}
+									: "Agent-generated suggestions during conversation"}
 							</p>
 							{showingOptionsAfterConfirmation && (
-								<Button 
-									size="sm" 
-									variant="outline" 
-									onClick={() => useUIStore.getState().setShowingOptionsAfterConfirmation(false)}
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() =>
+										useUIStore
+											.getState()
+											.setShowingOptionsAfterConfirmation(false)
+									}
 									className="mt-2"
 								>
 									Hide Options

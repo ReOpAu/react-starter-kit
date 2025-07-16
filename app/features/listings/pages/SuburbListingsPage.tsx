@@ -1,14 +1,18 @@
+import { ArrowLeft, MapPin, TrendingUp, Users } from "lucide-react";
 import type React from "react";
-import { useParams, Link } from "react-router";
+import { Link, useParams } from "react-router";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 import { ListingsDisplay } from "../components/ListingsDisplay";
 import { MicroNavigation } from "../components/MicroNavigation";
-import { Button } from "../../../components/ui/button";
-import { Badge } from "../../../components/ui/badge";
-import { ArrowLeft, MapPin, Users, TrendingUp } from "lucide-react";
 import type { ListingType } from "../types";
 
 const SuburbListingsPage: React.FC = () => {
-	const { state, type, suburb } = useParams<{ state: string; type: string; suburb: string }>();
+	const { state, type, suburb } = useParams<{
+		state: string;
+		type: string;
+		suburb: string;
+	}>();
 	const listingType = type as ListingType;
 
 	return (
@@ -22,7 +26,7 @@ const SuburbListingsPage: React.FC = () => {
 							Back to {type}s
 						</Link>
 					</Button>
-					<MicroNavigation 
+					<MicroNavigation
 						paths={[
 							{
 								label: state?.toUpperCase() || "",
@@ -33,10 +37,15 @@ const SuburbListingsPage: React.FC = () => {
 								href: `/listings/${state?.toLowerCase()}/${type?.toLowerCase()}`,
 							},
 							{
-								label: suburb?.replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || "",
+								label:
+									suburb
+										?.replace(/-/g, " ")
+										.split(" ")
+										.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+										.join(" ") || "",
 								href: `/listings/${state?.toLowerCase()}/${type?.toLowerCase()}/${suburb}`,
 							},
-						]} 
+						]}
 					/>
 				</div>
 
@@ -44,7 +53,9 @@ const SuburbListingsPage: React.FC = () => {
 				<div className="mx-auto max-w-2xl lg:text-center mb-12">
 					<div className="flex items-center justify-center gap-2 mb-4">
 						<MapPin className="w-5 h-5 text-blue-600" />
-						<Badge variant="outline">{suburb}, {state}</Badge>
+						<Badge variant="outline">
+							{suburb}, {state}
+						</Badge>
 						{listingType === "buyer" ? (
 							<Users className="w-5 h-5 text-blue-600" />
 						) : (
@@ -58,19 +69,21 @@ const SuburbListingsPage: React.FC = () => {
 						{listingType === "buyer" ? "Buyers" : "Sellers"} in {suburb}
 					</h1>
 					<p className="mt-6 text-lg leading-8 text-gray-600">
-						{listingType === "buyer" 
+						{listingType === "buyer"
 							? "Browse property requirements from buyers looking for properties in "
-							: "Browse properties available from sellers in "
-						}{suburb}, {state}.
+							: "Browse properties available from sellers in "}
+						{suburb}, {state}.
 					</p>
 				</div>
 
 				{/* Listings Display */}
-				<ListingsDisplay initialFilters={{ 
-					state: state || "", 
-					listingType: listingType || "all",
-					suburb: suburb || ""
-				}} />
+				<ListingsDisplay
+					initialFilters={{
+						state: state || "",
+						listingType: listingType || "all",
+						suburb: suburb || "",
+					}}
+				/>
 			</div>
 		</div>
 	);

@@ -168,7 +168,8 @@ export const toolDefinitions = {
 		parametersSchema: setSelectionAcknowledgedSchema,
 	},
 	showOptionsAgain: {
-		description: "Show the previous address options again after a selection has been confirmed. Toggles visibility between confirmed result and suggestion list.",
+		description:
+			"Show the previous address options again after a selection has been confirmed. Toggles visibility between confirmed result and suggestion list.",
 		parametersSchema: showOptionsAgainSchema,
 	},
 	getNearbyServices: {

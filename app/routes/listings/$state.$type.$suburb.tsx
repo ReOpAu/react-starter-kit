@@ -10,7 +10,9 @@ export async function loader(args: Route.LoaderArgs) {
 	};
 }
 
-export default function SuburbListingsRoute({ loaderData }: Route.ComponentProps) {
+export default function SuburbListingsRoute({
+	loaderData,
+}: Route.ComponentProps) {
 	return (
 		<PublicLayout loaderData={loaderData}>
 			<SuburbListingsPage />

@@ -10,7 +10,9 @@ export async function loader(args: Route.LoaderArgs) {
 	};
 }
 
-export default function TypeListingsRoute({ loaderData }: Route.ComponentProps) {
+export default function TypeListingsRoute({
+	loaderData,
+}: Route.ComponentProps) {
 	return (
 		<PublicLayout loaderData={loaderData}>
 			<TypeListingsPage />

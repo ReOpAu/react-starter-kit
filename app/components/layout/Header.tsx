@@ -24,10 +24,13 @@ export function Header({
 						<Link to="/blog" className="text-gray-600 hover:text-primary">
 							Blog
 						</Link>
-                        <Link to="/listings" className="text-gray-600 hover:text-primary">
-                            Listings
-                        </Link>
-						<Link to="/address-finder" className="text-gray-600 hover:text-primary">
+						<Link to="/listings" className="text-gray-600 hover:text-primary">
+							Listings
+						</Link>
+						<Link
+							to="/address-finder"
+							className="text-gray-600 hover:text-primary"
+						>
 							Address Finder
 						</Link>
 						<div className="flex items-center gap-2">

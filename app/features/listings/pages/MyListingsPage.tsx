@@ -1,36 +1,52 @@
-import React, { useState } from "react";
-import { Link } from "react-router";
-import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/clerk-react";
-import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { useQuery } from "convex/react";
+import {
+	Calendar,
+	DollarSign,
+	Edit,
+	Home,
+	MapPin,
+	Plus,
+	TrendingUp,
+	Users,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { Link } from "react-router";
 import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { DeleteListingButton } from "../components/forms";
-import { Plus, Edit, Home, Users, TrendingUp, MapPin, Calendar, DollarSign } from "lucide-react";
-import { api } from "@/convex/_generated/api";
 import type { ConvexListing } from "../types";
 
 const MyListingsPage: React.FC = () => {
 	const { user } = useUser();
 	const [filter, setFilter] = useState<"all" | "buyer" | "seller">("all");
-	
+
 	// Query user's listings - we'll need to create this query
 	const allListings = useQuery(api.listings.listListings, {});
-	
-	// Filter listings by current user
-	const userListings = allListings?.listings?.filter(listing => 
-		listing.userId === user?.id
-	) || [];
 
-	const filteredListings = filter === "all" 
-		? userListings 
-		: userListings.filter(listing => listing.listingType === filter);
+	// Filter listings by current user
+	const userListings =
+		allListings?.listings?.filter((listing) => listing.userId === user?.id) ||
+		[];
+
+	const filteredListings =
+		filter === "all"
+			? userListings
+			: userListings.filter((listing) => listing.listingType === filter);
 
 	const stats = {
 		total: userListings.length,
-		buyers: userListings.filter(l => l.listingType === "buyer").length,
-		sellers: userListings.filter(l => l.listingType === "seller").length
+		buyers: userListings.filter((l) => l.listingType === "buyer").length,
+		sellers: userListings.filter((l) => l.listingType === "seller").length,
 	};
 
 	const formatPrice = (price?: { min: number; max: number }) => {
@@ -53,7 +69,9 @@ const MyListingsPage: React.FC = () => {
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 					<div className="text-center">
 						<h1 className="text-2xl font-bold text-gray-900">Please sign in</h1>
-						<p className="mt-2 text-gray-600">You need to be signed in to view your listings.</p>
+						<p className="mt-2 text-gray-600">
+							You need to be signed in to view your listings.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -85,7 +103,9 @@ const MyListingsPage: React.FC = () => {
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">Total Listings</CardTitle>
+							<CardTitle className="text-sm font-medium">
+								Total Listings
+							</CardTitle>
 							<Home className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
@@ -97,7 +117,9 @@ const MyListingsPage: React.FC = () => {
 					</Card>
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">Buyer Listings</CardTitle>
+							<CardTitle className="text-sm font-medium">
+								Buyer Listings
+							</CardTitle>
 							<Users className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
@@ -109,7 +131,9 @@ const MyListingsPage: React.FC = () => {
 					</Card>
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-							<CardTitle className="text-sm font-medium">Seller Listings</CardTitle>
+							<CardTitle className="text-sm font-medium">
+								Seller Listings
+							</CardTitle>
 							<TrendingUp className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
@@ -123,19 +147,19 @@ const MyListingsPage: React.FC = () => {
 
 				{/* Filters */}
 				<div className="flex gap-2 mb-6">
-					<Button 
+					<Button
 						variant={filter === "all" ? "default" : "outline"}
 						onClick={() => setFilter("all")}
 					>
 						All ({stats.total})
 					</Button>
-					<Button 
+					<Button
 						variant={filter === "buyer" ? "default" : "outline"}
 						onClick={() => setFilter("buyer")}
 					>
 						Buyers ({stats.buyers})
 					</Button>
-					<Button 
+					<Button
 						variant={filter === "seller" ? "default" : "outline"}
 						onClick={() => setFilter("seller")}
 					>
@@ -169,7 +193,7 @@ const MyListingsPage: React.FC = () => {
 								{filter === "all" ? "No listings yet" : `No ${filter} listings`}
 							</h3>
 							<p className="text-muted-foreground mb-4">
-								{filter === "all" 
+								{filter === "all"
 									? "Create your first listing to get started"
 									: `You haven't created any ${filter} listings yet`}
 							</p>
@@ -185,22 +209,31 @@ const MyListingsPage: React.FC = () => {
 					// Listings grid
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 						{filteredListings.map((listing: ConvexListing) => (
-							<Card key={listing._id} className="hover:shadow-md transition-shadow">
+							<Card
+								key={listing._id}
+								className="hover:shadow-md transition-shadow"
+							>
 								<CardHeader>
 									<div className="flex items-start justify-between">
 										<div className="flex-1">
 											<div className="flex items-center gap-2 mb-2">
-												<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
+												<Badge
+													variant={
+														listing.listingType === "buyer"
+															? "default"
+															: "secondary"
+													}
+												>
 													{listing.listingType}
 												</Badge>
-												<Badge variant="outline">
-													{listing.subtype}
-												</Badge>
+												<Badge variant="outline">{listing.subtype}</Badge>
 												{listing.isPremium && (
 													<Badge variant="destructive">Premium</Badge>
 												)}
 											</div>
-											<CardTitle className="text-lg">{listing.headline}</CardTitle>
+											<CardTitle className="text-lg">
+												{listing.headline}
+											</CardTitle>
 										</div>
 									</div>
 									<div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -218,7 +251,7 @@ const MyListingsPage: React.FC = () => {
 									<p className="text-sm text-muted-foreground mb-4 line-clamp-2">
 										{listing.description}
 									</p>
-									
+
 									<div className="space-y-3">
 										{/* Property Details */}
 										<div className="flex items-center gap-4 text-sm">
@@ -231,23 +264,35 @@ const MyListingsPage: React.FC = () => {
 										{/* Price */}
 										<div className="flex items-center gap-1 text-sm font-medium">
 											<DollarSign className="w-3 h-3" />
-											{listing.listingType === "seller" 
+											{listing.listingType === "seller"
 												? formatPrice(listing.price)
-												: formatPrice(listing.pricePreference)
-											}
+												: formatPrice(listing.pricePreference)}
 										</div>
 
 										{/* Features */}
-										{(listing.features?.length || listing.mustHaveFeatures?.length) && (
+										{(listing.features?.length ||
+											listing.mustHaveFeatures?.length) && (
 											<div className="flex flex-wrap gap-1">
-												{(listing.features || listing.mustHaveFeatures || []).slice(0, 3).map((feature, index) => (
-													<Badge key={index} variant="outline" className="text-xs">
-														{feature}
-													</Badge>
-												))}
-												{(listing.features?.length || listing.mustHaveFeatures?.length || 0) > 3 && (
+												{(listing.features || listing.mustHaveFeatures || [])
+													.slice(0, 3)
+													.map((feature, index) => (
+														<Badge
+															key={index}
+															variant="outline"
+															className="text-xs"
+														>
+															{feature}
+														</Badge>
+													))}
+												{(listing.features?.length ||
+													listing.mustHaveFeatures?.length ||
+													0) > 3 && (
 													<Badge variant="outline" className="text-xs">
-														+{(listing.features?.length || listing.mustHaveFeatures?.length || 0) - 3} more
+														+
+														{(listing.features?.length ||
+															listing.mustHaveFeatures?.length ||
+															0) - 3}{" "}
+														more
 													</Badge>
 												)}
 											</div>
@@ -256,7 +301,12 @@ const MyListingsPage: React.FC = () => {
 
 									{/* Actions */}
 									<div className="flex gap-2 mt-4 pt-4 border-t">
-										<Button variant="outline" size="sm" asChild className="flex-1">
+										<Button
+											variant="outline"
+											size="sm"
+											asChild
+											className="flex-1"
+										>
 											<Link to={`/listings/edit/${listing._id}`}>
 												<Edit className="w-3 h-3 mr-1" />
 												Edit

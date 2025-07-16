@@ -60,7 +60,7 @@ export function MessageInput({
 					"h-10 w-10 shrink-0 shadow-sm transition-all duration-200",
 					message.trim() && isConnected
 						? "bg-primary hover:bg-primary/90 text-white scale-100"
-						: "bg-gray-200 dark:bg-gray-700 text-gray-400 scale-95"
+						: "bg-gray-200 dark:bg-gray-700 text-gray-400 scale-95",
 				)}
 				aria-label="Send message"
 			>

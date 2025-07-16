@@ -15,50 +15,59 @@ async function syncAgent(dryRun = false) {
 
 		// Generate ElevenLabs-compatible client tool definitions
 		console.log("🔧 Generating ElevenLabs client tool definitions...");
-		const elevenLabsTools = Object.entries(toolDefinitions).map(([name, def]) => {
-			const schema = zodToJsonSchema(def.parametersSchema, {
-				$refStrategy: "none",
-			});
-			const schemaObj = schema as any;
-
-			// Convert to ElevenLabs client tool format
-			const properties: Record<string, any> = {};
-			const required: string[] = [];
-
-			if (schemaObj.properties) {
-				Object.entries(schemaObj.properties).forEach(([propName, propSchema]: [string, any]) => {
-					properties[propName] = {
-						type: propSchema.type || "string",
-						description: propSchema.description || propName,
-						dynamic_variable: "",
-						constant_value: ""
-					};
+		const elevenLabsTools = Object.entries(toolDefinitions).map(
+			([name, def]) => {
+				const schema = zodToJsonSchema(def.parametersSchema, {
+					$refStrategy: "none",
 				});
-			}
+				const schemaObj = schema as any;
 
-			if (schemaObj.required && Array.isArray(schemaObj.required)) {
-				required.push(...schemaObj.required);
-			}
+				// Convert to ElevenLabs client tool format
+				const properties: Record<string, any> = {};
+				const required: string[] = [];
 
-			return {
-				name,
-				description: def.description,
-				response_timeout_secs: 20,
-				type: "client",
-				parameters: Object.keys(properties).length > 0 ? {
-					type: "object",
-					required,
-					description: "",
-					properties
-				} : null,
-				expects_response: true,
-				dynamic_variables: {
-					dynamic_variable_placeholders: {}
+				if (schemaObj.properties) {
+					Object.entries(schemaObj.properties).forEach(
+						([propName, propSchema]: [string, any]) => {
+							properties[propName] = {
+								type: propSchema.type || "string",
+								description: propSchema.description || propName,
+								dynamic_variable: "",
+								constant_value: "",
+							};
+						},
+					);
 				}
-			};
-		});
 
-		console.log(`📋 Generated ${elevenLabsTools.length} ElevenLabs client tool definitions`);
+				if (schemaObj.required && Array.isArray(schemaObj.required)) {
+					required.push(...schemaObj.required);
+				}
+
+				return {
+					name,
+					description: def.description,
+					response_timeout_secs: 20,
+					type: "client",
+					parameters:
+						Object.keys(properties).length > 0
+							? {
+									type: "object",
+									required,
+									description: "",
+									properties,
+								}
+							: null,
+					expects_response: true,
+					dynamic_variables: {
+						dynamic_variable_placeholders: {},
+					},
+				};
+			},
+		);
+
+		console.log(
+			`📋 Generated ${elevenLabsTools.length} ElevenLabs client tool definitions`,
+		);
 
 		// Load base prompt
 		const basePromptPath = path.resolve(
@@ -99,8 +108,8 @@ async function syncAgent(dryRun = false) {
 								response_timeout_secs: 20,
 								type: "system",
 								params: {
-									system_tool_type: "end_call"
-								}
+									system_tool_type: "end_call",
+								},
 							},
 							language_detection: null,
 							transfer_to_agent: null,
@@ -111,10 +120,10 @@ async function syncAgent(dryRun = false) {
 								response_timeout_secs: 20,
 								type: "system",
 								params: {
-									system_tool_type: "skip_turn"
-								}
+									system_tool_type: "skip_turn",
+								},
 							},
-							play_keypad_touch_tone: null
+							play_keypad_touch_tone: null,
 						},
 						mcp_server_ids: [],
 						native_mcp_server_ids: [],
@@ -126,11 +135,11 @@ async function syncAgent(dryRun = false) {
 							embedding_model: "e5_mistral_7b_instruct",
 							max_vector_distance: 0.6,
 							max_documents_length: 50000,
-							max_retrieved_rag_chunks_count: 20
-						}
-					}
-				}
-			}
+							max_retrieved_rag_chunks_count: 20,
+						},
+					},
+				},
+			},
 		};
 
 		if (dryRun) {
@@ -178,7 +187,10 @@ async function syncAgent(dryRun = false) {
 				console.error(
 					"💡 Unprocessable Entity - Check tool configuration format and required fields",
 				);
-				console.error("📋 Tools being sent:", elevenLabsTools.map(t => t.name));
+				console.error(
+					"📋 Tools being sent:",
+					elevenLabsTools.map((t) => t.name),
+				);
 			}
 			console.error("Response body:", errorText);
 			throw new Error(`API Error: ${response.status}\n${errorText}`);
@@ -194,7 +206,9 @@ async function syncAgent(dryRun = false) {
 		// Verify tools were applied
 		if (result?.conversation_config?.agent?.prompt?.tools) {
 			const appliedTools = result.conversation_config.agent.prompt.tools;
-			console.log(`   - Applied Tools: ${appliedTools.length} (${appliedTools.map((t: any) => t.name).join(", ")})`);
+			console.log(
+				`   - Applied Tools: ${appliedTools.length} (${appliedTools.map((t: any) => t.name).join(", ")})`,
+			);
 		}
 
 		console.log(

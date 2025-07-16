@@ -1,21 +1,36 @@
+import { ArrowLeft, Check, MapPin, X } from "lucide-react";
 import type React from "react";
 import { useParams } from "react-router";
-import { useMatchDetails } from "../data/listingsService";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Link } from "react-router";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "../../../components/ui/accordion";
+import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { Table, TableBody, TableCell, TableRow } from "../../../components/ui/table";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
 import { Separator } from "../../../components/ui/separator";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../../components/ui/accordion";
-import { Alert, AlertDescription } from "../../../components/ui/alert";
-import { Link } from "react-router";
-import { ArrowLeft, Check, X, MapPin } from "lucide-react";
-import { PropertyFeatures } from "../components/PropertyFeatures";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableRow,
+} from "../../../components/ui/table";
 import { MatchScore } from "../components/MatchScore";
+import { PropertyFeatures } from "../components/PropertyFeatures";
 import { ScoreBreakdown } from "../components/ScoreBreakdown";
-import { parseListingParams, generateMatchesUrl } from "../utils/urlHelpers";
-import { calculateAndFormatListingDistance, isBuyerListing } from "../utils";
+import { useMatchDetails } from "../data/listingsService";
 import type { ConvexListing } from "../types";
+import { calculateAndFormatListingDistance, isBuyerListing } from "../utils";
+import { generateMatchesUrl, parseListingParams } from "../utils/urlHelpers";
 
 const MatchDetailPage: React.FC = () => {
 	const params = useParams();
@@ -23,8 +38,12 @@ const MatchDetailPage: React.FC = () => {
 	const matchedListingId = params.matchId;
 
 	// Get match details efficiently - no client-side filtering needed
-	const matchDetails = useMatchDetails(originalListingId!, matchedListingId!, true);
-	
+	const matchDetails = useMatchDetails(
+		originalListingId!,
+		matchedListingId!,
+		true,
+	);
+
 	const originalListing = matchDetails?.originalListing;
 	const matchedListing = matchDetails?.matchedListing;
 	const score = matchDetails?.score || 0;
@@ -48,7 +67,9 @@ const MatchDetailPage: React.FC = () => {
 			<div className="container mx-auto py-8">
 				<Alert>
 					<AlertDescription>
-						{!originalListing ? "Original listing not found" : "Matched listing not found"}
+						{!originalListing
+							? "Original listing not found"
+							: "Matched listing not found"}
 					</AlertDescription>
 				</Alert>
 			</div>
@@ -62,15 +83,18 @@ const MatchDetailPage: React.FC = () => {
 		return <X className="w-4 h-4 text-red-500" />;
 	};
 
-	const renderPriceComparison = (listing1: ConvexListing, listing2: ConvexListing) => {
+	const renderPriceComparison = (
+		listing1: ConvexListing,
+		listing2: ConvexListing,
+	) => {
 		const price1 = listing1.price || listing1.pricePreference;
 		const price2 = listing2.price || listing2.pricePreference;
-		
+
 		if (!price1 || !price2) return null;
-		
+
 		// Check for price overlap
 		const hasOverlap = price1.max >= price2.min && price2.max >= price1.min;
-		
+
 		return (
 			<div className="flex items-center gap-2">
 				{hasOverlap ? (
@@ -85,13 +109,18 @@ const MatchDetailPage: React.FC = () => {
 		);
 	};
 
-
 	return (
 		<div className="container mx-auto py-8">
 			{/* Header */}
 			<div className="flex items-center gap-4 mb-6">
 				<Button variant="ghost" asChild>
-					<Link to={originalListing ? generateMatchesUrl(originalListing) : '/listings'}>
+					<Link
+						to={
+							originalListing
+								? generateMatchesUrl(originalListing)
+								: "/listings"
+						}
+					>
 						<ArrowLeft className="w-4 h-4 mr-2" />
 						Back to Matches
 					</Link>
@@ -115,27 +144,42 @@ const MatchDetailPage: React.FC = () => {
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							Original Listing
-							<Badge variant={originalListing.listingType === "buyer" ? "default" : "secondary"}>
+							<Badge
+								variant={
+									originalListing.listingType === "buyer"
+										? "default"
+										: "secondary"
+								}
+							>
 								{originalListing.listingType}
 							</Badge>
-							{isBuyerListing(originalListing) && originalListing.buyerType === "street" && originalListing.searchRadius && (
-								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-									{originalListing.searchRadius}km radius
-								</Badge>
-							)}
+							{isBuyerListing(originalListing) &&
+								originalListing.buyerType === "street" &&
+								originalListing.searchRadius && (
+									<Badge
+										variant="outline"
+										className="bg-blue-50 text-blue-700 border-blue-200"
+									>
+										{originalListing.searchRadius}km radius
+									</Badge>
+								)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
 							<div>
-								<h3 className="font-semibold text-lg">{originalListing.headline}</h3>
-								<p className="text-gray-600">{originalListing.suburb}, {originalListing.state}</p>
+								<h3 className="font-semibold text-lg">
+									{originalListing.headline}
+								</h3>
+								<p className="text-gray-600">
+									{originalListing.suburb}, {originalListing.state}
+								</p>
 								<p className="text-sm mt-2">{originalListing.description}</p>
 							</div>
-							
+
 							{originalListing.images && originalListing.images.length > 0 && (
-								<img 
-									src={originalListing.images[0]} 
+								<img
+									src={originalListing.images[0]}
 									alt={originalListing.headline}
 									className="w-full aspect-video object-cover rounded"
 								/>
@@ -149,27 +193,42 @@ const MatchDetailPage: React.FC = () => {
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							Matched Listing
-							<Badge variant={matchedListing.listingType === "buyer" ? "default" : "secondary"}>
+							<Badge
+								variant={
+									matchedListing.listingType === "buyer"
+										? "default"
+										: "secondary"
+								}
+							>
 								{matchedListing.listingType}
 							</Badge>
-							{isBuyerListing(matchedListing) && matchedListing.buyerType === "street" && matchedListing.searchRadius && (
-								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-									{matchedListing.searchRadius}km radius
-								</Badge>
-							)}
+							{isBuyerListing(matchedListing) &&
+								matchedListing.buyerType === "street" &&
+								matchedListing.searchRadius && (
+									<Badge
+										variant="outline"
+										className="bg-blue-50 text-blue-700 border-blue-200"
+									>
+										{matchedListing.searchRadius}km radius
+									</Badge>
+								)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
 							<div>
-								<h3 className="font-semibold text-lg">{matchedListing.headline}</h3>
-								<p className="text-gray-600">{matchedListing.suburb}, {matchedListing.state}</p>
+								<h3 className="font-semibold text-lg">
+									{matchedListing.headline}
+								</h3>
+								<p className="text-gray-600">
+									{matchedListing.suburb}, {matchedListing.state}
+								</p>
 								<p className="text-sm mt-2">{matchedListing.description}</p>
 							</div>
-							
+
 							{matchedListing.images && matchedListing.images.length > 0 && (
-								<img 
-									src={matchedListing.images[0]} 
+								<img
+									src={matchedListing.images[0]}
 									alt={matchedListing.headline}
 									className="w-full aspect-video object-cover rounded"
 								/>
@@ -185,7 +244,7 @@ const MatchDetailPage: React.FC = () => {
 					<ScoreBreakdown breakdown={breakdown} totalScore={score} />
 				</div>
 			)}
-			
+
 			{/* Distance Information */}
 			{originalListing && matchedListing && (
 				<Card className="mt-6">
@@ -194,7 +253,10 @@ const MatchDetailPage: React.FC = () => {
 							<MapPin className="w-4 h-4 text-gray-500" />
 							<span className="font-medium">Distance between properties:</span>
 							<Badge variant="outline">
-								{calculateAndFormatListingDistance(originalListing, matchedListing)}
+								{calculateAndFormatListingDistance(
+									originalListing,
+									matchedListing,
+								)}
 							</Badge>
 						</div>
 					</CardContent>
@@ -217,33 +279,53 @@ const MatchDetailPage: React.FC = () => {
 										<TableRow>
 											<TableCell className="font-medium">Suburb</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.suburb, matchedListing.suburb)}
+												{renderComparisonIcon(
+													originalListing.suburb,
+													matchedListing.suburb,
+												)}
 												{originalListing.suburb}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.suburb, originalListing.suburb)}
+												{renderComparisonIcon(
+													matchedListing.suburb,
+													originalListing.suburb,
+												)}
 												{matchedListing.suburb}
 											</TableCell>
 										</TableRow>
 										<TableRow>
 											<TableCell className="font-medium">State</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.state, matchedListing.state)}
+												{renderComparisonIcon(
+													originalListing.state,
+													matchedListing.state,
+												)}
 												{originalListing.state}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.state, originalListing.state)}
+												{renderComparisonIcon(
+													matchedListing.state,
+													originalListing.state,
+												)}
 												{matchedListing.state}
 											</TableCell>
 										</TableRow>
 										<TableRow>
-											<TableCell className="font-medium">Building Type</TableCell>
+											<TableCell className="font-medium">
+												Building Type
+											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.buildingType, matchedListing.buildingType)}
+												{renderComparisonIcon(
+													originalListing.buildingType,
+													matchedListing.buildingType,
+												)}
 												{originalListing.buildingType}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.buildingType, originalListing.buildingType)}
+												{renderComparisonIcon(
+													matchedListing.buildingType,
+													originalListing.buildingType,
+												)}
 												{matchedListing.buildingType}
 											</TableCell>
 										</TableRow>
@@ -260,16 +342,32 @@ const MatchDetailPage: React.FC = () => {
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 										<div>
 											<h4 className="font-medium mb-2">Original Listing</h4>
-											<p>Price: ${originalListing.priceMin.toLocaleString()} - ${originalListing.priceMax.toLocaleString()}</p>
+											<p>
+												Price: ${originalListing.priceMin.toLocaleString()} - $
+												{originalListing.priceMax.toLocaleString()}
+											</p>
 											{originalListing.pricePreference && (
-												<p>Price Preference: ${originalListing.pricePreference.min.toLocaleString()} - ${originalListing.pricePreference.max.toLocaleString()}</p>
+												<p>
+													Price Preference: $
+													{originalListing.pricePreference.min.toLocaleString()}{" "}
+													- $
+													{originalListing.pricePreference.max.toLocaleString()}
+												</p>
 											)}
 										</div>
 										<div>
 											<h4 className="font-medium mb-2">Matched Listing</h4>
-											<p>Price: ${matchedListing.priceMin.toLocaleString()} - ${matchedListing.priceMax.toLocaleString()}</p>
+											<p>
+												Price: ${matchedListing.priceMin.toLocaleString()} - $
+												{matchedListing.priceMax.toLocaleString()}
+											</p>
 											{matchedListing.pricePreference && (
-												<p>Price Preference: ${matchedListing.pricePreference.min.toLocaleString()} - ${matchedListing.pricePreference.max.toLocaleString()}</p>
+												<p>
+													Price Preference: $
+													{matchedListing.pricePreference.min.toLocaleString()}{" "}
+													- $
+													{matchedListing.pricePreference.max.toLocaleString()}
+												</p>
 											)}
 										</div>
 									</div>
@@ -288,33 +386,53 @@ const MatchDetailPage: React.FC = () => {
 										<TableRow>
 											<TableCell className="font-medium">Bedrooms</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.bedrooms, matchedListing.bedrooms)}
+												{renderComparisonIcon(
+													originalListing.bedrooms,
+													matchedListing.bedrooms,
+												)}
 												{originalListing.bedrooms}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.bedrooms, originalListing.bedrooms)}
+												{renderComparisonIcon(
+													matchedListing.bedrooms,
+													originalListing.bedrooms,
+												)}
 												{matchedListing.bedrooms}
 											</TableCell>
 										</TableRow>
 										<TableRow>
 											<TableCell className="font-medium">Bathrooms</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.bathrooms, matchedListing.bathrooms)}
+												{renderComparisonIcon(
+													originalListing.bathrooms,
+													matchedListing.bathrooms,
+												)}
 												{originalListing.bathrooms}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.bathrooms, originalListing.bathrooms)}
+												{renderComparisonIcon(
+													matchedListing.bathrooms,
+													originalListing.bathrooms,
+												)}
 												{matchedListing.bathrooms}
 											</TableCell>
 										</TableRow>
 										<TableRow>
-											<TableCell className="font-medium">Parking Spaces</TableCell>
+											<TableCell className="font-medium">
+												Parking Spaces
+											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.parking, matchedListing.parking)}
+												{renderComparisonIcon(
+													originalListing.parking,
+													matchedListing.parking,
+												)}
 												{originalListing.parking}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.parking, originalListing.parking)}
+												{renderComparisonIcon(
+													matchedListing.parking,
+													originalListing.parking,
+												)}
 												{matchedListing.parking}
 											</TableCell>
 										</TableRow>
@@ -329,16 +447,22 @@ const MatchDetailPage: React.FC = () => {
 							<AccordionContent>
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 									<div>
-										<h4 className="font-medium mb-2">Original Listing Features</h4>
-										{originalListing.features && originalListing.features.length > 0 ? (
+										<h4 className="font-medium mb-2">
+											Original Listing Features
+										</h4>
+										{originalListing.features &&
+										originalListing.features.length > 0 ? (
 											<PropertyFeatures features={originalListing.features} />
 										) : (
 											<p className="text-gray-500">No features listed</p>
 										)}
 									</div>
 									<div>
-										<h4 className="font-medium mb-2">Matched Listing Features</h4>
-										{matchedListing.features && matchedListing.features.length > 0 ? (
+										<h4 className="font-medium mb-2">
+											Matched Listing Features
+										</h4>
+										{matchedListing.features &&
+										matchedListing.features.length > 0 ? (
 											<PropertyFeatures features={matchedListing.features} />
 										) : (
 											<p className="text-gray-500">No features listed</p>

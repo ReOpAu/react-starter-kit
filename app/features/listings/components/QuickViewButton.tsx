@@ -1,6 +1,6 @@
-import React from "react";
-import { MatchPreviewButton } from "./MatchPreviewButton";
+import type React from "react";
 import type { Listing } from "../types";
+import { MatchPreviewButton } from "./MatchPreviewButton";
 
 interface QuickViewButtonProps {
 	originalListing: Listing;

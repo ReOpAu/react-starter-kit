@@ -26,11 +26,26 @@ export default [
 	route("listings/type/:type", "routes/listings/type/$type.tsx"),
 	route("listings/:state", "routes/listings/$state.tsx"),
 	route("listings/:state/:type", "routes/listings/$state.$type.tsx"),
-	route("listings/:state/:type/:suburb", "routes/listings/$state.$type.$suburb.tsx"),
-	route("listings/:state/:type/:suburb/:id", "routes/listings/$state.$type.$suburb.$id.tsx"),
-	route("listings/:state/:type/:suburb/:id/edit", "routes/listings/$state.$type.$suburb.$id/edit.tsx"),
-	route("listings/:state/:type/:suburb/:id/matches", "routes/listings/$state.$type.$suburb.$id/matches.tsx"),
-	route("listings/:state/:type/:suburb/:id/matches/:matchId", "routes/listings/$state.$type.$suburb.$id/matches/$matchId.tsx"),
+	route(
+		"listings/:state/:type/:suburb",
+		"routes/listings/$state.$type.$suburb.tsx",
+	),
+	route(
+		"listings/:state/:type/:suburb/:id",
+		"routes/listings/$state.$type.$suburb.$id.tsx",
+	),
+	route(
+		"listings/:state/:type/:suburb/:id/edit",
+		"routes/listings/$state.$type.$suburb.$id/edit.tsx",
+	),
+	route(
+		"listings/:state/:type/:suburb/:id/matches",
+		"routes/listings/$state.$type.$suburb.$id/matches.tsx",
+	),
+	route(
+		"listings/:state/:type/:suburb/:id/matches/:matchId",
+		"routes/listings/$state.$type.$suburb.$id/matches/$matchId.tsx",
+	),
 	// Admin routes
 	route("admin", "routes/admin/index.tsx"),
 	route("admin/listings", "routes/admin/listings/index.tsx"),

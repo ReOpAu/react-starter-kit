@@ -9,9 +9,9 @@ interface StatusRibbonProps {
  * StatusRibbon component displays a corner ribbon for listing status
  * Based on the legacy SampleRibbon component design
  */
-export const StatusRibbon: React.FC<StatusRibbonProps> = ({ 
-	variant, 
-	className = "" 
+export const StatusRibbon: React.FC<StatusRibbonProps> = ({
+	variant,
+	className = "",
 }) => {
 	// Determine styles based on variant
 	const styles = {

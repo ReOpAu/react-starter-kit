@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import ngeohash from "ngeohash";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Listing } from "../types";
 
 // Add mapbox CSS
@@ -36,56 +37,56 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 	// Create a 5x5 grid of geohashes centered on the main geohash
 	const getGeohashGrid = (centerGeohash: string) => {
 		const grid: string[] = [centerGeohash];
-		
+
 		// Get the north and south neighbors of center
 		const north = ngeohash.neighbor(centerGeohash, [1, 0]);
 		const south = ngeohash.neighbor(centerGeohash, [-1, 0]);
-		
+
 		// Get east and west neighbors of center
 		const east = ngeohash.neighbor(centerGeohash, [0, 1]);
 		const west = ngeohash.neighbor(centerGeohash, [0, -1]);
-		
+
 		// Get diagonal neighbors
 		const northeast = ngeohash.neighbor(north, [0, 1]);
 		const northwest = ngeohash.neighbor(north, [0, -1]);
 		const southeast = ngeohash.neighbor(south, [0, 1]);
 		const southwest = ngeohash.neighbor(south, [0, -1]);
-		
+
 		// Add center row
 		grid.push(west, east);
-		
+
 		// Add north row
 		grid.push(northwest, north, northeast);
-		
+
 		// Add south row
 		grid.push(southwest, south, southeast);
-		
+
 		// Get far east and west
 		const farEast = ngeohash.neighbor(east, [0, 1]);
 		const farWest = ngeohash.neighbor(west, [0, -1]);
-		
+
 		// Get their north and south neighbors
 		grid.push(
-			ngeohash.neighbor(farWest, [1, 0]),  // far northwest
-			ngeohash.neighbor(farEast, [1, 0]),  // far northeast
-			farWest,                             // far west
-			farEast,                             // far east
+			ngeohash.neighbor(farWest, [1, 0]), // far northwest
+			ngeohash.neighbor(farEast, [1, 0]), // far northeast
+			farWest, // far west
+			farEast, // far east
 			ngeohash.neighbor(farWest, [-1, 0]), // far southwest
-			ngeohash.neighbor(farEast, [-1, 0])  // far southeast
+			ngeohash.neighbor(farEast, [-1, 0]), // far southeast
 		);
-		
+
 		// Get far north and south
 		const farNorth = ngeohash.neighbor(north, [1, 0]);
 		const farSouth = ngeohash.neighbor(south, [-1, 0]);
-		
+
 		// Add their east and west neighbors
 		grid.push(
 			ngeohash.neighbor(farNorth, [0, -1]), // far north west
-			farNorth,                             // far north
-			ngeohash.neighbor(farNorth, [0, 1]),  // far north east
+			farNorth, // far north
+			ngeohash.neighbor(farNorth, [0, 1]), // far north east
 			ngeohash.neighbor(farSouth, [0, -1]), // far south west
-			farSouth,                             // far south
-			ngeohash.neighbor(farSouth, [0, 1])   // far south east
+			farSouth, // far south
+			ngeohash.neighbor(farSouth, [0, 1]), // far south east
 		);
 
 		// Remove any duplicates and ensure we have exactly 25 unique geohashes
@@ -96,10 +97,12 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 	const createGeohashGridGeoJSON = (geohashes: string[]) => {
 		return {
 			type: "FeatureCollection" as const,
-			features: geohashes.map(hash => {
+			features: geohashes.map((hash) => {
 				const bounds = ngeohash.decode_bbox(hash);
 				const isActive = activeGeohashes.includes(hash);
-				const matchCount = isActive ? listings.filter(l => l.geohash === hash).length : 0;
+				const matchCount = isActive
+					? listings.filter((l) => l.geohash === hash).length
+					: 0;
 				return {
 					type: "Feature" as const,
 					properties: {
@@ -107,20 +110,22 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 						isCenter: hash === centerGeohash,
 						hasListings: isActive,
 						matchCount: matchCount,
-						label: `${hash}${isActive && matchCount > 0 ? '\n' + matchCount + ' matches' : ''}`
+						label: `${hash}${isActive && matchCount > 0 ? "\n" + matchCount + " matches" : ""}`,
 					},
 					geometry: {
 						type: "Polygon" as const,
-						coordinates: [[
-							[bounds[1], bounds[0]], // sw
-							[bounds[3], bounds[0]], // se
-							[bounds[3], bounds[2]], // ne
-							[bounds[1], bounds[2]], // nw
-							[bounds[1], bounds[0]], // back to sw
-						]]
-					}
+						coordinates: [
+							[
+								[bounds[1], bounds[0]], // sw
+								[bounds[3], bounds[0]], // se
+								[bounds[3], bounds[2]], // ne
+								[bounds[1], bounds[2]], // nw
+								[bounds[1], bounds[0]], // back to sw
+							],
+						],
+					},
 				};
-			})
+			}),
 		};
 	};
 
@@ -134,7 +139,7 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 					setIsVisible(entry.isIntersecting);
 				});
 			},
-			{ rootMargin: "50px" }
+			{ rootMargin: "50px" },
 		);
 
 		observerRef.current.observe(mapContainer.current);
@@ -153,7 +158,9 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 		const center = ngeohash.decode(centerGeohash);
 		const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 		if (!mapboxToken) {
-			console.error('VITE_MAPBOX_ACCESS_TOKEN is not set in environment variables');
+			console.error(
+				"VITE_MAPBOX_ACCESS_TOKEN is not set in environment variables",
+			);
 			return;
 		}
 		mapboxgl.accessToken = mapboxToken;
@@ -176,7 +183,7 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 			// Add source for geohash grid
 			map.current.addSource("geohash-grid", {
 				type: "geojson",
-				data: geojson
+				data: geojson,
 			});
 
 			// Add fill layer for geohash cells
@@ -187,17 +194,21 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 				paint: {
 					"fill-color": [
 						"case",
-						["get", "isCenter"], "#3b82f6", // Primary color for center
-						["get", "hasListings"], "#22c55e", // Success color for cells with listings
-						"#e5e7eb" // Gray for empty cells
+						["get", "isCenter"],
+						"#3b82f6", // Primary color for center
+						["get", "hasListings"],
+						"#22c55e", // Success color for cells with listings
+						"#e5e7eb", // Gray for empty cells
 					],
 					"fill-opacity": [
 						"case",
-						["get", "isCenter"], 0.3,
-						["get", "hasListings"], 0.2,
-						0.1
-					]
-				}
+						["get", "isCenter"],
+						0.3,
+						["get", "hasListings"],
+						0.2,
+						0.1,
+					],
+				},
 			});
 
 			// Add border layer for geohash cells
@@ -208,17 +219,15 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 				paint: {
 					"line-color": [
 						"case",
-						["get", "isCenter"], "#3b82f6",
-						["get", "hasListings"], "#22c55e",
-						"#9ca3af"
+						["get", "isCenter"],
+						"#3b82f6",
+						["get", "hasListings"],
+						"#22c55e",
+						"#9ca3af",
 					],
-					"line-width": [
-						"case",
-						["get", "isCenter"], 2,
-						1
-					],
-					"line-opacity": 0.8
-				}
+					"line-width": ["case", ["get", "isCenter"], 2, 1],
+					"line-opacity": 0.8,
+				},
 			});
 
 			// Add labels for geohashes
@@ -232,20 +241,20 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 					"text-allow-overlap": true,
 					"text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
 					"text-anchor": "center",
-					"text-line-height": 1.2
+					"text-line-height": 1.2,
 				},
 				paint: {
 					"text-color": "#1f2937",
 					"text-halo-color": "#ffffff",
-					"text-halo-width": 2
-				}
+					"text-halo-width": 2,
+				},
 			});
 
 			// Fit bounds to show all cells
 			const bounds = new mapboxgl.LngLatBounds();
-			geojson.features.forEach(feature => {
+			geojson.features.forEach((feature) => {
 				const coords = feature.geometry.coordinates[0];
-				coords.forEach(coord => bounds.extend(coord as [number, number]));
+				coords.forEach((coord) => bounds.extend(coord as [number, number]));
 			});
 			map.current.fitBounds(bounds, { padding: 50 });
 		});
@@ -259,8 +268,8 @@ export const GeohashGridMap: React.FC<GeohashGridMapProps> = ({
 	}, [isVisible, centerGeohash, activeGeohashes, listings]);
 
 	return (
-		<div 
-			ref={mapContainer} 
+		<div
+			ref={mapContainer}
 			className={className}
 			style={{ background: !isVisible ? "#f0f0f0" : undefined }}
 		/>

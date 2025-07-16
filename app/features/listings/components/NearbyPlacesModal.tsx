@@ -1,7 +1,13 @@
-import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
-import { Button } from "../../../components/ui/button";
 import { X } from "lucide-react";
+import type React from "react";
+import { Button } from "../../../components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "../../../components/ui/dialog";
 import { NearbyPlacesTabs } from "./NearbyPlacesTabs";
 
 interface NearbyPlacesModalProps {
@@ -21,7 +27,10 @@ export const NearbyPlacesModal: React.FC<NearbyPlacesModalProps> = ({
 }) => {
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="max-w-5xl w-[90vw] h-[80vh] max-h-[80vh] overflow-hidden">
+			<DialogContent
+				showCloseButton={false}
+				className="w-[95vw] max-w-[95vw] h-[80vh] sm:max-w-[95vw] flex flex-col"
+			>
 				<DialogHeader>
 					<DialogTitle className="flex items-center justify-between">
 						Nearby Places
@@ -34,8 +43,12 @@ export const NearbyPlacesModal: React.FC<NearbyPlacesModalProps> = ({
 							<X className="h-4 w-4" />
 						</Button>
 					</DialogTitle>
+					<DialogDescription>
+						Explore nearby places including education, health, dining, and
+						entertainment options.
+					</DialogDescription>
 				</DialogHeader>
-				<div className="flex-1 overflow-hidden">
+				<div className="flex-grow overflow-hidden">
 					<NearbyPlacesTabs
 						latitude={latitude}
 						longitude={longitude}

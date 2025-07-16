@@ -1,9 +1,9 @@
-import React from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import { EditListingForm } from "../../../../features/listings/components/forms";
-import { Button } from "../../../../components/ui/button";
-import { ArrowLeft, Edit } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ArrowLeft, Edit } from "lucide-react";
+import type React from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { Button } from "../../../../components/ui/button";
+import { EditListingForm } from "../../../../features/listings/components/forms";
 
 const AdminEditListingPage: React.FC = () => {
 	const navigate = useNavigate();
@@ -14,7 +14,9 @@ const AdminEditListingPage: React.FC = () => {
 			<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 				<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 					<div className="text-center">
-						<h1 className="text-2xl font-bold text-gray-900">Listing not found</h1>
+						<h1 className="text-2xl font-bold text-gray-900">
+							Listing not found
+						</h1>
 						<p className="mt-2 text-gray-600">No listing ID provided.</p>
 						<Button asChild className="mt-4">
 							<Link to="/admin/listings">Back to Admin</Link>
@@ -58,7 +60,7 @@ const AdminEditListingPage: React.FC = () => {
 				</div>
 
 				{/* Form */}
-				<EditListingForm 
+				<EditListingForm
 					listingId={id as Id<"listings">}
 					onSuccess={handleSuccess}
 					onCancel={handleCancel}

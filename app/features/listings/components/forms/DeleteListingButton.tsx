@@ -1,26 +1,33 @@
-import React, { useState } from "react";
-import { useMutation } from "convex/react";
-import { Button } from "../../../../components/ui/button";
-import { 
-	AlertDialog, 
-	AlertDialogAction, 
-	AlertDialogCancel, 
-	AlertDialogContent, 
-	AlertDialogDescription, 
-	AlertDialogFooter, 
-	AlertDialogHeader, 
-	AlertDialogTitle, 
-	AlertDialogTrigger 
-} from "../../../../components/ui/alert-dialog";
-import { Trash2, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useMutation } from "convex/react";
+import { Loader2, Trash2 } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "../../../../components/ui/alert-dialog";
+import { Button } from "../../../../components/ui/button";
 
 interface DeleteListingButtonProps {
 	listingId: Id<"listings">;
 	listingTitle: string;
 	onSuccess?: () => void;
-	variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+	variant?:
+		| "default"
+		| "destructive"
+		| "outline"
+		| "secondary"
+		| "ghost"
+		| "link";
 	size?: "default" | "sm" | "lg" | "icon";
 	children?: React.ReactNode;
 }
@@ -31,7 +38,7 @@ export const DeleteListingButton: React.FC<DeleteListingButtonProps> = ({
 	onSuccess,
 	variant = "destructive",
 	size = "default",
-	children
+	children,
 }) => {
 	const deleteListing = useMutation(api.listings.deleteListing);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -69,14 +76,12 @@ export const DeleteListingButton: React.FC<DeleteListingButtonProps> = ({
 						Are you sure you want to delete "{listingTitle}"?
 						<br />
 						<br />
-						This action cannot be undone. The listing will be permanently removed 
-						and all associated data will be lost.
+						This action cannot be undone. The listing will be permanently
+						removed and all associated data will be lost.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel disabled={isDeleting}>
-						Cancel
-					</AlertDialogCancel>
+					<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
 					<AlertDialogAction
 						onClick={handleDelete}
 						disabled={isDeleting}

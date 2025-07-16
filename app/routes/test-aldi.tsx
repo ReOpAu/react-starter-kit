@@ -1,11 +1,11 @@
 import { NearbyAldiStores } from "../components/address-finder/NearbyAldiStores";
+import { PublicLayout } from "../components/layout/PublicLayout";
 import {
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
 } from "../components/ui/card";
-import { PublicLayout } from "../components/layout/PublicLayout";
 
 const CAMBERWELL = {
 	suburb: "Camberwell",

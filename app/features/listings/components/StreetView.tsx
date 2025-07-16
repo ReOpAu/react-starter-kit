@@ -1,7 +1,13 @@
-import React, { useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
-import { Button } from "../../../components/ui/button";
 import { X } from "lucide-react";
+import type React from "react";
+import { useEffect, useRef } from "react";
+import { Button } from "../../../components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "../../../components/ui/dialog";
 
 declare global {
 	interface Window {
@@ -17,7 +23,12 @@ interface StreetViewProps {
 	onClose: () => void;
 }
 
-export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClose }) => {
+export const StreetView: React.FC<StreetViewProps> = ({
+	lat,
+	lng,
+	isOpen,
+	onClose,
+}) => {
 	const streetViewRef = useRef<HTMLDivElement>(null);
 	const streetViewInstance = useRef<any>(null);
 
@@ -28,7 +39,9 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 		if (!window.google) {
 			const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 			if (!googleApiKey) {
-				console.error('VITE_GOOGLE_MAPS_API_KEY is not set in environment variables');
+				console.error(
+					"VITE_GOOGLE_MAPS_API_KEY is not set in environment variables",
+				);
 				return;
 			}
 			const script = document.createElement("script");
@@ -51,7 +64,7 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 							motionTracking: false,
 							motionTrackingControl: false,
 							showRoadLabels: false,
-						}
+						},
 					);
 					streetViewInstance.current = panorama;
 				}
@@ -70,7 +83,7 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 						motionTracking: false,
 						motionTrackingControl: false,
 						showRoadLabels: false,
-					}
+					},
 				);
 				streetViewInstance.current = panorama;
 			}
@@ -85,7 +98,10 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent showCloseButton={false} className="w-[95vw] max-w-[95vw] h-[80vh] sm:max-w-[95vw] flex flex-col">
+			<DialogContent
+				showCloseButton={false}
+				className="w-[95vw] max-w-[95vw] h-[80vh] sm:max-w-[95vw] flex flex-col"
+			>
 				<DialogHeader>
 					<DialogTitle className="flex items-center justify-between">
 						Street View
@@ -99,7 +115,10 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 						</Button>
 					</DialogTitle>
 				</DialogHeader>
-				<div ref={streetViewRef} className="w-full flex-grow rounded-lg overflow-hidden"></div>
+				<div
+					ref={streetViewRef}
+					className="w-full flex-grow rounded-lg overflow-hidden"
+				></div>
 			</DialogContent>
 		</Dialog>
 	);

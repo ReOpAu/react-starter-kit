@@ -4,6 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { Check, Loader2 } from "lucide-react";
 import * as React from "react";
 import { useState } from "react";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -14,7 +15,6 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { api } from "../../convex/_generated/api";
-import { PublicLayout } from "~/components/layout/PublicLayout";
 
 export default function IntegratedPricing() {
 	const { isSignedIn, userId } = useAuth();
@@ -121,10 +121,12 @@ export default function IntegratedPricing() {
 					</p>
 					{isSignedIn && !subscriptionStatus?.hasActiveSubscription && (
 						<div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
-							<p className="text-blue-800 font-medium">📋 Complete your setup</p>
+							<p className="text-blue-800 font-medium">
+								📋 Complete your setup
+							</p>
 							<p className="text-blue-700 text-sm mt-1">
-								You're signed in! Choose a plan below to access your dashboard and
-								start using all features.
+								You're signed in! Choose a plan below to access your dashboard
+								and start using all features.
 							</p>
 						</div>
 					)}
@@ -261,12 +263,13 @@ export default function IntegratedPricing() {
 
 					{userSubscription &&
 						!plans?.items.some(
-							(plan: any) => plan.prices[0].id === userSubscription.polarPriceId,
+							(plan: any) =>
+								plan.prices[0].id === userSubscription.polarPriceId,
 						) && (
 							<div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-md max-w-md mx-auto">
 								<p className="text-amber-800 text-center text-sm">
-									You have an active subscription that's not shown above. Contact
-									support for assistance.
+									You have an active subscription that's not shown above.
+									Contact support for assistance.
 								</p>
 							</div>
 						)}

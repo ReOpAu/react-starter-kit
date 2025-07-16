@@ -55,7 +55,9 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
 						<span className="text-2xl">💬</span>
 					</div>
 					<p className="text-lg font-medium mb-2">Start a conversation</p>
-					<p className="text-sm">Choose text or voice chat to begin talking with the AI assistant.</p>
+					<p className="text-sm">
+						Choose text or voice chat to begin talking with the AI assistant.
+					</p>
 				</div>
 			)}
 			{messages.map((msg, index) => (
@@ -65,23 +67,28 @@ export function MessageList({ messages, isAgentTyping }: MessageListProps) {
 					delay={Math.min(index * 0.05, 0.3)}
 					duration={0.3}
 				>
-					<div className={cn(
-						"flex items-start gap-3 max-w-[85%]",
-						msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
-					)}>
-						<div className={cn(
-							"w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-							msg.sender === "user" 
-								? msg.isTranscribed
-									? "bg-gradient-to-br from-emerald-500 to-emerald-600"
-									: "bg-gradient-to-br from-primary to-blue-600"
-								: "bg-gradient-to-br from-gray-600 to-gray-700 dark:from-gray-500 dark:to-gray-600"
-						)}>
+					<div
+						className={cn(
+							"flex items-start gap-3 max-w-[85%]",
+							msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto",
+						)}
+					>
+						<div
+							className={cn(
+								"w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+								msg.sender === "user"
+									? msg.isTranscribed
+										? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+										: "bg-gradient-to-br from-primary to-blue-600"
+									: "bg-gradient-to-br from-gray-600 to-gray-700 dark:from-gray-500 dark:to-gray-600",
+							)}
+						>
 							<span className="text-white text-xs font-medium">
-								{msg.sender === "user" 
-									? msg.isTranscribed ? "🎤" : "U"
-									: "🤖"
-								}
+								{msg.sender === "user"
+									? msg.isTranscribed
+										? "🎤"
+										: "U"
+									: "🤖"}
 							</span>
 						</div>
 						<div

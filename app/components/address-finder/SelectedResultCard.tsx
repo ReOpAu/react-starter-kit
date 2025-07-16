@@ -1,9 +1,9 @@
+import { CheckCircle, Home, MapPin, Store } from "lucide-react";
+import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import type { Suggestion } from "~/stores/types";
 import { NearbyAldiStores } from "./NearbyAldiStores";
-import { Home, MapPin, CheckCircle, Store } from "lucide-react";
-import { useState } from "react";
 
 interface SelectedResultCardProps {
 	result: Suggestion | null;
@@ -19,7 +19,7 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 	lng,
 }) => {
 	const [showAldiStores, setShowAldiStores] = useState(false);
-	
+
 	if (!result) return null;
 
 	const address = result.displayText || result.description;
@@ -49,7 +49,9 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 							<Home className="w-5 h-5 text-green-600" />
 						</div>
 						<div>
-							<p className="text-lg font-semibold text-gray-800">{mainAddress}</p>
+							<p className="text-lg font-semibold text-gray-800">
+								{mainAddress}
+							</p>
 							{secondaryAddress && (
 								<p className="text-md text-gray-600">{secondaryAddress}</p>
 							)}

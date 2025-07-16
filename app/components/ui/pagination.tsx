@@ -1,5 +1,5 @@
-import * as React from "react";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import * as React from "react";
 import { cn } from "~/lib/utils";
 
 const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
@@ -54,7 +54,7 @@ const PaginationLink = ({
 			size === "sm" && "h-9 rounded-md px-3",
 			size === "lg" && "h-11 rounded-md px-8",
 			size === "icon" && "h-10 w-10",
-			className
+			className,
 		)}
 		{...props}
 	/>

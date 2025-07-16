@@ -1,19 +1,39 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router";
-import { AdminListingsTable } from "../../../features/listings/components/admin";
-import { CreateListingForm, EditListingForm } from "../../../features/listings/components/forms";
-import { Button } from "../../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs";
-import { Settings, Database, Plus, ArrowLeft } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ArrowLeft, Database, Plus, Settings } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { Button } from "../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "../../../components/ui/dialog";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "../../../components/ui/tabs";
+import { AdminListingsTable } from "../../../features/listings/components/admin";
+import {
+	CreateListingForm,
+	EditListingForm,
+} from "../../../features/listings/components/forms";
 
 const AdminListingsPage: React.FC = () => {
 	const navigate = useNavigate();
 	const [createDialogOpen, setCreateDialogOpen] = useState(false);
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
-	const [editingListingId, setEditingListingId] = useState<Id<"listings"> | null>(null);
+	const [editingListingId, setEditingListingId] =
+		useState<Id<"listings"> | null>(null);
 
 	const handleCreateSuccess = (listingId: string) => {
 		setCreateDialogOpen(false);
@@ -85,7 +105,10 @@ const AdminListingsPage: React.FC = () => {
 									<Button variant="outline" className="w-full justify-start">
 										Import Listings (CSV)
 									</Button>
-									<Button variant="destructive" className="w-full justify-start">
+									<Button
+										variant="destructive"
+										className="w-full justify-start"
+									>
 										Clear All Sample Data
 									</Button>
 								</CardContent>
@@ -125,7 +148,7 @@ const AdminListingsPage: React.FC = () => {
 								Create New Listing
 							</DialogTitle>
 						</DialogHeader>
-						<CreateListingForm 
+						<CreateListingForm
 							onSuccess={handleCreateSuccess}
 							onCancel={() => setCreateDialogOpen(false)}
 						/>
@@ -142,7 +165,7 @@ const AdminListingsPage: React.FC = () => {
 							</DialogTitle>
 						</DialogHeader>
 						{editingListingId && (
-							<EditListingForm 
+							<EditListingForm
 								listingId={editingListingId}
 								onSuccess={handleEditSuccess}
 								onCancel={() => setEditDialogOpen(false)}

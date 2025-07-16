@@ -1,17 +1,22 @@
+import { useConvexAuth } from "convex/react";
+import { Eye, Mail, Phone, User } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
 import { Separator } from "../../../components/ui/separator";
-import { Phone, Mail, Eye, User } from "lucide-react";
+import type { Listing } from "../types";
+import { generateMatchesUrl } from "../utils/urlHelpers";
+import { NearbyPlacesButton } from "./NearbyPlacesButton";
 import { SaveButton } from "./SaveButton";
 import { StreetViewButton } from "./StreetViewButton";
-import { NearbyPlacesButton } from "./NearbyPlacesButton";
-import type { Listing } from "../types";
-import type { Id } from "../../../../convex/_generated/dataModel";
-import { useConvexAuth } from "convex/react";
-import { generateMatchesUrl } from "../utils/urlHelpers";
 
 export interface ListingActionsProps {
 	listing: Listing;
@@ -26,7 +31,7 @@ export const ListingActions: React.FC<ListingActionsProps> = ({ listing }) => {
 			setShowContactInfo(true);
 		} else {
 			// Redirect to sign in or show sign in modal
-			window.location.href = '/sign-in';
+			window.location.href = "/sign-in";
 		}
 	};
 
@@ -46,8 +51,8 @@ export const ListingActions: React.FC<ListingActionsProps> = ({ listing }) => {
 				<Separator />
 
 				{/* Contact Button */}
-				<Button 
-					className="w-full" 
+				<Button
+					className="w-full"
 					variant="default"
 					onClick={handleContactClick}
 				>
@@ -102,11 +107,7 @@ export const ListingActions: React.FC<ListingActionsProps> = ({ listing }) => {
 
 				{/* View Matches Button */}
 				{listing._id && (
-					<Button 
-						className="w-full" 
-						variant="outline"
-						asChild
-					>
+					<Button className="w-full" variant="outline" asChild>
 						<Link to={generateMatchesUrl(listing)}>
 							<Eye className="w-4 h-4 mr-2" />
 							View Matches

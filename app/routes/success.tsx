@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { ArrowRight, CheckCircle, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { Link } from "react-router";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -13,7 +14,6 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { api } from "../../convex/_generated/api";
-import { PublicLayout } from "~/components/layout/PublicLayout";
 
 export default function Success() {
 	const { isSignedIn } = useAuth();
@@ -76,7 +76,9 @@ export default function Success() {
 
 					<CardContent className="space-y-6">
 						<div className="bg-muted rounded-lg p-6 text-left">
-							<h3 className="font-semibold text-lg mb-4">Subscription Details</h3>
+							<h3 className="font-semibold text-lg mb-4">
+								Subscription Details
+							</h3>
 							<div className="space-y-2">
 								<div className="flex justify-between">
 									<span className="text-muted-foreground">Status:</span>

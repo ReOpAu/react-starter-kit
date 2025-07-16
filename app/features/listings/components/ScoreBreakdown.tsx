@@ -1,7 +1,12 @@
 import type React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Progress } from "../../../components/ui/progress";
 import { Badge } from "../../../components/ui/badge";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
+import { Progress } from "../../../components/ui/progress";
 
 interface ScoreBreakdownData {
 	location: number;
@@ -49,11 +54,36 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
 	};
 
 	const scoreItems = [
-		{ key: "location", label: "Location Match", score: breakdown.location, weight: weights.location },
-		{ key: "buildingType", label: "Building Type", score: breakdown.buildingType, weight: weights.buildingType },
-		{ key: "price", label: "Price Range", score: breakdown.price, weight: weights.price },
-		{ key: "propertyDetails", label: "Property Details", score: breakdown.propertyDetails, weight: weights.propertyDetails },
-		{ key: "features", label: "Features", score: breakdown.features, weight: weights.features },
+		{
+			key: "location",
+			label: "Location Match",
+			score: breakdown.location,
+			weight: weights.location,
+		},
+		{
+			key: "buildingType",
+			label: "Building Type",
+			score: breakdown.buildingType,
+			weight: weights.buildingType,
+		},
+		{
+			key: "price",
+			label: "Price Range",
+			score: breakdown.price,
+			weight: weights.price,
+		},
+		{
+			key: "propertyDetails",
+			label: "Property Details",
+			score: breakdown.propertyDetails,
+			weight: weights.propertyDetails,
+		},
+		{
+			key: "features",
+			label: "Features",
+			score: breakdown.features,
+			weight: weights.features,
+		},
 	];
 
 	return (
@@ -61,7 +91,10 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
 			<CardHeader>
 				<CardTitle className="flex items-center justify-between">
 					Score Breakdown
-					<Badge variant="outline" className={`text-lg px-3 py-1 ${getScoreColor(totalScore)}`}>
+					<Badge
+						variant="outline"
+						className={`text-lg px-3 py-1 ${getScoreColor(totalScore)}`}
+					>
 						{totalScore}% Overall
 					</Badge>
 				</CardTitle>
@@ -73,8 +106,12 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
 							<div className="flex justify-between items-center">
 								<span className="text-sm font-medium">{item.label}</span>
 								<div className="flex items-center gap-2">
-									<span className="text-xs text-gray-500">Weight: {item.weight}%</span>
-									<span className={`text-sm font-medium ${getScoreColor(item.score)}`}>
+									<span className="text-xs text-gray-500">
+										Weight: {item.weight}%
+									</span>
+									<span
+										className={`text-sm font-medium ${getScoreColor(item.score)}`}
+									>
 										{item.score}%
 									</span>
 								</div>

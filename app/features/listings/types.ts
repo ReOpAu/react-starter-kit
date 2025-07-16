@@ -3,12 +3,17 @@
 import type { Doc } from "~/convex/_generated/dataModel";
 
 export type ListingType = "buyer" | "seller";
-export type BuildingType = "House" | "Apartment" | "Townhouse" | "Villa" | "Unit";
+export type BuildingType =
+	| "House"
+	| "Apartment"
+	| "Townhouse"
+	| "Villa"
+	| "Unit";
 export type BuyerType = "street" | "suburb";
 export type SellerType = "sale" | "offmarket";
 
 // Comprehensive feature enum matching saaskit PropertyFeature definitions
-export type Feature = 
+export type Feature =
 	| "CornerBlock"
 	| "EnsuiteBathroom"
 	| "MatureGarden"
@@ -47,16 +52,23 @@ export type ConvexListing = Doc<"listings">;
 export type Listing = ConvexListing;
 
 // Type guards for runtime type checking
-export function isBuyerListing(listing: any): listing is Listing & { listingType: "buyer" } {
+export function isBuyerListing(
+	listing: any,
+): listing is Listing & { listingType: "buyer" } {
 	return listing && listing.listingType === "buyer";
 }
 
-export function isSellerListing(listing: any): listing is Listing & { listingType: "seller" } {
+export function isSellerListing(
+	listing: any,
+): listing is Listing & { listingType: "seller" } {
 	return listing && listing.listingType === "seller";
 }
 
 // Helper functions for clean schema
-export function getListingPrice(listing: Listing): { min: number; max: number } {
+export function getListingPrice(listing: Listing): {
+	min: number;
+	max: number;
+} {
 	return { min: listing.priceMin, max: listing.priceMax };
 }
 

@@ -1,24 +1,36 @@
-import React, { useState, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { useUser } from "@clerk/clerk-react";
-import { Button } from "../../../../components/ui/button";
-import { Input } from "../../../../components/ui/input";
-import { Label } from "../../../../components/ui/label";
-import { Textarea } from "../../../../components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
-import { Switch } from "../../../../components/ui/switch";
-import { Skeleton } from "../../../../components/ui/skeleton";
-import { Search, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { BuyerType, BuildingType, Feature } from "../../types";
-import { LocationFields } from "./shared/LocationFields";
-import { PropertyDetailsFields } from "./shared/PropertyDetailsFields";
-import { PriceFields } from "./shared/PriceFields";
-import { FeaturesFields } from "./shared/FeaturesFields";
+import { useUser } from "@clerk/clerk-react";
+import { useMutation, useQuery } from "convex/react";
+import { AlertCircle, Search } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
+import { Alert, AlertDescription } from "../../../../components/ui/alert";
+import { Button } from "../../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../../components/ui/card";
+import { Input } from "../../../../components/ui/input";
+import { Label } from "../../../../components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../../../components/ui/select";
+import { Skeleton } from "../../../../components/ui/skeleton";
+import { Switch } from "../../../../components/ui/switch";
+import { Textarea } from "../../../../components/ui/textarea";
+import type { BuildingType, BuyerType, Feature } from "../../types";
+import { FeaturesFields } from "./shared/FeaturesFields";
+import { LocationFields } from "./shared/LocationFields";
+import { PriceFields } from "./shared/PriceFields";
+import { PropertyDetailsFields } from "./shared/PropertyDetailsFields";
 
 interface BuyerListingFormProps {
 	listingId: Id<"listings">;
@@ -50,7 +62,7 @@ interface BuyerFormData {
 export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 	listingId,
 	onSuccess,
-	onCancel
+	onCancel,
 }) => {
 	const { user } = useUser();
 	const listing = useQuery(api.listings.getListing, { id: listingId });
@@ -73,7 +85,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 		priceMax: 1000000,
 		features: [],
 		searchRadius: 5,
-		isPremium: false
+		isPremium: false,
 	});
 
 	const [isLoading, setIsLoading] = useState(false);
@@ -89,14 +101,16 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				state: listing.state,
 				priceMin: listing.priceMin,
 				priceMax: listing.priceMax,
-				buyerType: listing.buyerType
+				buyerType: listing.buyerType,
 			});
-			
+
 			// Helper function to find closest valid price option
 			const findClosestPrice = (price: number): number => {
-				const validPrices = PRICE_OPTIONS.map(opt => opt.value);
-				return validPrices.reduce((closest, current) => 
-					Math.abs(current - price) < Math.abs(closest - price) ? current : closest
+				const validPrices = PRICE_OPTIONS.map((opt) => opt.value);
+				return validPrices.reduce((closest, current) =>
+					Math.abs(current - price) < Math.abs(closest - price)
+						? current
+						: closest,
 				);
 			};
 
@@ -117,17 +131,17 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				priceMax: findClosestPrice(listing.priceMax),
 				features: listing.features || [],
 				searchRadius: listing.searchRadius || 5,
-				isPremium: listing.isPremium || false
+				isPremium: listing.isPremium || false,
 			};
-			
+
 			console.log("🔍 BuyerListingForm: Setting form data:", {
 				buildingType: newFormData.buildingType,
 				state: newFormData.state,
 				priceMin: newFormData.priceMin,
 				priceMax: newFormData.priceMax,
-				buyerType: newFormData.buyerType
+				buyerType: newFormData.buyerType,
 			});
-			
+
 			setFormData(newFormData);
 			setIsInitialized(true);
 		}
@@ -175,14 +189,14 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		
+
 		if (!validatePrice()) {
 			return;
 		}
 
 		setIsLoading(true);
 		setError(null);
-		
+
 		try {
 			const updates = {
 				buyerType: formData.buyerType,
@@ -202,7 +216,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				features: formData.features,
 				searchRadius: formData.searchRadius,
 				isPremium: formData.isPremium,
-				updatedAt: Date.now()
+				updatedAt: Date.now(),
 			};
 
 			const result = await updateListing({ id: listingId, updates });
@@ -218,16 +232,16 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 
 	// Field update handlers
 	const handleFieldChange = (field: string, value: string | number) => {
-		setFormData(prev => ({ ...prev, [field]: value }));
+		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
 	const handlePriceChange = (field: "priceMin" | "priceMax", value: number) => {
-		setFormData(prev => ({ ...prev, [field]: value }));
-		
+		setFormData((prev) => ({ ...prev, [field]: value }));
+
 		// Validate price range
 		const newMin = field === "priceMin" ? value : formData.priceMin;
 		const newMax = field === "priceMax" ? value : formData.priceMax;
-		
+
 		if (newMin >= newMax) {
 			setPriceError("Maximum budget must be greater than minimum budget.");
 		} else {
@@ -236,7 +250,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 	};
 
 	const handleFeaturesChange = (features: Feature[]) => {
-		setFormData(prev => ({ ...prev, features }));
+		setFormData((prev) => ({ ...prev, features }));
 	};
 
 	return (
@@ -252,10 +266,12 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				<CardContent className="space-y-6">
 					<div className="space-y-2">
 						<Label htmlFor="buyerType">Search Type</Label>
-						<Select 
+						<Select
 							key={`buyerType-${formData.buyerType}`}
-							value={formData.buyerType || ""} 
-							onValueChange={(value: BuyerType) => handleFieldChange("buyerType", value)}
+							value={formData.buyerType || ""}
+							onValueChange={(value: BuyerType) =>
+								handleFieldChange("buyerType", value)
+							}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Select search type" />
@@ -270,9 +286,11 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 					{formData.buyerType === "street" && (
 						<div className="space-y-2">
 							<Label htmlFor="searchRadius">Search Radius</Label>
-							<Select 
-								value={formData.searchRadius?.toString() || "5"} 
-								onValueChange={(value) => handleFieldChange("searchRadius", parseInt(value))}
+							<Select
+								value={formData.searchRadius?.toString() || "5"}
+								onValueChange={(value) =>
+									handleFieldChange("searchRadius", Number.parseInt(value))
+								}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Select search radius" />
@@ -363,9 +381,13 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 						<Switch
 							id="isPremium"
 							checked={formData.isPremium}
-							onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPremium: checked }))}
+							onCheckedChange={(checked) =>
+								setFormData((prev) => ({ ...prev, isPremium: checked }))
+							}
 						/>
-						<Label htmlFor="isPremium">Premium Listing (Featured placement)</Label>
+						<Label htmlFor="isPremium">
+							Premium Listing (Featured placement)
+						</Label>
 					</div>
 				</CardContent>
 			</Card>

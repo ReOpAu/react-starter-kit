@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import { MapPin } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { StreetView } from "./StreetView";
-import { MapPin } from "lucide-react";
 
 interface StreetViewButtonProps {
 	lat: number;

@@ -1,10 +1,10 @@
-import React from "react";
-import { useQuery } from "convex/react";
-import { Skeleton } from "../../../../components/ui/skeleton";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { AlertCircle } from "lucide-react";
+import type React from "react";
+import { Alert, AlertDescription } from "../../../../components/ui/alert";
+import { Skeleton } from "../../../../components/ui/skeleton";
 import { BuyerListingForm } from "./BuyerListingForm";
 import { SellerListingForm } from "./SellerListingForm";
 
@@ -17,7 +17,7 @@ interface EditListingFormProps {
 export const EditListingForm: React.FC<EditListingFormProps> = ({
 	listingId,
 	onSuccess,
-	onCancel
+	onCancel,
 }) => {
 	const listing = useQuery(api.listings.getListing, { id: listingId });
 

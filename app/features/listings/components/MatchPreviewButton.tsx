@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { Button } from "../../../components/ui/button";
-import { MatchPreviewModal } from "./MatchPreviewModal";
 import { Eye } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { Button } from "../../../components/ui/button";
 import type { Listing } from "../types";
+import { MatchPreviewModal } from "./MatchPreviewModal";
 
 interface MatchPreviewButtonProps {
 	originalListing: Listing;

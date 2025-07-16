@@ -1,4 +1,5 @@
 import { ArrowRight, CreditCard, Lock } from "lucide-react";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 import { Button } from "~/components/ui/button";
 import {
 	Card,
@@ -7,7 +8,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "~/components/ui/card";
-import { PublicLayout } from "~/components/layout/PublicLayout";
 
 export default function SubscriptionRequired() {
 	return (

@@ -1,20 +1,38 @@
 import type React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
-import { Table, TableBody, TableCell, TableRow } from "../../../components/ui/table";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
+import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	CarouselNext,
+	CarouselPrevious,
+} from "../../../components/ui/carousel";
 import { Separator } from "../../../components/ui/separator";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "../../../components/ui/carousel";
-import { PropertyFeatures } from "./PropertyFeatures";
-import { Map } from "./Map";
-import { StreetViewButton } from "./StreetViewButton";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableRow,
+} from "../../../components/ui/table";
 import type { Listing } from "../types";
 import { isBuyerListing } from "../utils";
+import { Map } from "./Map";
+import { PropertyFeatures } from "./PropertyFeatures";
+import { StreetViewButton } from "./StreetViewButton";
 
 export interface ListingFullCardProps {
 	listing: Listing;
 }
 
-export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => {
+export const ListingFullCard: React.FC<ListingFullCardProps> = ({
+	listing,
+}) => {
 	return (
 		<div className="space-y-6">
 			{/* Image Gallery */}
@@ -55,14 +73,19 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 					<div className="space-y-4">
 						{/* Map */}
 						<Map
-							location={listing.location || { latitude: listing.latitude, longitude: listing.longitude }}
+							location={
+								listing.location || {
+									latitude: listing.latitude,
+									longitude: listing.longitude,
+								}
+							}
 							zoom={15}
 							interactive={true}
 							geohash={listing.geohash}
 							listings={[listing]}
 							className="w-full h-[300px] rounded-lg"
 						/>
-						
+
 						{/* Street View Button */}
 						<div className="flex justify-center">
 							<StreetViewButton
@@ -81,9 +104,15 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 				<CardHeader>
 					<div className="flex items-start justify-between">
 						<div>
-							<CardTitle className="text-2xl mb-2">{listing.headline}</CardTitle>
+							<CardTitle className="text-2xl mb-2">
+								{listing.headline}
+							</CardTitle>
 							<div className="flex gap-2 mb-2">
-								<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
+								<Badge
+									variant={
+										listing.listingType === "buyer" ? "default" : "secondary"
+									}
+								>
 									{listing.listingType}
 								</Badge>
 								{listing.listingType === "buyer" && listing.buyerType && (
@@ -92,12 +121,19 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 								{listing.listingType === "seller" && listing.sellerType && (
 									<Badge variant="outline">{listing.sellerType}</Badge>
 								)}
-								{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
-									<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-										{listing.searchRadius}km radius
-									</Badge>
+								{isBuyerListing(listing) &&
+									listing.buyerType === "street" &&
+									listing.searchRadius && (
+										<Badge
+											variant="outline"
+											className="bg-blue-50 text-blue-700 border-blue-200"
+										>
+											{listing.searchRadius}km radius
+										</Badge>
+									)}
+								{listing.isPremium && (
+									<Badge variant="destructive">Premium</Badge>
 								)}
-								{listing.isPremium && <Badge variant="destructive">Premium</Badge>}
 							</div>
 							<p className="text-gray-600">
 								{listing.suburb}, {listing.state} {listing.postcode}
@@ -106,7 +142,8 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 						<div className="text-right">
 							{listing.priceMin && listing.priceMax && (
 								<div className="text-2xl font-bold text-primary">
-									${listing.priceMin.toLocaleString()} - ${listing.priceMax.toLocaleString()}
+									${listing.priceMin.toLocaleString()} - $
+									{listing.priceMax.toLocaleString()}
 								</div>
 							)}
 						</div>
@@ -115,7 +152,7 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 				<CardContent>
 					<p className="text-gray-700 mb-4">{listing.description}</p>
 					<Separator className="my-4" />
-					
+
 					{/* Property Details Table */}
 					<div className="mb-6">
 						<h3 className="text-lg font-semibold mb-3">Property Details</h3>
@@ -137,12 +174,16 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 									<TableCell className="font-medium">Building Type</TableCell>
 									<TableCell>{listing.buildingType}</TableCell>
 								</TableRow>
-								{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
-									<TableRow>
-										<TableCell className="font-medium">Search Radius</TableCell>
-										<TableCell>{listing.searchRadius}km</TableCell>
-									</TableRow>
-								)}
+								{isBuyerListing(listing) &&
+									listing.buyerType === "street" &&
+									listing.searchRadius && (
+										<TableRow>
+											<TableCell className="font-medium">
+												Search Radius
+											</TableCell>
+											<TableCell>{listing.searchRadius}km</TableCell>
+										</TableRow>
+									)}
 							</TableBody>
 						</Table>
 					</div>
@@ -154,7 +195,6 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 							<PropertyFeatures features={listing.features} />
 						</>
 					)}
-
 
 					{/* Listing Metadata */}
 					<Separator className="my-4" />

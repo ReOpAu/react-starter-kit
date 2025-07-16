@@ -1,6 +1,6 @@
-import React from "react";
-import { Button } from "../../../components/ui/button";
 import { ExternalLink } from "lucide-react";
+import type React from "react";
+import { Button } from "../../../components/ui/button";
 import type { Listing } from "../types";
 
 interface ViewOnDomainButtonProps {
@@ -22,12 +22,13 @@ export const ViewOnDomainButton: React.FC<ViewOnDomainButtonProps> = ({
 		const postcode = listing.postcode;
 
 		const buildingTypeMap: Record<string, string> = {
-			"Townhouse": "town-house",
-			"House": "house",
-			"Apartment": "apartment",
+			Townhouse: "town-house",
+			House: "house",
+			Apartment: "apartment",
 		};
 
-		const buildingType = buildingTypeMap[listing.buildingType] ||
+		const buildingType =
+			buildingTypeMap[listing.buildingType] ||
 			listing.buildingType.toLowerCase().replace(/\s+/g, "-");
 
 		// Calculate reasonable bedroom range based on property details
@@ -40,9 +41,9 @@ export const ViewOnDomainButton: React.FC<ViewOnDomainButtonProps> = ({
 		const maxPrice = priceRange?.max || 1000000;
 
 		const params = new URLSearchParams({
-			"bedrooms": `${minBedrooms}-${maxBedrooms}`,
-			"price": `${minPrice}-${maxPrice}`,
-			"excludeunderoffer": "1",
+			bedrooms: `${minBedrooms}-${maxBedrooms}`,
+			price: `${minPrice}-${maxPrice}`,
+			excludeunderoffer: "1",
 		});
 
 		return `https://www.domain.com.au/sale/${suburb}-${state}-${postcode}/${buildingType}/?${params.toString()}`;

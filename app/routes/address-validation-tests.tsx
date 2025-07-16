@@ -1,6 +1,7 @@
 import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useState } from "react";
+import { PublicLayout } from "~/components/layout/PublicLayout";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -8,7 +9,6 @@ import { Input } from "~/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import type { LocationIntent } from "~/stores/types";
 import { classifyIntent } from "~/utils/addressFinderUtils";
-import { PublicLayout } from "~/components/layout/PublicLayout";
 
 // Constants for testing
 const MAX_RESULTS = 5;
@@ -552,7 +552,9 @@ export default function AddressValidationTests() {
 													</div>
 													<div className="flex gap-2">
 														<Badge
-															className={getAddressTypeColor(result.addressType)}
+															className={getAddressTypeColor(
+																result.addressType,
+															)}
 														>
 															{result.addressType.replace("_", " ")}
 														</Badge>
@@ -576,7 +578,9 @@ export default function AddressValidationTests() {
 															<span className="font-mono">{index + 1}.</span>
 															<span className="font-medium">{call.api}</span>
 															{call.executionTime && (
-																<Badge className={getApiStatusColor(!call.error)}>
+																<Badge
+																	className={getApiStatusColor(!call.error)}
+																>
 																	{formatExecutionTime(call.executionTime)}
 																</Badge>
 															)}
@@ -606,7 +610,9 @@ export default function AddressValidationTests() {
 												<Badge variant="outline">{selectedApiCall.api}</Badge>
 												{selectedApiCall.executionTime && (
 													<Badge
-														className={getApiStatusColor(!selectedApiCall.error)}
+														className={getApiStatusColor(
+															!selectedApiCall.error,
+														)}
 													>
 														{formatExecutionTime(selectedApiCall.executionTime)}
 													</Badge>
@@ -657,24 +663,24 @@ export default function AddressValidationTests() {
 						</CardHeader>
 						<CardContent className="space-y-3 text-sm text-gray-600">
 							<div>
-								<strong>Quick Tests:</strong> Click buttons to test common address
-								patterns
+								<strong>Quick Tests:</strong> Click buttons to test common
+								address patterns
 							</div>
 							<div>
-								<strong>Manual Test:</strong> Type any address to see how our APIs
-								handle it
+								<strong>Manual Test:</strong> Type any address to see how our
+								APIs handle it
 							</div>
 							<div>
-								<strong>API Flow:</strong> See the sequence of API calls and their
-								responses
+								<strong>API Flow:</strong> See the sequence of API calls and
+								their responses
 							</div>
 							<div>
 								<strong>Address Types:</strong>
 							</div>
 							<ul className="ml-4 space-y-1">
 								<li>
-									• <strong>Street Names:</strong> Tests intent classification and
-									suggestions
+									• <strong>Street Names:</strong> Tests intent classification
+									and suggestions
 								</li>
 								<li>
 									• <strong>Suburb Names:</strong> Tests suburb correction logic

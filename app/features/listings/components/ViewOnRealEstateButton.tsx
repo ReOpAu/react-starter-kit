@@ -1,6 +1,6 @@
-import React from "react";
-import { Button } from "../../../components/ui/button";
 import { ExternalLink } from "lucide-react";
+import type React from "react";
+import { Button } from "../../../components/ui/button";
 import type { Listing } from "../types";
 
 interface ViewOnRealEstateButtonProps {
@@ -22,12 +22,13 @@ export const ViewOnRealEstateButton: React.FC<ViewOnRealEstateButtonProps> = ({
 		const postcode = listing.postcode;
 
 		const buildingTypeMap: Record<string, string> = {
-			"Townhouse": "townhouse",
-			"House": "house",
-			"Apartment": "apartment",
+			Townhouse: "townhouse",
+			House: "house",
+			Apartment: "apartment",
 		};
 
-		const buildingType = buildingTypeMap[listing.buildingType] ||
+		const buildingType =
+			buildingTypeMap[listing.buildingType] ||
 			listing.buildingType.toLowerCase().replace(/\s+/g, "-");
 
 		// Function to round price to RealEstate.com.au increments

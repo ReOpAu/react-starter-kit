@@ -1,13 +1,21 @@
+import { ArrowRightLeft, Eye, MapPin } from "lucide-react";
 import type React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Link } from "react-router";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { Link } from "react-router";
-import { Eye, ArrowRightLeft, MapPin } from "lucide-react";
-import { MatchScore } from "./MatchScore";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
 import type { Listing } from "../types";
-import { generateListingUrl, generateMatchDetailUrl } from "../utils/urlHelpers";
 import { isBuyerListing } from "../utils";
+import {
+	generateListingUrl,
+	generateMatchDetailUrl,
+} from "../utils/urlHelpers";
+import { MatchScore } from "./MatchScore";
 
 interface MatchCardProps {
 	originalListing: Listing;
@@ -45,15 +53,26 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 					<div className="flex-1">
 						<CardTitle className="text-lg">{matchedListing.headline}</CardTitle>
 						<div className="flex items-center gap-2 mt-1">
-							<Badge variant={matchedListing.listingType === "buyer" ? "default" : "secondary"}>
+							<Badge
+								variant={
+									matchedListing.listingType === "buyer"
+										? "default"
+										: "secondary"
+								}
+							>
 								{matchedListing.listingType}
 							</Badge>
 							<Badge variant="outline">{matchedListing.buildingType}</Badge>
-							{isBuyerListing(matchedListing) && matchedListing.buyerType === "street" && matchedListing.searchRadius && (
-								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-									{matchedListing.searchRadius}km
-								</Badge>
-							)}
+							{isBuyerListing(matchedListing) &&
+								matchedListing.buyerType === "street" &&
+								matchedListing.searchRadius && (
+									<Badge
+										variant="outline"
+										className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+									>
+										{matchedListing.searchRadius}km
+									</Badge>
+								)}
 						</div>
 					</div>
 					<MatchScore score={score} size="md" />
@@ -64,7 +83,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 					{/* Location */}
 					<div className="flex items-center gap-2 text-sm text-gray-600">
 						<MapPin className="w-4 h-4" />
-						<span>{matchedListing.suburb}, {matchedListing.state}</span>
+						<span>
+							{matchedListing.suburb}, {matchedListing.state}
+						</span>
 						{distance && (
 							<Badge variant="outline" className="text-xs">
 								{formatDistance(distance)} away
@@ -102,7 +123,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 								</Link>
 							</Button>
 							<Button size="sm" variant="default" asChild>
-								<Link to={generateMatchDetailUrl(originalListing, matchedListing)}>
+								<Link
+									to={generateMatchDetailUrl(originalListing, matchedListing)}
+								>
 									<ArrowRightLeft className="w-3 h-3 mr-1" />
 									Compare Details
 								</Link>

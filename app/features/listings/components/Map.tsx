@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import ngeohash from "ngeohash";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Listing } from "../types";
 
 // Add mapbox CSS
@@ -31,9 +32,10 @@ interface MapProps {
 }
 
 // Helper function to convert our location format to MapBox format
-const toMapboxCoords = (
-	location: { latitude: number; longitude: number },
-): [number, number] => {
+const toMapboxCoords = (location: { latitude: number; longitude: number }): [
+	number,
+	number,
+] => {
 	return [location.longitude, location.latitude];
 };
 
@@ -45,13 +47,15 @@ const createGeohashPolygon = (hash: string) => {
 		properties: {},
 		geometry: {
 			type: "Polygon" as const,
-			coordinates: [[
-				[bounds[1], bounds[0]], // sw
-				[bounds[3], bounds[0]], // se
-				[bounds[3], bounds[2]], // ne
-				[bounds[1], bounds[2]], // nw
-				[bounds[1], bounds[0]], // back to sw to close the polygon
-			]],
+			coordinates: [
+				[
+					[bounds[1], bounds[0]], // sw
+					[bounds[3], bounds[0]], // se
+					[bounds[3], bounds[2]], // ne
+					[bounds[1], bounds[2]], // nw
+					[bounds[1], bounds[0]], // back to sw to close the polygon
+				],
+			],
 		},
 	};
 };
@@ -61,18 +65,23 @@ const createListingPoints = (listings: Listing[]) => {
 	return {
 		type: "FeatureCollection" as const,
 		features: listings
-			.filter(listing => listing.location?.latitude && listing.location?.longitude)
-			.map(listing => ({
+			.filter(
+				(listing) => listing.location?.latitude && listing.location?.longitude,
+			)
+			.map((listing) => ({
 				type: "Feature" as const,
 				properties: {
 					id: listing._id,
-					address: `${listing.street || ''}, ${listing.suburb}`,
+					address: `${listing.street || ""}, ${listing.suburb}`,
 					buildingType: listing.buildingType,
 					headline: listing.headline,
 				},
 				geometry: {
 					type: "Point" as const,
-					coordinates: [listing.location!.longitude, listing.location!.latitude],
+					coordinates: [
+						listing.location!.longitude,
+						listing.location!.latitude,
+					],
 				},
 			})),
 	};
@@ -102,7 +111,7 @@ export const Map: React.FC<MapProps> = ({
 					setIsVisible(entry.isIntersecting);
 				});
 			},
-			{ rootMargin: "50px" }
+			{ rootMargin: "50px" },
 		);
 
 		observerRef.current.observe(mapContainer.current);
@@ -121,7 +130,9 @@ export const Map: React.FC<MapProps> = ({
 		// Set Mapbox access token
 		const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 		if (!mapboxToken) {
-			console.error('VITE_MAPBOX_ACCESS_TOKEN is not set in environment variables');
+			console.error(
+				"VITE_MAPBOX_ACCESS_TOKEN is not set in environment variables",
+			);
 			return;
 		}
 		mapboxgl.accessToken = mapboxToken;
@@ -173,7 +184,7 @@ export const Map: React.FC<MapProps> = ({
 			// Add listing markers if provided
 			if (listings.length > 0) {
 				const points = createListingPoints(listings);
-				
+
 				map.current.addSource("listings", {
 					type: "geojson",
 					data: points,
@@ -197,15 +208,15 @@ export const Map: React.FC<MapProps> = ({
 					if (e.features && e.features[0]) {
 						const feature = e.features[0];
 						const properties = feature.properties;
-						
+
 						if (properties) {
 							new mapboxgl.Popup()
 								.setLngLat(e.lngLat)
 								.setHTML(`
 									<div class="p-2">
-										<h3 class="font-bold">${properties.headline || 'Listing'}</h3>
-										<p class="text-sm">${properties.address || 'No address'}</p>
-										<p class="text-xs text-gray-600">${properties.buildingType || 'Unknown type'}</p>
+										<h3 class="font-bold">${properties.headline || "Listing"}</h3>
+										<p class="text-sm">${properties.address || "No address"}</p>
+										<p class="text-xs text-gray-600">${properties.buildingType || "Unknown type"}</p>
 									</div>
 								`)
 								.addTo(map.current!);
@@ -232,7 +243,7 @@ export const Map: React.FC<MapProps> = ({
 				const bounds = ngeohash.decode_bbox(geohash);
 				const mapBounds = new mapboxgl.LngLatBounds(
 					[bounds[1], bounds[0]], // sw
-					[bounds[3], bounds[2]]  // ne
+					[bounds[3], bounds[2]], // ne
 				);
 				map.current.fitBounds(mapBounds, { padding: 20 });
 			}
@@ -244,24 +255,34 @@ export const Map: React.FC<MapProps> = ({
 				map.current = null;
 			}
 		};
-	}, [isVisible, location, zoom, interactive, highlightStreet, geohash, listings]);
+	}, [
+		isVisible,
+		location,
+		zoom,
+		interactive,
+		highlightStreet,
+		geohash,
+		listings,
+	]);
 
 	if (!location) {
 		return (
-			<div className={`${className} bg-gray-100 flex items-center justify-center text-gray-500`}>
+			<div
+				className={`${className} bg-gray-100 flex items-center justify-center text-gray-500`}
+			>
 				No location data
 			</div>
 		);
 	}
 
 	return (
-		<div 
-			ref={mapContainer} 
+		<div
+			ref={mapContainer}
 			className={className}
-			style={{ 
+			style={{
 				background: !isVisible ? "#f0f0f0" : undefined,
 				cursor: interactive ? "grab" : "default",
-				minHeight: "200px" 
+				minHeight: "200px",
 			}}
 		/>
 	);

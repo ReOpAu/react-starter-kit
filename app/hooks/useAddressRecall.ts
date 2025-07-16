@@ -95,7 +95,10 @@ export function useAddressRecall() {
 			// IMPORTANT: Don't overwrite the original suggestions cache
 			// Keep the original search results for "show options again" functionality
 			// Only set the cache if it doesn't already exist with multiple suggestions
-			const existingSuggestions = queryClient.getQueryData<Suggestion[]>(["addressSearch", entry.originalQuery]);
+			const existingSuggestions = queryClient.getQueryData<Suggestion[]>([
+				"addressSearch",
+				entry.originalQuery,
+			]);
 			if (!existingSuggestions || existingSuggestions.length <= 1) {
 				// Only set if cache is empty or has single result
 				queryClient.setQueryData(

@@ -1,21 +1,21 @@
+import { ArrowLeft, Eye } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { useParams } from "react-router";
+import { Link } from "react-router";
 // Remove unused import
 import { api } from "../../../../convex/_generated/api";
-import { useListingById, useMatchesForListing } from "../data/listingsService";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
-import { Badge } from "../../../components/ui/badge";
-import { Button } from "../../../components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/table";
+import type { Id } from "../../../../convex/_generated/dataModel";
 // import { Progress } from "../../../components/ui/progress";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
-import { Link } from "react-router";
-import { ArrowLeft, Eye } from "lucide-react";
-import { MatchScore } from "../components/MatchScore";
-import type { Id } from "../../../../convex/_generated/dataModel";
-import { generateListingUrl, generateMatchDetailUrl, parseListingParams } from "../utils/urlHelpers";
-import { calculateDistance, formatDistance, isBuyerListing } from "../utils";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../../components/ui/card";
 import {
 	Pagination,
 	PaginationContent,
@@ -25,36 +25,52 @@ import {
 	PaginationNext,
 	PaginationPrevious,
 } from "../../../components/ui/pagination";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "../../../components/ui/table";
+import { MatchScore } from "../components/MatchScore";
+import { useListingById, useMatchesForListing } from "../data/listingsService";
+import { calculateDistance, formatDistance, isBuyerListing } from "../utils";
+import {
+	generateListingUrl,
+	generateMatchDetailUrl,
+	parseListingParams,
+} from "../utils/urlHelpers";
 
 // Helper function for pagination (reused from ListingsGrid)
 function generatePaginationItems(currentPage: number, totalPages: number) {
-	const items: Array<{ type: 'page' | 'ellipsis'; page?: number }> = [];
-	
+	const items: Array<{ type: "page" | "ellipsis"; page?: number }> = [];
+
 	if (totalPages > 0) {
-		items.push({ type: 'page', page: 1 });
+		items.push({ type: "page", page: 1 });
 	}
-	
+
 	const startPage = Math.max(2, currentPage - 1);
 	const endPage = Math.min(totalPages - 1, currentPage + 1);
-	
+
 	if (startPage > 2) {
-		items.push({ type: 'ellipsis' });
+		items.push({ type: "ellipsis" });
 	}
-	
+
 	for (let page = startPage; page <= endPage; page++) {
 		if (page !== 1 && page !== totalPages) {
-			items.push({ type: 'page', page });
+			items.push({ type: "page", page });
 		}
 	}
-	
+
 	if (endPage < totalPages - 1) {
-		items.push({ type: 'ellipsis' });
+		items.push({ type: "ellipsis" });
 	}
-	
+
 	if (totalPages > 1) {
-		items.push({ type: 'page', page: totalPages });
+		items.push({ type: "page", page: totalPages });
 	}
-	
+
 	return items;
 }
 
@@ -65,16 +81,20 @@ const MatchesPage: React.FC = () => {
 	const pageSize = 12; // 12 matches per page
 
 	const listing = useListingById(listingId!);
-	const { matches, totalCount, hasMore, isLoading: matchesLoading } = useMatchesForListing(listingId!, {
+	const {
+		matches,
+		totalCount,
+		hasMore,
+		isLoading: matchesLoading,
+	} = useMatchesForListing(listingId!, {
 		minScore: 0,
 		limit: pageSize,
 		offset: (currentPage - 1) * pageSize,
-		includeScoreBreakdown: true
+		includeScoreBreakdown: true,
 	});
 
 	// Calculate total pages for pagination
 	const totalPages = Math.ceil(totalCount / pageSize);
-
 
 	if (!listing) {
 		return (
@@ -109,15 +129,26 @@ const MatchesPage: React.FC = () => {
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						Original Listing
-						<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
+						<Badge
+							variant={
+								listing.listingType === "buyer" ? "default" : "secondary"
+							}
+						>
 							{listing.listingType}
 						</Badge>
-						<Badge variant="outline">{listing.buyerType || listing.sellerType}</Badge>
-						{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
-							<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-								{listing.searchRadius}km radius
-							</Badge>
-						)}
+						<Badge variant="outline">
+							{listing.buyerType || listing.sellerType}
+						</Badge>
+						{isBuyerListing(listing) &&
+							listing.buyerType === "street" &&
+							listing.searchRadius && (
+								<Badge
+									variant="outline"
+									className="bg-blue-50 text-blue-700 border-blue-200"
+								>
+									{listing.searchRadius}km radius
+								</Badge>
+							)}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -127,13 +158,26 @@ const MatchesPage: React.FC = () => {
 							<p className="text-sm text-gray-600">{listing.description}</p>
 						</div>
 						<div className="text-sm">
-							<p><strong>Bedrooms:</strong> {listing.bedrooms}</p>
-							<p><strong>Bathrooms:</strong> {listing.bathrooms}</p>
-							<p><strong>Parking:</strong> {listing.parking}</p>
-							<p><strong>Price:</strong> ${listing.priceMin.toLocaleString()} - ${listing.priceMax.toLocaleString()}</p>
-							{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
-								<p><strong>Search Radius:</strong> {listing.searchRadius}km</p>
-							)}
+							<p>
+								<strong>Bedrooms:</strong> {listing.bedrooms}
+							</p>
+							<p>
+								<strong>Bathrooms:</strong> {listing.bathrooms}
+							</p>
+							<p>
+								<strong>Parking:</strong> {listing.parking}
+							</p>
+							<p>
+								<strong>Price:</strong> ${listing.priceMin.toLocaleString()} - $
+								{listing.priceMax.toLocaleString()}
+							</p>
+							{isBuyerListing(listing) &&
+								listing.buyerType === "street" &&
+								listing.searchRadius && (
+									<p>
+										<strong>Search Radius:</strong> {listing.searchRadius}km
+									</p>
+								)}
 						</div>
 					</div>
 				</CardContent>
@@ -145,11 +189,13 @@ const MatchesPage: React.FC = () => {
 					<div className="flex justify-between items-start">
 						<div>
 							<CardTitle>Matching Properties</CardTitle>
-							{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
-								<p className="text-sm text-gray-600 mt-1">
-									Showing matches within {listing.searchRadius}km radius
-								</p>
-							)}
+							{isBuyerListing(listing) &&
+								listing.buyerType === "street" &&
+								listing.searchRadius && (
+									<p className="text-sm text-gray-600 mt-1">
+										Showing matches within {listing.searchRadius}km radius
+									</p>
+								)}
 							{listing.listingType === "seller" && (
 								<p className="text-sm text-gray-600 mt-1">
 									Street buyer matches are filtered by their search radius
@@ -158,7 +204,9 @@ const MatchesPage: React.FC = () => {
 						</div>
 						{!matchesLoading && totalCount > 0 && (
 							<div className="text-sm text-gray-500">
-								Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount} matches
+								Showing {(currentPage - 1) * pageSize + 1}-
+								{Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
+								matches
 							</div>
 						)}
 					</div>
@@ -168,7 +216,9 @@ const MatchesPage: React.FC = () => {
 						<div className="text-center py-8">Loading matches...</div>
 					) : !matches || matches.length === 0 ? (
 						<Alert>
-							<AlertDescription>No matches found for this listing.</AlertDescription>
+							<AlertDescription>
+								No matches found for this listing.
+							</AlertDescription>
 						</Alert>
 					) : (
 						<Table>
@@ -190,15 +240,29 @@ const MatchesPage: React.FC = () => {
 											<div>
 												<p className="font-medium">{match.listing.headline}</p>
 												<div className="flex gap-1 mt-1">
-													<Badge variant={match.listing.listingType === "buyer" ? "default" : "secondary"}>
+													<Badge
+														variant={
+															match.listing.listingType === "buyer"
+																? "default"
+																: "secondary"
+														}
+													>
 														{match.listing.listingType}
 													</Badge>
-													<Badge variant="outline" className="text-xs">{match.listing.buyerType || match.listing.sellerType}</Badge>
-													{isBuyerListing(match.listing) && match.listing.buyerType === "street" && match.listing.searchRadius && (
-														<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-															{match.listing.searchRadius}km
-														</Badge>
-													)}
+													<Badge variant="outline" className="text-xs">
+														{match.listing.buyerType ||
+															match.listing.sellerType}
+													</Badge>
+													{isBuyerListing(match.listing) &&
+														match.listing.buyerType === "street" &&
+														match.listing.searchRadius && (
+															<Badge
+																variant="outline"
+																className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
+															>
+																{match.listing.searchRadius}km
+															</Badge>
+														)}
 												</div>
 											</div>
 										</TableCell>
@@ -212,22 +276,36 @@ const MatchesPage: React.FC = () => {
 											</div>
 										</TableCell>
 										<TableCell>
-											{listing.latitude && listing.longitude && match.listing.latitude && match.listing.longitude ? (
+											{listing.latitude &&
+											listing.longitude &&
+											match.listing.latitude &&
+											match.listing.longitude ? (
 												<div className="text-sm">
 													{(() => {
 														const distance = calculateDistance(
-															listing.latitude, listing.longitude,
-															match.listing.latitude, match.listing.longitude
+															listing.latitude,
+															listing.longitude,
+															match.listing.latitude,
+															match.listing.longitude,
 														);
-														const isWithinRadius = 
-															(isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && distance <= listing.searchRadius) ||
-															(isBuyerListing(match.listing) && match.listing.buyerType === "street" && match.listing.searchRadius && distance <= match.listing.searchRadius);
-														
+														const isWithinRadius =
+															(isBuyerListing(listing) &&
+																listing.buyerType === "street" &&
+																listing.searchRadius &&
+																distance <= listing.searchRadius) ||
+															(isBuyerListing(match.listing) &&
+																match.listing.buyerType === "street" &&
+																match.listing.searchRadius &&
+																distance <= match.listing.searchRadius);
+
 														return (
 															<div>
 																<p>{formatDistance(distance)}</p>
 																{isWithinRadius && (
-																	<Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+																	<Badge
+																		variant="outline"
+																		className="bg-green-50 text-green-700 border-green-200 text-xs"
+																	>
 																		Within radius
 																	</Badge>
 																)}
@@ -241,12 +319,18 @@ const MatchesPage: React.FC = () => {
 										</TableCell>
 										<TableCell>
 											<div className="text-sm">
-												<p>${match.listing.priceMin.toLocaleString()} - ${match.listing.priceMax.toLocaleString()}</p>
+												<p>
+													${match.listing.priceMin.toLocaleString()} - $
+													{match.listing.priceMax.toLocaleString()}
+												</p>
 											</div>
 										</TableCell>
 										<TableCell>
 											<div className="text-sm">
-												<p>{match.listing.bedrooms}bed, {match.listing.bathrooms}bath</p>
+												<p>
+													{match.listing.bedrooms}bed, {match.listing.bathrooms}
+													bath
+												</p>
 												<p>{match.listing.parking} parking</p>
 											</div>
 										</TableCell>
@@ -259,7 +343,9 @@ const MatchesPage: React.FC = () => {
 													</Link>
 												</Button>
 												<Button size="sm" variant="default" asChild>
-													<Link to={generateMatchDetailUrl(listing, match.listing)}>
+													<Link
+														to={generateMatchDetailUrl(listing, match.listing)}
+													>
 														Compare
 													</Link>
 												</Button>
@@ -270,66 +356,86 @@ const MatchesPage: React.FC = () => {
 							</TableBody>
 						</Table>
 					)}
-					
+
 					{/* Pagination Controls */}
-					{!matchesLoading && matches && matches.length > 0 && totalPages > 1 && (
-						<div className="mt-6">
-							<Pagination>
-								<PaginationContent>
-									<PaginationItem>
-										<PaginationPrevious 
-											href="#"
-											onClick={(e) => {
-												e.preventDefault();
-												if (currentPage > 1) {
-													setCurrentPage(currentPage - 1);
+					{!matchesLoading &&
+						matches &&
+						matches.length > 0 &&
+						totalPages > 1 && (
+							<div className="mt-6">
+								<Pagination>
+									<PaginationContent>
+										<PaginationItem>
+											<PaginationPrevious
+												href="#"
+												onClick={(e) => {
+													e.preventDefault();
+													if (currentPage > 1) {
+														setCurrentPage(currentPage - 1);
+													}
+												}}
+												className={
+													currentPage === 1
+														? "pointer-events-none opacity-50"
+														: ""
 												}
-											}}
-											className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-										/>
-									</PaginationItem>
-									
-									{generatePaginationItems(currentPage, totalPages).map((item, index) => (
-										<PaginationItem key={item.type === 'page' ? `page-${item.page}` : `ellipsis-${index}`}>
-											{item.type === 'page' ? (
-												<PaginationLink
-													href="#"
-													onClick={(e) => {
-														e.preventDefault();
-														if (item.page) {
-															setCurrentPage(item.page);
-														}
-													}}
-													isActive={item.page === currentPage}
-													className={item.page === currentPage ? 
-														"bg-primary text-primary-foreground hover:bg-primary/90 font-bold ring-2 ring-primary/20 shadow-md" : 
-														""
+											/>
+										</PaginationItem>
+
+										{generatePaginationItems(currentPage, totalPages).map(
+											(item, index) => (
+												<PaginationItem
+													key={
+														item.type === "page"
+															? `page-${item.page}`
+															: `ellipsis-${index}`
 													}
 												>
-													{item.page}
-												</PaginationLink>
-											) : (
-												<PaginationEllipsis />
-											)}
-										</PaginationItem>
-									))}
-									
-									<PaginationItem>
-										<PaginationNext 
-											href="#"
-											onClick={(e) => {
-												e.preventDefault();
-												if (currentPage < totalPages) {
-													setCurrentPage(currentPage + 1);
+													{item.type === "page" ? (
+														<PaginationLink
+															href="#"
+															onClick={(e) => {
+																e.preventDefault();
+																if (item.page) {
+																	setCurrentPage(item.page);
+																}
+															}}
+															isActive={item.page === currentPage}
+															className={
+																item.page === currentPage
+																	? "bg-primary text-primary-foreground hover:bg-primary/90 font-bold ring-2 ring-primary/20 shadow-md"
+																	: ""
+															}
+														>
+															{item.page}
+														</PaginationLink>
+													) : (
+														<PaginationEllipsis />
+													)}
+												</PaginationItem>
+											),
+										)}
+
+										<PaginationItem>
+											<PaginationNext
+												href="#"
+												onClick={(e) => {
+													e.preventDefault();
+													if (currentPage < totalPages) {
+														setCurrentPage(currentPage + 1);
+													}
+												}}
+												className={
+													currentPage === totalPages
+														? "pointer-events-none opacity-50"
+														: ""
 												}
-											}}
-											className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-										/>
-									</PaginationItem>
-								</PaginationContent>
-							</Pagination>
-						</div>
-					)}
+											/>
+										</PaginationItem>
+									</PaginationContent>
+								</Pagination>
+							</div>
+						)}
 				</CardContent>
 			</Card>
 		</div>

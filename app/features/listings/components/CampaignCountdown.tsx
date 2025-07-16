@@ -1,7 +1,7 @@
-import type React from "react";
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "../../../components/ui/card";
 import { Clock } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { Card, CardContent } from "../../../components/ui/card";
 
 export interface CampaignCountdownProps {
 	targetDate: string | Date;
@@ -17,34 +17,40 @@ interface TimeLeft {
 
 const calculateTimeLeft = (targetDate: string | Date): TimeLeft => {
 	const difference = new Date(targetDate).getTime() - new Date().getTime();
-	
+
 	if (difference > 0) {
 		return {
 			days: Math.floor(difference / (1000 * 60 * 60 * 24)),
 			hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
 			minutes: Math.floor((difference / 1000 / 60) % 60),
-			seconds: Math.floor((difference / 1000) % 60)
+			seconds: Math.floor((difference / 1000) % 60),
 		};
 	}
-	
+
 	return { days: 0, hours: 0, minutes: 0, seconds: 0 };
 };
 
-export const CampaignCountdown: React.FC<CampaignCountdownProps> = ({ 
-	targetDate, 
-	title = "Campaign Ends In" 
+export const CampaignCountdown: React.FC<CampaignCountdownProps> = ({
+	targetDate,
+	title = "Campaign Ends In",
 }) => {
-	const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft(targetDate));
+	const [timeLeft, setTimeLeft] = useState<TimeLeft>(
+		calculateTimeLeft(targetDate),
+	);
 	const [isExpired, setIsExpired] = useState(false);
 
 	useEffect(() => {
 		const timer = setInterval(() => {
 			const newTimeLeft = calculateTimeLeft(targetDate);
 			setTimeLeft(newTimeLeft);
-			
+
 			// Check if countdown has expired
-			if (newTimeLeft.days === 0 && newTimeLeft.hours === 0 && 
-				newTimeLeft.minutes === 0 && newTimeLeft.seconds === 0) {
+			if (
+				newTimeLeft.days === 0 &&
+				newTimeLeft.hours === 0 &&
+				newTimeLeft.minutes === 0 &&
+				newTimeLeft.seconds === 0
+			) {
 				setIsExpired(true);
 				clearInterval(timer);
 			}
@@ -74,25 +80,25 @@ export const CampaignCountdown: React.FC<CampaignCountdownProps> = ({
 				<div className="grid grid-cols-4 gap-2 text-center">
 					<div className="flex flex-col">
 						<span className="text-2xl font-bold text-orange-600">
-							{timeLeft.days.toString().padStart(2, '0')}
+							{timeLeft.days.toString().padStart(2, "0")}
 						</span>
 						<span className="text-xs text-orange-700">Days</span>
 					</div>
 					<div className="flex flex-col">
 						<span className="text-2xl font-bold text-orange-600">
-							{timeLeft.hours.toString().padStart(2, '0')}
+							{timeLeft.hours.toString().padStart(2, "0")}
 						</span>
 						<span className="text-xs text-orange-700">Hours</span>
 					</div>
 					<div className="flex flex-col">
 						<span className="text-2xl font-bold text-orange-600">
-							{timeLeft.minutes.toString().padStart(2, '0')}
+							{timeLeft.minutes.toString().padStart(2, "0")}
 						</span>
 						<span className="text-xs text-orange-700">Mins</span>
 					</div>
 					<div className="flex flex-col">
 						<span className="text-2xl font-bold text-orange-600">
-							{timeLeft.seconds.toString().padStart(2, '0')}
+							{timeLeft.seconds.toString().padStart(2, "0")}
 						</span>
 						<span className="text-xs text-orange-700">Secs</span>
 					</div>

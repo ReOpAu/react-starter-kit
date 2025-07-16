@@ -1,6 +1,6 @@
+import { ChevronRight } from "lucide-react";
 import React from "react";
 import { Link } from "react-router";
-import { ChevronRight } from "lucide-react";
 
 export interface NavigationPath {
 	label: string;
@@ -12,16 +12,13 @@ export interface MicroNavigationProps {
 	className?: string;
 }
 
-export const MicroNavigation: React.FC<MicroNavigationProps> = ({ 
-	paths, 
-	className = "flex items-center gap-2 text-sm text-gray-600" 
+export const MicroNavigation: React.FC<MicroNavigationProps> = ({
+	paths,
+	className = "flex items-center gap-2 text-sm text-gray-600",
 }) => {
 	return (
 		<nav className={className}>
-			<Link 
-				to="/listings" 
-				className="hover:text-gray-900 transition-colors"
-			>
+			<Link to="/listings" className="hover:text-gray-900 transition-colors">
 				Listings
 			</Link>
 			{paths.map((path, index) => (
@@ -30,8 +27,8 @@ export const MicroNavigation: React.FC<MicroNavigationProps> = ({
 					{index === paths.length - 1 ? (
 						<span className="text-gray-900 font-medium">{path.label}</span>
 					) : (
-						<Link 
-							to={path.href} 
+						<Link
+							to={path.href}
 							className="hover:text-gray-900 transition-colors"
 						>
 							{path.label}

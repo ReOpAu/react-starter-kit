@@ -185,8 +185,9 @@ export function useActionHandler({
 			// Step 2: Add to suggestions cache for agent context
 			// CRITICAL: Use agentLastSearchQuery to maintain cache consistency for "show options again"
 			const { agentLastSearchQuery } = useIntentStore.getState();
-			const currentSearchQuery = agentLastSearchQuery || searchQuery || enrichedResult.description;
-			
+			const currentSearchQuery =
+				agentLastSearchQuery || searchQuery || enrichedResult.description;
+
 			const currentSuggestions =
 				queryClient.getQueryData<Suggestion[]>([
 					"addressSearch",

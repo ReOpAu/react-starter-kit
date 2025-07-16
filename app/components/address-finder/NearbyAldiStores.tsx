@@ -29,7 +29,7 @@ export const NearbyAldiStores: React.FC<NearbyAldiStoresProps> = ({
 
 	useEffect(() => {
 		if (lat == null || lng == null) return;
-		
+
 		// Debounce the API call to prevent multiple rapid calls
 		const timeoutId = setTimeout(() => {
 			let cancelled = false;

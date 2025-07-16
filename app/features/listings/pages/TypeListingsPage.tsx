@@ -1,10 +1,10 @@
+import { ArrowLeft, TrendingUp, Users } from "lucide-react";
 import type React from "react";
-import { useParams, Link } from "react-router";
+import { Link, useParams } from "react-router";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 import { ListingsDisplay } from "../components/ListingsDisplay";
 import { MicroNavigation } from "../components/MicroNavigation";
-import { Button } from "../../../components/ui/button";
-import { Badge } from "../../../components/ui/badge";
-import { ArrowLeft, Users, TrendingUp } from "lucide-react";
 import type { ListingType } from "../types";
 
 const TypeListingsPage: React.FC = () => {
@@ -22,7 +22,7 @@ const TypeListingsPage: React.FC = () => {
 							Back to {state}
 						</Link>
 					</Button>
-					<MicroNavigation 
+					<MicroNavigation
 						paths={[
 							{
 								label: state?.toUpperCase() || "",
@@ -32,7 +32,7 @@ const TypeListingsPage: React.FC = () => {
 								label: `${type?.charAt(0).toUpperCase() + type?.slice(1)} Listings`,
 								href: `/listings/${state?.toLowerCase()}/${type?.toLowerCase()}`,
 							},
-						]} 
+						]}
 					/>
 				</div>
 
@@ -52,18 +52,20 @@ const TypeListingsPage: React.FC = () => {
 						{listingType === "buyer" ? "Buyers" : "Sellers"} in {state}
 					</h1>
 					<p className="mt-6 text-lg leading-8 text-gray-600">
-						{listingType === "buyer" 
+						{listingType === "buyer"
 							? "Browse property requirements from buyers looking for properties in "
-							: "Browse properties available from sellers in "
-						}{state}.
+							: "Browse properties available from sellers in "}
+						{state}.
 					</p>
 				</div>
 
 				{/* Listings Display */}
-				<ListingsDisplay initialFilters={{ 
-					state: state || "", 
-					listingType: listingType || "all" 
-				}} />
+				<ListingsDisplay
+					initialFilters={{
+						state: state || "",
+						listingType: listingType || "all",
+					}}
+				/>
 			</div>
 		</div>
 	);

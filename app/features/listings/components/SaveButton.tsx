@@ -1,10 +1,10 @@
+import { useMutation, useQuery } from "convex/react";
+import { Heart } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { Button } from "../../../components/ui/button";
-import { Heart } from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { Button } from "../../../components/ui/button";
 
 export interface SaveButtonProps {
 	listingId: Id<"listings">;
@@ -12,20 +12,20 @@ export interface SaveButtonProps {
 
 export const SaveButton: React.FC<SaveButtonProps> = ({ listingId }) => {
 	const [isOptimistic, setIsOptimistic] = useState(false);
-	
+
 	// Check if listing is saved (this would need to be implemented in convex)
 	const isSaved = useQuery(api.listings.isListingSaved, { listingId }) ?? false;
-	
+
 	// Save/unsave mutations (these would need to be implemented)
 	const saveListing = useMutation(api.listings.saveListing);
 	const unsaveListing = useMutation(api.listings.unsaveListing);
-	
+
 	const handleClick = async (e: React.MouseEvent) => {
 		e.preventDefault(); // Prevent navigation when clicking save button
 		e.stopPropagation();
-		
+
 		setIsOptimistic(!isSaved);
-		
+
 		try {
 			if (isSaved) {
 				await unsaveListing({ listingId });
@@ -38,9 +38,9 @@ export const SaveButton: React.FC<SaveButtonProps> = ({ listingId }) => {
 			console.error("Failed to save/unsave listing:", error);
 		}
 	};
-	
+
 	const displaySaved = isOptimistic !== isSaved ? isOptimistic : isSaved;
-	
+
 	return (
 		<Button
 			variant="ghost"

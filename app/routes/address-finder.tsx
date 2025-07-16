@@ -16,14 +16,18 @@ export default function AddressFinder() {
 							handleClear={handlers.handleClear}
 							handleAcceptRuralAddress={handlers.handleAcceptRuralAddress}
 							handleRecallPreviousSearch={handlers.handleRecallPreviousSearch}
-							handleRecallConfirmedSelection={handlers.handleRecallConfirmedSelection}
+							handleRecallConfirmedSelection={
+								handlers.handleRecallConfirmedSelection
+							}
 							handleManualTyping={handlers.handleManualTyping}
 							shouldShowSuggestions={handlers.shouldShowSuggestions}
 							shouldShowManualForm={handlers.shouldShowManualForm}
 							shouldShowSelectedResult={handlers.shouldShowSelectedResult}
 							shouldShowValidationStatus={handlers.shouldShowValidationStatus}
 							showLowConfidence={handlers.showLowConfidence}
-							showingOptionsAfterConfirmation={handlers.showingOptionsAfterConfirmation}
+							showingOptionsAfterConfirmation={
+								handlers.showingOptionsAfterConfirmation
+							}
 							autoCorrection={handlers.autoCorrection}
 							isValidating={handlers.isValidating}
 							validationError={handlers.validationError}

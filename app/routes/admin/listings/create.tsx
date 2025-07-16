@@ -1,8 +1,8 @@
-import React from "react";
-import { Link, useNavigate } from "react-router";
-import { CreateListingForm } from "../../../features/listings/components/forms";
-import { Button } from "../../../components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
+import type React from "react";
+import { Link, useNavigate } from "react-router";
+import { Button } from "../../../components/ui/button";
+import { CreateListingForm } from "../../../features/listings/components/forms";
 
 const AdminCreateListingPage: React.FC = () => {
 	const navigate = useNavigate();
@@ -40,10 +40,7 @@ const AdminCreateListingPage: React.FC = () => {
 				</div>
 
 				{/* Form */}
-				<CreateListingForm 
-					onSuccess={handleSuccess}
-					onCancel={handleCancel}
-				/>
+				<CreateListingForm onSuccess={handleSuccess} onCancel={handleCancel} />
 			</div>
 		</main>
 	);

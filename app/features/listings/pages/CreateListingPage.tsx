@@ -1,8 +1,8 @@
-import React from "react";
-import { Link, useNavigate } from "react-router";
-import { CreateListingForm } from "../components/forms";
-import { Button } from "../../../components/ui/button";
 import { ArrowLeft, Plus } from "lucide-react";
+import type React from "react";
+import { Link, useNavigate } from "react-router";
+import { Button } from "../../../components/ui/button";
+import { CreateListingForm } from "../components/forms";
 
 const CreateListingPage: React.FC = () => {
 	const navigate = useNavigate();
@@ -35,15 +35,13 @@ const CreateListingPage: React.FC = () => {
 						Create New Listing
 					</h1>
 					<p className="mt-4 text-lg text-gray-600">
-						Create a buyer or seller listing to connect with property matches in your area.
+						Create a buyer or seller listing to connect with property matches in
+						your area.
 					</p>
 				</div>
 
 				{/* Form */}
-				<CreateListingForm 
-					onSuccess={handleSuccess}
-					onCancel={handleCancel}
-				/>
+				<CreateListingForm onSuccess={handleSuccess} onCancel={handleCancel} />
 			</div>
 		</div>
 	);

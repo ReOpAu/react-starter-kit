@@ -1,545 +1,545 @@
 {
-  "buildManifest": {
-    "serverBundles": {
-      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
-        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
-        "config": {
-          "runtime": "nodejs"
-        }
-      }
-    },
-    "routeIdToServerBundleId": {
-      "routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/sign-in": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/sign-up": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/pricing": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/success": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/subscription-required": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/about": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/address-finder": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/test-aldi": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/address-validation-tests": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/debug-listings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/blog/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/blog/$slug": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/ListingsOverviewPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/StateListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/TypeListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/SuburbListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/ListingDetailPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/MatchesPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/MatchDetailPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/listings/create": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/EditListingPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "features/listings/pages/MyListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/admin/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/admin/listings/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/admin/listings/create": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/admin/listings/edit/$id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
-      "routes/dashboard/settings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
-    },
-    "routes": {
-      "root": {
-        "path": "",
-        "id": "root",
-        "file": "app/root.tsx",
-        "config": {}
-      },
-      "routes/home": {
-        "id": "routes/home",
-        "parentId": "root",
-        "file": "app/routes/home.tsx",
-        "index": true,
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/sign-in": {
-        "id": "routes/sign-in",
-        "parentId": "root",
-        "file": "app/routes/sign-in.tsx",
-        "path": "sign-in/*",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/sign-up": {
-        "id": "routes/sign-up",
-        "parentId": "root",
-        "file": "app/routes/sign-up.tsx",
-        "path": "sign-up/*",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/pricing": {
-        "id": "routes/pricing",
-        "parentId": "root",
-        "file": "app/routes/pricing.tsx",
-        "path": "pricing",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/success": {
-        "id": "routes/success",
-        "parentId": "root",
-        "file": "app/routes/success.tsx",
-        "path": "success",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/subscription-required": {
-        "id": "routes/subscription-required",
-        "parentId": "root",
-        "file": "app/routes/subscription-required.tsx",
-        "path": "subscription-required",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/about": {
-        "id": "routes/about",
-        "parentId": "root",
-        "file": "app/routes/about.tsx",
-        "path": "about",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/address-finder": {
-        "id": "routes/address-finder",
-        "parentId": "root",
-        "file": "app/routes/address-finder.tsx",
-        "path": "address-finder",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/test-aldi": {
-        "id": "routes/test-aldi",
-        "parentId": "root",
-        "file": "app/routes/test-aldi.tsx",
-        "path": "test-aldi",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/address-validation-tests": {
-        "id": "routes/address-validation-tests",
-        "parentId": "root",
-        "file": "app/routes/address-validation-tests.tsx",
-        "path": "address-validation-tests",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/debug-listings": {
-        "id": "routes/debug-listings",
-        "parentId": "root",
-        "file": "app/routes/debug-listings.tsx",
-        "path": "debug-listings",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/blog/index": {
-        "id": "routes/blog/index",
-        "parentId": "root",
-        "file": "app/routes/blog/index.tsx",
-        "path": "blog",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/blog/$slug": {
-        "id": "routes/blog/$slug",
-        "parentId": "root",
-        "file": "app/routes/blog/$slug.tsx",
-        "path": "blog/:slug",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/ListingsOverviewPage": {
-        "id": "features/listings/pages/ListingsOverviewPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/ListingsOverviewPage.tsx",
-        "path": "listings",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/StateListingsPage": {
-        "id": "features/listings/pages/StateListingsPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/StateListingsPage.tsx",
-        "path": "listings/:state",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/TypeListingsPage": {
-        "id": "features/listings/pages/TypeListingsPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/TypeListingsPage.tsx",
-        "path": "listings/:state/:type",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/SuburbListingsPage": {
-        "id": "features/listings/pages/SuburbListingsPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/SuburbListingsPage.tsx",
-        "path": "listings/:state/:type/:suburb",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/ListingDetailPage": {
-        "id": "features/listings/pages/ListingDetailPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/ListingDetailPage.tsx",
-        "path": "listings/:state/:type/:suburb/:id",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/MatchesPage": {
-        "id": "features/listings/pages/MatchesPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/MatchesPage.tsx",
-        "path": "listings/:state/:type/:suburb/:id/matches",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/MatchDetailPage": {
-        "id": "features/listings/pages/MatchDetailPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/MatchDetailPage.tsx",
-        "path": "listings/:state/:type/:suburb/:id/matches/:matchId",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/listings/create": {
-        "id": "routes/listings/create",
-        "parentId": "root",
-        "file": "app/routes/listings/create.tsx",
-        "path": "listings/create",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/EditListingPage": {
-        "id": "features/listings/pages/EditListingPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/EditListingPage.tsx",
-        "path": "listings/edit/:id",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "features/listings/pages/MyListingsPage": {
-        "id": "features/listings/pages/MyListingsPage",
-        "parentId": "root",
-        "file": "app/features/listings/pages/MyListingsPage.tsx",
-        "path": "listings/my-listings",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/admin/index": {
-        "id": "routes/admin/index",
-        "parentId": "root",
-        "file": "app/routes/admin/index.tsx",
-        "path": "admin",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/admin/listings/index": {
-        "id": "routes/admin/listings/index",
-        "parentId": "root",
-        "file": "app/routes/admin/listings/index.tsx",
-        "path": "admin/listings",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/admin/listings/create": {
-        "id": "routes/admin/listings/create",
-        "parentId": "root",
-        "file": "app/routes/admin/listings/create.tsx",
-        "path": "admin/listings/create",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/admin/listings/edit/$id": {
-        "id": "routes/admin/listings/edit/$id",
-        "parentId": "root",
-        "file": "app/routes/admin/listings/edit/$id.tsx",
-        "path": "admin/listings/edit/:id",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/dashboard/layout": {
-        "id": "routes/dashboard/layout",
-        "parentId": "root",
-        "file": "app/routes/dashboard/layout.tsx",
-        "config": {}
-      },
-      "routes/dashboard/index": {
-        "id": "routes/dashboard/index",
-        "parentId": "routes/dashboard/layout",
-        "file": "app/routes/dashboard/index.tsx",
-        "path": "dashboard",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/dashboard/chat": {
-        "id": "routes/dashboard/chat",
-        "parentId": "routes/dashboard/layout",
-        "file": "app/routes/dashboard/chat.tsx",
-        "path": "dashboard/chat",
-        "config": {
-          "runtime": "nodejs"
-        }
-      },
-      "routes/dashboard/settings": {
-        "id": "routes/dashboard/settings",
-        "parentId": "routes/dashboard/layout",
-        "file": "app/routes/dashboard/settings.tsx",
-        "path": "dashboard/settings",
-        "config": {
-          "runtime": "nodejs"
-        }
-      }
-    }
-  },
-  "reactRouterConfig": {
-    "appDirectory": "/Users/stewartmilne/MetaBureau/REOP/_code/react-starter-kit/app",
-    "basename": "/",
-    "buildDirectory": "/Users/stewartmilne/MetaBureau/REOP/_code/react-starter-kit/build",
-    "future": {
-      "unstable_middleware": false,
-      "unstable_optimizeDeps": false,
-      "unstable_splitRouteModules": false,
-      "unstable_subResourceIntegrity": false,
-      "unstable_viteEnvironmentApi": false
-    },
-    "routes": {
-      "root": {
-        "path": "",
-        "id": "root",
-        "file": "root.tsx"
-      },
-      "routes/home": {
-        "id": "routes/home",
-        "parentId": "root",
-        "file": "routes/home.tsx",
-        "index": true
-      },
-      "routes/sign-in": {
-        "id": "routes/sign-in",
-        "parentId": "root",
-        "file": "routes/sign-in.tsx",
-        "path": "sign-in/*"
-      },
-      "routes/sign-up": {
-        "id": "routes/sign-up",
-        "parentId": "root",
-        "file": "routes/sign-up.tsx",
-        "path": "sign-up/*"
-      },
-      "routes/pricing": {
-        "id": "routes/pricing",
-        "parentId": "root",
-        "file": "routes/pricing.tsx",
-        "path": "pricing"
-      },
-      "routes/success": {
-        "id": "routes/success",
-        "parentId": "root",
-        "file": "routes/success.tsx",
-        "path": "success"
-      },
-      "routes/subscription-required": {
-        "id": "routes/subscription-required",
-        "parentId": "root",
-        "file": "routes/subscription-required.tsx",
-        "path": "subscription-required"
-      },
-      "routes/about": {
-        "id": "routes/about",
-        "parentId": "root",
-        "file": "routes/about.tsx",
-        "path": "about"
-      },
-      "routes/address-finder": {
-        "id": "routes/address-finder",
-        "parentId": "root",
-        "file": "routes/address-finder.tsx",
-        "path": "address-finder"
-      },
-      "routes/test-aldi": {
-        "id": "routes/test-aldi",
-        "parentId": "root",
-        "file": "routes/test-aldi.tsx",
-        "path": "test-aldi"
-      },
-      "routes/address-validation-tests": {
-        "id": "routes/address-validation-tests",
-        "parentId": "root",
-        "file": "routes/address-validation-tests.tsx",
-        "path": "address-validation-tests"
-      },
-      "routes/debug-listings": {
-        "id": "routes/debug-listings",
-        "parentId": "root",
-        "file": "routes/debug-listings.tsx",
-        "path": "debug-listings"
-      },
-      "routes/blog/index": {
-        "id": "routes/blog/index",
-        "parentId": "root",
-        "file": "routes/blog/index.tsx",
-        "path": "blog"
-      },
-      "routes/blog/$slug": {
-        "id": "routes/blog/$slug",
-        "parentId": "root",
-        "file": "routes/blog/$slug.tsx",
-        "path": "blog/:slug"
-      },
-      "features/listings/pages/ListingsOverviewPage": {
-        "id": "features/listings/pages/ListingsOverviewPage",
-        "parentId": "root",
-        "file": "features/listings/pages/ListingsOverviewPage.tsx",
-        "path": "listings"
-      },
-      "features/listings/pages/StateListingsPage": {
-        "id": "features/listings/pages/StateListingsPage",
-        "parentId": "root",
-        "file": "features/listings/pages/StateListingsPage.tsx",
-        "path": "listings/:state"
-      },
-      "features/listings/pages/TypeListingsPage": {
-        "id": "features/listings/pages/TypeListingsPage",
-        "parentId": "root",
-        "file": "features/listings/pages/TypeListingsPage.tsx",
-        "path": "listings/:state/:type"
-      },
-      "features/listings/pages/SuburbListingsPage": {
-        "id": "features/listings/pages/SuburbListingsPage",
-        "parentId": "root",
-        "file": "features/listings/pages/SuburbListingsPage.tsx",
-        "path": "listings/:state/:type/:suburb"
-      },
-      "features/listings/pages/ListingDetailPage": {
-        "id": "features/listings/pages/ListingDetailPage",
-        "parentId": "root",
-        "file": "features/listings/pages/ListingDetailPage.tsx",
-        "path": "listings/:state/:type/:suburb/:id"
-      },
-      "features/listings/pages/MatchesPage": {
-        "id": "features/listings/pages/MatchesPage",
-        "parentId": "root",
-        "file": "features/listings/pages/MatchesPage.tsx",
-        "path": "listings/:state/:type/:suburb/:id/matches"
-      },
-      "features/listings/pages/MatchDetailPage": {
-        "id": "features/listings/pages/MatchDetailPage",
-        "parentId": "root",
-        "file": "features/listings/pages/MatchDetailPage.tsx",
-        "path": "listings/:state/:type/:suburb/:id/matches/:matchId"
-      },
-      "routes/listings/create": {
-        "id": "routes/listings/create",
-        "parentId": "root",
-        "file": "routes/listings/create.tsx",
-        "path": "listings/create"
-      },
-      "features/listings/pages/EditListingPage": {
-        "id": "features/listings/pages/EditListingPage",
-        "parentId": "root",
-        "file": "features/listings/pages/EditListingPage.tsx",
-        "path": "listings/edit/:id"
-      },
-      "features/listings/pages/MyListingsPage": {
-        "id": "features/listings/pages/MyListingsPage",
-        "parentId": "root",
-        "file": "features/listings/pages/MyListingsPage.tsx",
-        "path": "listings/my-listings"
-      },
-      "routes/admin/index": {
-        "id": "routes/admin/index",
-        "parentId": "root",
-        "file": "routes/admin/index.tsx",
-        "path": "admin"
-      },
-      "routes/admin/listings/index": {
-        "id": "routes/admin/listings/index",
-        "parentId": "root",
-        "file": "routes/admin/listings/index.tsx",
-        "path": "admin/listings"
-      },
-      "routes/admin/listings/create": {
-        "id": "routes/admin/listings/create",
-        "parentId": "root",
-        "file": "routes/admin/listings/create.tsx",
-        "path": "admin/listings/create"
-      },
-      "routes/admin/listings/edit/$id": {
-        "id": "routes/admin/listings/edit/$id",
-        "parentId": "root",
-        "file": "routes/admin/listings/edit/$id.tsx",
-        "path": "admin/listings/edit/:id"
-      },
-      "routes/dashboard/layout": {
-        "id": "routes/dashboard/layout",
-        "parentId": "root",
-        "file": "routes/dashboard/layout.tsx"
-      },
-      "routes/dashboard/index": {
-        "id": "routes/dashboard/index",
-        "parentId": "routes/dashboard/layout",
-        "file": "routes/dashboard/index.tsx",
-        "path": "dashboard"
-      },
-      "routes/dashboard/chat": {
-        "id": "routes/dashboard/chat",
-        "parentId": "routes/dashboard/layout",
-        "file": "routes/dashboard/chat.tsx",
-        "path": "dashboard/chat"
-      },
-      "routes/dashboard/settings": {
-        "id": "routes/dashboard/settings",
-        "parentId": "routes/dashboard/layout",
-        "file": "routes/dashboard/settings.tsx",
-        "path": "dashboard/settings"
-      }
-    },
-    "routeDiscovery": {
-      "mode": "lazy",
-      "manifestPath": "/__manifest"
-    },
-    "serverBuildFile": "index.js",
-    "serverModuleFormat": "esm",
-    "ssr": true
-  },
-  "viteConfig": {
-    "build": {
-      "assetsDir": "assets"
-    }
-  }
+	"buildManifest": {
+		"serverBundles": {
+			"nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
+				"id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+				"file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
+				"config": {
+					"runtime": "nodejs"
+				}
+			}
+		},
+		"routeIdToServerBundleId": {
+			"routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/sign-in": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/sign-up": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/pricing": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/success": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/subscription-required": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/about": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/address-finder": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/test-aldi": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/address-validation-tests": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/debug-listings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/blog/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/blog/$slug": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/ListingsOverviewPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/StateListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/TypeListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/SuburbListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/ListingDetailPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/MatchesPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/MatchDetailPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/listings/create": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/EditListingPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"features/listings/pages/MyListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/admin/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/admin/listings/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/admin/listings/create": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/admin/listings/edit/$id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+			"routes/dashboard/settings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+		},
+		"routes": {
+			"root": {
+				"path": "",
+				"id": "root",
+				"file": "app/root.tsx",
+				"config": {}
+			},
+			"routes/home": {
+				"id": "routes/home",
+				"parentId": "root",
+				"file": "app/routes/home.tsx",
+				"index": true,
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/sign-in": {
+				"id": "routes/sign-in",
+				"parentId": "root",
+				"file": "app/routes/sign-in.tsx",
+				"path": "sign-in/*",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/sign-up": {
+				"id": "routes/sign-up",
+				"parentId": "root",
+				"file": "app/routes/sign-up.tsx",
+				"path": "sign-up/*",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/pricing": {
+				"id": "routes/pricing",
+				"parentId": "root",
+				"file": "app/routes/pricing.tsx",
+				"path": "pricing",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/success": {
+				"id": "routes/success",
+				"parentId": "root",
+				"file": "app/routes/success.tsx",
+				"path": "success",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/subscription-required": {
+				"id": "routes/subscription-required",
+				"parentId": "root",
+				"file": "app/routes/subscription-required.tsx",
+				"path": "subscription-required",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/about": {
+				"id": "routes/about",
+				"parentId": "root",
+				"file": "app/routes/about.tsx",
+				"path": "about",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/address-finder": {
+				"id": "routes/address-finder",
+				"parentId": "root",
+				"file": "app/routes/address-finder.tsx",
+				"path": "address-finder",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/test-aldi": {
+				"id": "routes/test-aldi",
+				"parentId": "root",
+				"file": "app/routes/test-aldi.tsx",
+				"path": "test-aldi",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/address-validation-tests": {
+				"id": "routes/address-validation-tests",
+				"parentId": "root",
+				"file": "app/routes/address-validation-tests.tsx",
+				"path": "address-validation-tests",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/debug-listings": {
+				"id": "routes/debug-listings",
+				"parentId": "root",
+				"file": "app/routes/debug-listings.tsx",
+				"path": "debug-listings",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/blog/index": {
+				"id": "routes/blog/index",
+				"parentId": "root",
+				"file": "app/routes/blog/index.tsx",
+				"path": "blog",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/blog/$slug": {
+				"id": "routes/blog/$slug",
+				"parentId": "root",
+				"file": "app/routes/blog/$slug.tsx",
+				"path": "blog/:slug",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/ListingsOverviewPage": {
+				"id": "features/listings/pages/ListingsOverviewPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/ListingsOverviewPage.tsx",
+				"path": "listings",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/StateListingsPage": {
+				"id": "features/listings/pages/StateListingsPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/StateListingsPage.tsx",
+				"path": "listings/:state",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/TypeListingsPage": {
+				"id": "features/listings/pages/TypeListingsPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/TypeListingsPage.tsx",
+				"path": "listings/:state/:type",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/SuburbListingsPage": {
+				"id": "features/listings/pages/SuburbListingsPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/SuburbListingsPage.tsx",
+				"path": "listings/:state/:type/:suburb",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/ListingDetailPage": {
+				"id": "features/listings/pages/ListingDetailPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/ListingDetailPage.tsx",
+				"path": "listings/:state/:type/:suburb/:id",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/MatchesPage": {
+				"id": "features/listings/pages/MatchesPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/MatchesPage.tsx",
+				"path": "listings/:state/:type/:suburb/:id/matches",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/MatchDetailPage": {
+				"id": "features/listings/pages/MatchDetailPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/MatchDetailPage.tsx",
+				"path": "listings/:state/:type/:suburb/:id/matches/:matchId",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/listings/create": {
+				"id": "routes/listings/create",
+				"parentId": "root",
+				"file": "app/routes/listings/create.tsx",
+				"path": "listings/create",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/EditListingPage": {
+				"id": "features/listings/pages/EditListingPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/EditListingPage.tsx",
+				"path": "listings/edit/:id",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"features/listings/pages/MyListingsPage": {
+				"id": "features/listings/pages/MyListingsPage",
+				"parentId": "root",
+				"file": "app/features/listings/pages/MyListingsPage.tsx",
+				"path": "listings/my-listings",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/admin/index": {
+				"id": "routes/admin/index",
+				"parentId": "root",
+				"file": "app/routes/admin/index.tsx",
+				"path": "admin",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/admin/listings/index": {
+				"id": "routes/admin/listings/index",
+				"parentId": "root",
+				"file": "app/routes/admin/listings/index.tsx",
+				"path": "admin/listings",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/admin/listings/create": {
+				"id": "routes/admin/listings/create",
+				"parentId": "root",
+				"file": "app/routes/admin/listings/create.tsx",
+				"path": "admin/listings/create",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/admin/listings/edit/$id": {
+				"id": "routes/admin/listings/edit/$id",
+				"parentId": "root",
+				"file": "app/routes/admin/listings/edit/$id.tsx",
+				"path": "admin/listings/edit/:id",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/dashboard/layout": {
+				"id": "routes/dashboard/layout",
+				"parentId": "root",
+				"file": "app/routes/dashboard/layout.tsx",
+				"config": {}
+			},
+			"routes/dashboard/index": {
+				"id": "routes/dashboard/index",
+				"parentId": "routes/dashboard/layout",
+				"file": "app/routes/dashboard/index.tsx",
+				"path": "dashboard",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/dashboard/chat": {
+				"id": "routes/dashboard/chat",
+				"parentId": "routes/dashboard/layout",
+				"file": "app/routes/dashboard/chat.tsx",
+				"path": "dashboard/chat",
+				"config": {
+					"runtime": "nodejs"
+				}
+			},
+			"routes/dashboard/settings": {
+				"id": "routes/dashboard/settings",
+				"parentId": "routes/dashboard/layout",
+				"file": "app/routes/dashboard/settings.tsx",
+				"path": "dashboard/settings",
+				"config": {
+					"runtime": "nodejs"
+				}
+			}
+		}
+	},
+	"reactRouterConfig": {
+		"appDirectory": "/Users/stewartmilne/MetaBureau/REOP/_code/react-starter-kit/app",
+		"basename": "/",
+		"buildDirectory": "/Users/stewartmilne/MetaBureau/REOP/_code/react-starter-kit/build",
+		"future": {
+			"unstable_middleware": false,
+			"unstable_optimizeDeps": false,
+			"unstable_splitRouteModules": false,
+			"unstable_subResourceIntegrity": false,
+			"unstable_viteEnvironmentApi": false
+		},
+		"routes": {
+			"root": {
+				"path": "",
+				"id": "root",
+				"file": "root.tsx"
+			},
+			"routes/home": {
+				"id": "routes/home",
+				"parentId": "root",
+				"file": "routes/home.tsx",
+				"index": true
+			},
+			"routes/sign-in": {
+				"id": "routes/sign-in",
+				"parentId": "root",
+				"file": "routes/sign-in.tsx",
+				"path": "sign-in/*"
+			},
+			"routes/sign-up": {
+				"id": "routes/sign-up",
+				"parentId": "root",
+				"file": "routes/sign-up.tsx",
+				"path": "sign-up/*"
+			},
+			"routes/pricing": {
+				"id": "routes/pricing",
+				"parentId": "root",
+				"file": "routes/pricing.tsx",
+				"path": "pricing"
+			},
+			"routes/success": {
+				"id": "routes/success",
+				"parentId": "root",
+				"file": "routes/success.tsx",
+				"path": "success"
+			},
+			"routes/subscription-required": {
+				"id": "routes/subscription-required",
+				"parentId": "root",
+				"file": "routes/subscription-required.tsx",
+				"path": "subscription-required"
+			},
+			"routes/about": {
+				"id": "routes/about",
+				"parentId": "root",
+				"file": "routes/about.tsx",
+				"path": "about"
+			},
+			"routes/address-finder": {
+				"id": "routes/address-finder",
+				"parentId": "root",
+				"file": "routes/address-finder.tsx",
+				"path": "address-finder"
+			},
+			"routes/test-aldi": {
+				"id": "routes/test-aldi",
+				"parentId": "root",
+				"file": "routes/test-aldi.tsx",
+				"path": "test-aldi"
+			},
+			"routes/address-validation-tests": {
+				"id": "routes/address-validation-tests",
+				"parentId": "root",
+				"file": "routes/address-validation-tests.tsx",
+				"path": "address-validation-tests"
+			},
+			"routes/debug-listings": {
+				"id": "routes/debug-listings",
+				"parentId": "root",
+				"file": "routes/debug-listings.tsx",
+				"path": "debug-listings"
+			},
+			"routes/blog/index": {
+				"id": "routes/blog/index",
+				"parentId": "root",
+				"file": "routes/blog/index.tsx",
+				"path": "blog"
+			},
+			"routes/blog/$slug": {
+				"id": "routes/blog/$slug",
+				"parentId": "root",
+				"file": "routes/blog/$slug.tsx",
+				"path": "blog/:slug"
+			},
+			"features/listings/pages/ListingsOverviewPage": {
+				"id": "features/listings/pages/ListingsOverviewPage",
+				"parentId": "root",
+				"file": "features/listings/pages/ListingsOverviewPage.tsx",
+				"path": "listings"
+			},
+			"features/listings/pages/StateListingsPage": {
+				"id": "features/listings/pages/StateListingsPage",
+				"parentId": "root",
+				"file": "features/listings/pages/StateListingsPage.tsx",
+				"path": "listings/:state"
+			},
+			"features/listings/pages/TypeListingsPage": {
+				"id": "features/listings/pages/TypeListingsPage",
+				"parentId": "root",
+				"file": "features/listings/pages/TypeListingsPage.tsx",
+				"path": "listings/:state/:type"
+			},
+			"features/listings/pages/SuburbListingsPage": {
+				"id": "features/listings/pages/SuburbListingsPage",
+				"parentId": "root",
+				"file": "features/listings/pages/SuburbListingsPage.tsx",
+				"path": "listings/:state/:type/:suburb"
+			},
+			"features/listings/pages/ListingDetailPage": {
+				"id": "features/listings/pages/ListingDetailPage",
+				"parentId": "root",
+				"file": "features/listings/pages/ListingDetailPage.tsx",
+				"path": "listings/:state/:type/:suburb/:id"
+			},
+			"features/listings/pages/MatchesPage": {
+				"id": "features/listings/pages/MatchesPage",
+				"parentId": "root",
+				"file": "features/listings/pages/MatchesPage.tsx",
+				"path": "listings/:state/:type/:suburb/:id/matches"
+			},
+			"features/listings/pages/MatchDetailPage": {
+				"id": "features/listings/pages/MatchDetailPage",
+				"parentId": "root",
+				"file": "features/listings/pages/MatchDetailPage.tsx",
+				"path": "listings/:state/:type/:suburb/:id/matches/:matchId"
+			},
+			"routes/listings/create": {
+				"id": "routes/listings/create",
+				"parentId": "root",
+				"file": "routes/listings/create.tsx",
+				"path": "listings/create"
+			},
+			"features/listings/pages/EditListingPage": {
+				"id": "features/listings/pages/EditListingPage",
+				"parentId": "root",
+				"file": "features/listings/pages/EditListingPage.tsx",
+				"path": "listings/edit/:id"
+			},
+			"features/listings/pages/MyListingsPage": {
+				"id": "features/listings/pages/MyListingsPage",
+				"parentId": "root",
+				"file": "features/listings/pages/MyListingsPage.tsx",
+				"path": "listings/my-listings"
+			},
+			"routes/admin/index": {
+				"id": "routes/admin/index",
+				"parentId": "root",
+				"file": "routes/admin/index.tsx",
+				"path": "admin"
+			},
+			"routes/admin/listings/index": {
+				"id": "routes/admin/listings/index",
+				"parentId": "root",
+				"file": "routes/admin/listings/index.tsx",
+				"path": "admin/listings"
+			},
+			"routes/admin/listings/create": {
+				"id": "routes/admin/listings/create",
+				"parentId": "root",
+				"file": "routes/admin/listings/create.tsx",
+				"path": "admin/listings/create"
+			},
+			"routes/admin/listings/edit/$id": {
+				"id": "routes/admin/listings/edit/$id",
+				"parentId": "root",
+				"file": "routes/admin/listings/edit/$id.tsx",
+				"path": "admin/listings/edit/:id"
+			},
+			"routes/dashboard/layout": {
+				"id": "routes/dashboard/layout",
+				"parentId": "root",
+				"file": "routes/dashboard/layout.tsx"
+			},
+			"routes/dashboard/index": {
+				"id": "routes/dashboard/index",
+				"parentId": "routes/dashboard/layout",
+				"file": "routes/dashboard/index.tsx",
+				"path": "dashboard"
+			},
+			"routes/dashboard/chat": {
+				"id": "routes/dashboard/chat",
+				"parentId": "routes/dashboard/layout",
+				"file": "routes/dashboard/chat.tsx",
+				"path": "dashboard/chat"
+			},
+			"routes/dashboard/settings": {
+				"id": "routes/dashboard/settings",
+				"parentId": "routes/dashboard/layout",
+				"file": "routes/dashboard/settings.tsx",
+				"path": "dashboard/settings"
+			}
+		},
+		"routeDiscovery": {
+			"mode": "lazy",
+			"manifestPath": "/__manifest"
+		},
+		"serverBuildFile": "index.js",
+		"serverModuleFormat": "esm",
+		"ssr": true
+	},
+	"viteConfig": {
+		"build": {
+			"assetsDir": "assets"
+		}
+	}
 }

@@ -185,10 +185,11 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	}, [conversation]);
 
 	// Query management - use correct cache key based on mode
-	const effectiveQueryKey = showingOptionsAfterConfirmation && agentLastSearchQuery 
-		? agentLastSearchQuery 
-		: searchQuery;
-	
+	const effectiveQueryKey =
+		showingOptionsAfterConfirmation && agentLastSearchQuery
+			? agentLastSearchQuery
+			: searchQuery;
+
 	const {
 		data: suggestions = [],
 		isLoading,
@@ -222,8 +223,10 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	// Sync React Query state to stores
 	useEffect(() => {
 		const suggestionsFromCache =
-			queryClient.getQueryData<Suggestion[]>(["addressSearch", effectiveQueryKey]) ||
-			[];
+			queryClient.getQueryData<Suggestion[]>([
+				"addressSearch",
+				effectiveQueryKey,
+			]) || [];
 		setApiResults({
 			suggestions: suggestionsFromCache,
 			isLoading,
@@ -232,7 +235,12 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		});
 
 		// Add searches with multiple results to search history (only for new searches, not "show options again")
-		if (searchQuery && suggestionsFromCache.length >= 2 && !isRecallMode && !showingOptionsAfterConfirmation) {
+		if (
+			searchQuery &&
+			suggestionsFromCache.length >= 2 &&
+			!isRecallMode &&
+			!showingOptionsAfterConfirmation
+		) {
 			addSearchToHistory({
 				query: searchQuery,
 				resultCount: suggestionsFromCache.length,
@@ -328,7 +336,9 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		(suggestions.length > 0 && !selectedResult && !isLoading) ||
 		(showingOptionsAfterConfirmation && suggestions.length > 0);
 	const shouldShowManualForm = !isRecording || agentRequestedManual;
-	const shouldShowSelectedResult = Boolean(selectedResult && !isValidating && !showingOptionsAfterConfirmation);
+	const shouldShowSelectedResult = Boolean(
+		selectedResult && !isValidating && !showingOptionsAfterConfirmation,
+	);
 	const shouldShowValidationStatus = Boolean(isValidating || validationError);
 
 	// Debug state

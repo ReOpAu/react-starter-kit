@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import { MapPin } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { NearbyPlacesModal } from "./NearbyPlacesModal";
-import { MapPin } from "lucide-react";
 
 interface NearbyPlacesButtonProps {
 	latitude: number;

@@ -1,30 +1,47 @@
-import React, { useState } from "react";
+import { api } from "@/convex/_generated/api";
+import { useUser } from "@clerk/clerk-react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "convex/react";
+import { ArrowLeft, Building2, Home, Plus } from "lucide-react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
-import { useMutation } from "convex/react";
-import { useUser } from "@clerk/clerk-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Switch } from "~/components/ui/switch";
 import {
 	Form,
 	FormControl,
+	FormDescription,
 	FormField,
 	FormItem,
 	FormLabel,
 	FormMessage,
-	FormDescription,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
+import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Plus, ArrowLeft, Home, Building2 } from "lucide-react";
-import { listingFormSchema, type ListingFormData } from "~/lib/validators/listings";
-import { api } from "@/convex/_generated/api";
+import {
+	type ListingFormData,
+	listingFormSchema,
+} from "~/lib/validators/listings";
 
 const BUILDING_TYPES = [
-	"House", "Apartment", "Townhouse", "Villa", "Unit", "Duplex", "Studio", "Land", "Other"
+	"House",
+	"Apartment",
+	"Townhouse",
+	"Villa",
+	"Unit",
+	"Duplex",
+	"Studio",
+	"Land",
+	"Other",
 ];
 
 const AUSTRALIAN_STATES = [
@@ -35,7 +52,7 @@ const AUSTRALIAN_STATES = [
 	{ value: "SA", label: "South Australia" },
 	{ value: "TAS", label: "Tasmania" },
 	{ value: "ACT", label: "Australian Capital Territory" },
-	{ value: "NT", label: "Northern Territory" }
+	{ value: "NT", label: "Northern Territory" },
 ];
 
 const PRICE_OPTIONS = [
@@ -105,24 +122,23 @@ export function CreateListingFormComponent() {
 			const now = Date.now();
 			const listingData = {
 				...values,
-				userId: user?.id || "dev-user" as any, // Fallback for development
+				userId: user?.id || ("dev-user" as any), // Fallback for development
 				geohash: "temp", // Would calculate based on lat/lng
 				createdAt: now,
 				updatedAt: now,
 				// Ensure proper price structure based on listing type
-				...(values.listingType === "seller" 
+				...(values.listingType === "seller"
 					? { price: values.price, pricePreference: undefined }
-					: { pricePreference: values.pricePreference, price: undefined }
-				)
+					: { pricePreference: values.pricePreference, price: undefined }),
 			};
 
 			const listingId = await createListing({ listing: listingData });
 			navigate(`/listings/my-listings?created=${listingId}`);
 		} catch (error) {
 			console.error("Failed to create listing:", error);
-			form.setError("root", { 
-				type: "server", 
-				message: "Failed to create listing. Please try again." 
+			form.setError("root", {
+				type: "server",
+				message: "Failed to create listing. Please try again.",
 			});
 		} finally {
 			setIsLoading(false);
@@ -169,7 +185,10 @@ export function CreateListingFormComponent() {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>I am a</FormLabel>
-											<Select onValueChange={field.onChange} defaultValue={field.value}>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
 												<FormControl>
 													<SelectTrigger>
 														<SelectValue placeholder="Select type" />
@@ -191,15 +210,22 @@ export function CreateListingFormComponent() {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Looking for</FormLabel>
-											<Select onValueChange={field.onChange} defaultValue={field.value}>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
 												<FormControl>
 													<SelectTrigger>
 														<SelectValue placeholder="Select area type" />
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													<SelectItem value="street">Specific Street</SelectItem>
-													<SelectItem value="suburb">Anywhere in Suburb</SelectItem>
+													<SelectItem value="street">
+														Specific Street
+													</SelectItem>
+													<SelectItem value="suburb">
+														Anywhere in Suburb
+													</SelectItem>
 												</SelectContent>
 											</Select>
 											<FormMessage />
@@ -215,7 +241,10 @@ export function CreateListingFormComponent() {
 									<FormItem>
 										<FormLabel>Headline</FormLabel>
 										<FormControl>
-											<Input placeholder="e.g., Family home in quiet street" {...field} />
+											<Input
+												placeholder="e.g., Family home in quiet street"
+												{...field}
+											/>
 										</FormControl>
 										<FormDescription>
 											A compelling headline for your listing (5-100 characters)
@@ -232,10 +261,10 @@ export function CreateListingFormComponent() {
 									<FormItem>
 										<FormLabel>Description</FormLabel>
 										<FormControl>
-											<Textarea 
+											<Textarea
 												placeholder="Describe what you're looking for or selling..."
 												rows={4}
-												{...field} 
+												{...field}
 											/>
 										</FormControl>
 										<FormDescription>
@@ -275,14 +304,17 @@ export function CreateListingFormComponent() {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>State</FormLabel>
-											<Select onValueChange={field.onChange} defaultValue={field.value}>
+											<Select
+												onValueChange={field.onChange}
+												defaultValue={field.value}
+											>
 												<FormControl>
 													<SelectTrigger>
 														<SelectValue placeholder="Select state" />
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													{AUSTRALIAN_STATES.map(state => (
+													{AUSTRALIAN_STATES.map((state) => (
 														<SelectItem key={state.value} value={state.value}>
 															{state.label}
 														</SelectItem>
@@ -326,15 +358,20 @@ export function CreateListingFormComponent() {
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Building Type</FormLabel>
-										<Select onValueChange={field.onChange} defaultValue={field.value}>
+										<Select
+											onValueChange={field.onChange}
+											defaultValue={field.value}
+										>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select building type" />
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
-												{BUILDING_TYPES.map(type => (
-													<SelectItem key={type} value={type}>{type}</SelectItem>
+												{BUILDING_TYPES.map((type) => (
+													<SelectItem key={type} value={type}>
+														{type}
+													</SelectItem>
 												))}
 											</SelectContent>
 										</Select>
@@ -351,11 +388,13 @@ export function CreateListingFormComponent() {
 										<FormItem>
 											<FormLabel>Bedrooms</FormLabel>
 											<FormControl>
-												<Input 
-													type="number" 
+												<Input
+													type="number"
 													min="0"
 													{...field}
-													onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+													onChange={(e) =>
+														field.onChange(Number.parseInt(e.target.value) || 0)
+													}
 												/>
 											</FormControl>
 											<FormMessage />
@@ -370,11 +409,13 @@ export function CreateListingFormComponent() {
 										<FormItem>
 											<FormLabel>Bathrooms</FormLabel>
 											<FormControl>
-												<Input 
-													type="number" 
+												<Input
+													type="number"
 													min="0"
 													{...field}
-													onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+													onChange={(e) =>
+														field.onChange(Number.parseInt(e.target.value) || 0)
+													}
 												/>
 											</FormControl>
 											<FormMessage />
@@ -389,11 +430,13 @@ export function CreateListingFormComponent() {
 										<FormItem>
 											<FormLabel>Parking Spaces</FormLabel>
 											<FormControl>
-												<Input 
-													type="number" 
+												<Input
+													type="number"
 													min="0"
 													{...field}
-													onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+													onChange={(e) =>
+														field.onChange(Number.parseInt(e.target.value) || 0)
+													}
 												/>
 											</FormControl>
 											<FormMessage />
@@ -415,12 +458,18 @@ export function CreateListingFormComponent() {
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 								<FormField
 									control={form.control}
-									name={watchedListingType === "seller" ? "price.min" : "pricePreference.min"}
+									name={
+										watchedListingType === "seller"
+											? "price.min"
+											: "pricePreference.min"
+									}
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Minimum ($)</FormLabel>
-											<Select 
-												onValueChange={(value) => field.onChange(parseInt(value))}
+											<Select
+												onValueChange={(value) =>
+													field.onChange(Number.parseInt(value))
+												}
 												value={field.value?.toString()}
 											>
 												<FormControl>
@@ -429,8 +478,11 @@ export function CreateListingFormComponent() {
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													{PRICE_OPTIONS.map(option => (
-														<SelectItem key={`min-${option.value}`} value={option.value.toString()}>
+													{PRICE_OPTIONS.map((option) => (
+														<SelectItem
+															key={`min-${option.value}`}
+															value={option.value.toString()}
+														>
 															{option.label}
 														</SelectItem>
 													))}
@@ -443,12 +495,18 @@ export function CreateListingFormComponent() {
 
 								<FormField
 									control={form.control}
-									name={watchedListingType === "seller" ? "price.max" : "pricePreference.max"}
+									name={
+										watchedListingType === "seller"
+											? "price.max"
+											: "pricePreference.max"
+									}
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Maximum ($)</FormLabel>
-											<Select 
-												onValueChange={(value) => field.onChange(parseInt(value))}
+											<Select
+												onValueChange={(value) =>
+													field.onChange(Number.parseInt(value))
+												}
 												value={field.value?.toString()}
 											>
 												<FormControl>
@@ -457,8 +515,11 @@ export function CreateListingFormComponent() {
 													</SelectTrigger>
 												</FormControl>
 												<SelectContent>
-													{PRICE_OPTIONS.map(option => (
-														<SelectItem key={`max-${option.value}`} value={option.value.toString()}>
+													{PRICE_OPTIONS.map((option) => (
+														<SelectItem
+															key={`max-${option.value}`}
+															value={option.value.toString()}
+														>
 															{option.label}
 														</SelectItem>
 													))}
@@ -485,8 +546,10 @@ export function CreateListingFormComponent() {
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Search Radius (km)</FormLabel>
-											<Select 
-												onValueChange={(value) => field.onChange(parseInt(value))}
+											<Select
+												onValueChange={(value) =>
+													field.onChange(Number.parseInt(value))
+												}
 												value={field.value?.toString()}
 											>
 												<FormControl>
@@ -522,7 +585,9 @@ export function CreateListingFormComponent() {
 								render={({ field }) => (
 									<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
 										<div className="space-y-0.5">
-											<FormLabel className="text-base">Premium Listing</FormLabel>
+											<FormLabel className="text-base">
+												Premium Listing
+											</FormLabel>
 											<FormDescription>
 												Get featured placement and priority visibility
 											</FormDescription>

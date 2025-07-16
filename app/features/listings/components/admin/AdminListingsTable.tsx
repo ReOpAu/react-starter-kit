@@ -1,6 +1,30 @@
-import React, { useState } from "react";
+import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
+import {
+	Calendar,
+	DollarSign,
+	Edit,
+	Eye,
+	Filter,
+	MapPin,
+	Plus,
+	Search,
+	User,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 import { Link } from "react-router";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
+import { Skeleton } from "~/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -9,25 +33,20 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
-import { Button } from "~/components/ui/button";
-import { Badge } from "~/components/ui/badge";
-import { Input } from "~/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Skeleton } from "~/components/ui/skeleton";
-import { DeleteListingButton } from "../forms";
-import { Edit, Eye, Search, Filter, Plus, User, MapPin, Calendar, DollarSign } from "lucide-react";
-import { api } from "@/convex/_generated/api";
 import type { ConvexListing } from "../../types";
+import { DeleteListingButton } from "../forms";
 
 interface AdminListingsTableProps {
 	onCreateListing?: () => void;
 }
 
 export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
-	onCreateListing
+	onCreateListing,
 }) => {
 	const [searchTerm, setSearchTerm] = useState("");
-	const [typeFilter, setTypeFilter] = useState<"all" | "buyer" | "seller">("all");
+	const [typeFilter, setTypeFilter] = useState<"all" | "buyer" | "seller">(
+		"all",
+	);
 	const [stateFilter, setStateFilter] = useState("");
 	const [page, setPage] = useState(1);
 	const pageSize = 20;
@@ -35,14 +54,16 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 	// Query all listings with pagination
 	const listingsData = useQuery(api.listings.listListings, {
 		listingType: typeFilter === "all" ? undefined : typeFilter,
-		state: stateFilter && stateFilter !== "all-states" ? stateFilter : undefined,
+		state:
+			stateFilter && stateFilter !== "all-states" ? stateFilter : undefined,
 		page,
-		pageSize
+		pageSize,
 	});
 
 	const formatPrice = (listing: ConvexListing) => {
 		if (!listing.priceMin || !listing.priceMax) return "Not set";
-		if (listing.priceMin === listing.priceMax) return `$${listing.priceMin.toLocaleString()}`;
+		if (listing.priceMin === listing.priceMax)
+			return `$${listing.priceMin.toLocaleString()}`;
 		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
 	};
 
@@ -50,7 +71,7 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 		return new Date(timestamp).toLocaleDateString("en-AU", {
 			year: "numeric",
 			month: "short",
-			day: "numeric"
+			day: "numeric",
 		});
 	};
 
@@ -59,21 +80,26 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 	};
 
 	// Filter listings by search term (client-side for now)
-	const filteredListings = listingsData?.listings?.filter((listing: ConvexListing) => {
-		if (!searchTerm) return true;
-		const searchLower = searchTerm.toLowerCase();
-		return (
-			listing.headline.toLowerCase().includes(searchLower) ||
-			listing.description.toLowerCase().includes(searchLower) ||
-			listing.suburb.toLowerCase().includes(searchLower) ||
-			listing.state.toLowerCase().includes(searchLower) ||
-			listing.buildingType.toLowerCase().includes(searchLower)
-		);
-	}) || [];
+	const filteredListings =
+		listingsData?.listings?.filter((listing: ConvexListing) => {
+			if (!searchTerm) return true;
+			const searchLower = searchTerm.toLowerCase();
+			return (
+				listing.headline.toLowerCase().includes(searchLower) ||
+				listing.description.toLowerCase().includes(searchLower) ||
+				listing.suburb.toLowerCase().includes(searchLower) ||
+				listing.state.toLowerCase().includes(searchLower) ||
+				listing.buildingType.toLowerCase().includes(searchLower)
+			);
+		}) || [];
 
 	// Get unique states for filter dropdown
 	const availableStates = Array.from(
-		new Set(listingsData?.listings?.map(l => l.state).filter(state => state && state.trim() !== "") || [])
+		new Set(
+			listingsData?.listings
+				?.map((l) => l.state)
+				.filter((state) => state && state.trim() !== "") || [],
+		),
 	).sort();
 
 	return (
@@ -81,7 +107,9 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 			{/* Header and Controls */}
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div>
-					<h2 className="text-2xl font-bold tracking-tight">Admin: All Listings</h2>
+					<h2 className="text-2xl font-bold tracking-tight">
+						Admin: All Listings
+					</h2>
 					<p className="text-muted-foreground">
 						Manage all buyer and seller listings across the platform
 					</p>
@@ -103,10 +131,15 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 						className="max-w-sm"
 					/>
 				</div>
-				
+
 				<div className="flex items-center gap-2">
 					<Filter className="w-4 h-4 text-muted-foreground" />
-					<Select value={typeFilter} onValueChange={(value: "all" | "buyer" | "seller") => setTypeFilter(value)}>
+					<Select
+						value={typeFilter}
+						onValueChange={(value: "all" | "buyer" | "seller") =>
+							setTypeFilter(value)
+						}
+					>
 						<SelectTrigger className="w-32">
 							<SelectValue />
 						</SelectTrigger>
@@ -123,8 +156,10 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="all-states">All States</SelectItem>
-							{availableStates.map(state => (
-								<SelectItem key={state} value={state}>{state}</SelectItem>
+							{availableStates.map((state) => (
+								<SelectItem key={state} value={state}>
+									{state}
+								</SelectItem>
 							))}
 						</SelectContent>
 					</Select>
@@ -135,18 +170,26 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 			{listingsData && (
 				<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 					<div className="bg-muted/50 p-4 rounded-lg">
-						<div className="text-2xl font-bold">{listingsData.pagination.totalCount}</div>
+						<div className="text-2xl font-bold">
+							{listingsData.pagination.totalCount}
+						</div>
 						<div className="text-sm text-muted-foreground">Total Listings</div>
 					</div>
 					<div className="bg-muted/50 p-4 rounded-lg">
 						<div className="text-2xl font-bold">
-							{listingsData.listings.filter(l => l.listingType === "buyer").length}
+							{
+								listingsData.listings.filter((l) => l.listingType === "buyer")
+									.length
+							}
 						</div>
 						<div className="text-sm text-muted-foreground">Buyers</div>
 					</div>
 					<div className="bg-muted/50 p-4 rounded-lg">
 						<div className="text-2xl font-bold">
-							{listingsData.listings.filter(l => l.listingType === "seller").length}
+							{
+								listingsData.listings.filter((l) => l.listingType === "seller")
+									.length
+							}
 						</div>
 						<div className="text-sm text-muted-foreground">Sellers</div>
 					</div>
@@ -189,10 +232,11 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 							<TableRow>
 								<TableCell colSpan={8} className="text-center py-8">
 									<div className="text-muted-foreground">
-										{searchTerm || typeFilter !== "all" || (stateFilter && stateFilter !== "all-states")
+										{searchTerm ||
+										typeFilter !== "all" ||
+										(stateFilter && stateFilter !== "all-states")
 											? "No listings match your filters"
-											: "No listings found"
-										}
+											: "No listings found"}
 									</div>
 								</TableCell>
 							</TableRow>
@@ -203,7 +247,9 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 									{/* Listing Info */}
 									<TableCell className="max-w-xs">
 										<div>
-											<div className="font-medium truncate">{listing.headline}</div>
+											<div className="font-medium truncate">
+												{listing.headline}
+											</div>
 											<div className="text-sm text-muted-foreground truncate">
 												{listing.description}
 											</div>
@@ -213,7 +259,13 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 									{/* Type */}
 									<TableCell>
 										<div className="flex flex-col gap-1">
-											<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
+											<Badge
+												variant={
+													listing.listingType === "buyer"
+														? "default"
+														: "secondary"
+												}
+											>
 												{listing.listingType}
 											</Badge>
 											{listing.listingType === "buyer" && listing.buyerType && (
@@ -221,11 +273,12 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 													{listing.buyerType}
 												</Badge>
 											)}
-											{listing.listingType === "seller" && listing.sellerType && (
-												<Badge variant="outline" className="text-xs">
-													{listing.sellerType}
-												</Badge>
-											)}
+											{listing.listingType === "seller" &&
+												listing.sellerType && (
+													<Badge variant="outline" className="text-xs">
+														{listing.sellerType}
+													</Badge>
+												)}
 										</div>
 									</TableCell>
 
@@ -233,7 +286,9 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 									<TableCell>
 										<div className="flex items-center gap-1 text-sm">
 											<MapPin className="w-3 h-3" />
-											<span>{listing.suburb}, {listing.state}</span>
+											<span>
+												{listing.suburb}, {listing.state}
+											</span>
 										</div>
 										<div className="text-xs text-muted-foreground">
 											{listing.postcode}
@@ -254,9 +309,7 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 									<TableCell>
 										<div className="flex items-center gap-1 text-sm">
 											<DollarSign className="w-3 h-3" />
-											<span>
-												{formatPrice(listing)}
-											</span>
+											<span>{formatPrice(listing)}</span>
 										</div>
 									</TableCell>
 
@@ -282,7 +335,9 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 									<TableCell>
 										<div className="flex items-center gap-1">
 											<Button variant="ghost" size="sm" asChild>
-												<Link to={`/listings/${listing.state.toLowerCase()}/${listing.listingType}/${listing.suburb.toLowerCase().replace(/\s+/g, '-')}/${listing._id}`}>
+												<Link
+													to={`/listings/${listing.state.toLowerCase()}/${listing.listingType}/${listing.suburb.toLowerCase().replace(/\s+/g, "-")}/${listing._id}`}
+												>
 													<Eye className="w-3 h-3" />
 												</Link>
 											</Button>
@@ -313,7 +368,9 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 			{listingsData && listingsData.pagination.totalPages > 1 && (
 				<div className="flex items-center justify-between">
 					<div className="text-sm text-muted-foreground">
-						Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, listingsData.pagination.totalCount)} of {listingsData.pagination.totalCount} listings
+						Showing {(page - 1) * pageSize + 1} to{" "}
+						{Math.min(page * pageSize, listingsData.pagination.totalCount)} of{" "}
+						{listingsData.pagination.totalCount} listings
 					</div>
 					<div className="flex items-center gap-2">
 						<Button

@@ -33,24 +33,27 @@ interface MatchComparisonResult {
 /**
  * Custom hook to calculate comprehensive comparison data between two listings.
  * Extracts complex business logic from components for better separation of concerns.
- * 
+ *
  * @param originalListing - The original listing being compared
  * @param matchedListing - The listing being compared against
  * @returns Computed comparison objects for price, property details, features, and distance
  */
 export function useMatchComparison(
 	originalListing: ConvexListing,
-	matchedListing: ConvexListing
+	matchedListing: ConvexListing,
 ): MatchComparisonResult {
 	const result = useMemo(() => {
 		// Calculate price comparison
 		const calculatePriceComparison = (): PriceComparison | null => {
-			const originalPrice = originalListing.price || originalListing.pricePreference;
+			const originalPrice =
+				originalListing.price || originalListing.pricePreference;
 			const matchPrice = matchedListing.price || matchedListing.pricePreference;
 
 			if (!originalPrice || !matchPrice) return null;
 
-			const overlap = originalPrice.max >= matchPrice.min && matchPrice.max >= originalPrice.min;
+			const overlap =
+				originalPrice.max >= matchPrice.min &&
+				matchPrice.max >= originalPrice.min;
 			const avgOriginal = (originalPrice.min + originalPrice.max) / 2;
 			const avgMatch = (matchPrice.min + matchPrice.max) / 2;
 			const difference = Math.abs(avgOriginal - avgMatch);
@@ -69,17 +72,23 @@ export function useMatchComparison(
 				bedrooms: {
 					original: originalListing.propertyDetails.bedrooms,
 					match: matchedListing.propertyDetails.bedrooms,
-					matches: originalListing.propertyDetails.bedrooms === matchedListing.propertyDetails.bedrooms,
+					matches:
+						originalListing.propertyDetails.bedrooms ===
+						matchedListing.propertyDetails.bedrooms,
 				},
 				bathrooms: {
 					original: originalListing.propertyDetails.bathrooms,
 					match: matchedListing.propertyDetails.bathrooms,
-					matches: originalListing.propertyDetails.bathrooms === matchedListing.propertyDetails.bathrooms,
+					matches:
+						originalListing.propertyDetails.bathrooms ===
+						matchedListing.propertyDetails.bathrooms,
 				},
 				parkingSpaces: {
 					original: originalListing.propertyDetails.parkingSpaces,
 					match: matchedListing.propertyDetails.parkingSpaces,
-					matches: originalListing.propertyDetails.parkingSpaces === matchedListing.propertyDetails.parkingSpaces,
+					matches:
+						originalListing.propertyDetails.parkingSpaces ===
+						matchedListing.propertyDetails.parkingSpaces,
 				},
 			};
 		};
@@ -89,12 +98,19 @@ export function useMatchComparison(
 			const originalFeatures = originalListing.features || [];
 			const matchFeatures = matchedListing.features || [];
 
-			const common = originalFeatures.filter(feature => matchFeatures.includes(feature));
-			const onlyInOriginal = originalFeatures.filter(feature => !matchFeatures.includes(feature));
-			const onlyInMatch = matchFeatures.filter(feature => !originalFeatures.includes(feature));
+			const common = originalFeatures.filter((feature) =>
+				matchFeatures.includes(feature),
+			);
+			const onlyInOriginal = originalFeatures.filter(
+				(feature) => !matchFeatures.includes(feature),
+			);
+			const onlyInMatch = matchFeatures.filter(
+				(feature) => !originalFeatures.includes(feature),
+			);
 
 			const totalFeatures = originalFeatures.length + matchFeatures.length;
-			const matchScore = totalFeatures > 0 ? (common.length * 2) / totalFeatures : 0;
+			const matchScore =
+				totalFeatures > 0 ? (common.length * 2) / totalFeatures : 0;
 
 			return {
 				common,
@@ -106,7 +122,9 @@ export function useMatchComparison(
 
 		// Calculate distance
 		const distance = calculateListingDistance(originalListing, matchedListing);
-		const distanceDisplay = distance ? formatDistance(distance) : "Distance unknown";
+		const distanceDisplay = distance
+			? formatDistance(distance)
+			: "Distance unknown";
 
 		return {
 			priceComparison: calculatePriceComparison(),
