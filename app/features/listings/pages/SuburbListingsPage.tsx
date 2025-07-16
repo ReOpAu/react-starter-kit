@@ -12,7 +12,7 @@ const SuburbListingsPage: React.FC = () => {
 	const listingType = type as ListingType;
 
 	return (
-		<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+		<div className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 			<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 				{/* Header with navigation */}
 				<div className="flex items-center gap-4 mb-8">
@@ -72,7 +72,7 @@ const SuburbListingsPage: React.FC = () => {
 					suburb: suburb || ""
 				}} />
 			</div>
-		</main>
+		</div>
 	);
 };
 

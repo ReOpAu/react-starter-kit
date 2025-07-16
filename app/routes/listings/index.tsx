@@ -1,0 +1,19 @@
+import { getAuth } from "@clerk/react-router/ssr.server";
+import { PublicLayout } from "~/components/layout/PublicLayout";
+import ListingsOverviewPage from "~/features/listings/pages/ListingsOverviewPage";
+import type { Route } from "./+types/index";
+
+export async function loader(args: Route.LoaderArgs) {
+	const { userId } = await getAuth(args);
+	return {
+		isSignedIn: !!userId,
+	};
+}
+
+export default function ListingsRoute({ loaderData }: Route.ComponentProps) {
+	return (
+		<PublicLayout loaderData={loaderData}>
+			<ListingsOverviewPage />
+		</PublicLayout>
+	);
+}

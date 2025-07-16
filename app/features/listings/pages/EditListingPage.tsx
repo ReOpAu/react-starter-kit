@@ -11,7 +11,7 @@ const EditListingPage: React.FC = () => {
 
 	if (!id) {
 		return (
-			<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+			<div className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 				<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 					<div className="text-center">
 						<h1 className="text-2xl font-bold text-gray-900">Listing not found</h1>
@@ -21,7 +21,7 @@ const EditListingPage: React.FC = () => {
 						</Button>
 					</div>
 				</div>
-			</main>
+			</div>
 		);
 	}
 
@@ -35,7 +35,7 @@ const EditListingPage: React.FC = () => {
 	};
 
 	return (
-		<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+		<div className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 			<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 				{/* Header */}
 				<div className="flex items-center gap-4 mb-8">
@@ -64,7 +64,7 @@ const EditListingPage: React.FC = () => {
 					onCancel={handleCancel}
 				/>
 			</div>
-		</main>
+		</div>
 	);
 };
 

@@ -49,19 +49,19 @@ const MyListingsPage: React.FC = () => {
 
 	if (!user) {
 		return (
-			<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+			<div className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 					<div className="text-center">
 						<h1 className="text-2xl font-bold text-gray-900">Please sign in</h1>
 						<p className="mt-2 text-gray-600">You need to be signed in to view your listings.</p>
 					</div>
 				</div>
-			</main>
+			</div>
 		);
 	}
 
 	return (
-		<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+		<div className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 			<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 				{/* Header */}
 				<div className="flex items-center justify-between mb-8">
@@ -278,7 +278,7 @@ const MyListingsPage: React.FC = () => {
 					</div>
 				)}
 			</div>
-		</main>
+		</div>
 	);
 };
 
