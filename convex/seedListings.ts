@@ -133,8 +133,8 @@ export const seedListings = action({
 		listingCount: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const userCount = args.userCount ?? 5;
-		const listingCount = args.listingCount ?? 20;
+		const userCount = args.userCount ?? 10;
+		const listingCount = args.listingCount ?? 200;
 
 		// Create users
 		const userIds = [];
@@ -147,8 +147,101 @@ export const seedListings = action({
 			userIds.push(userId);
 		}
 
-		// Create diverse, realistic listings
-		for (let i = 0; i < listingCount; i++) {
+		// Create listings with intentional buyer/seller matches (30% pairs + 70% random)
+		const matchPairCount = Math.floor(listingCount * 0.15); // 15% become buyer/seller pairs (30% total)
+		const randomListingCount = listingCount - (matchPairCount * 2);
+
+		// Create intentional buyer/seller matching pairs
+		for (let i = 0; i < matchPairCount; i++) {
+			const location = getRandomElement(SUBURBS);
+			const buildingType = getRandomElement(BUILDING_TYPES);
+			const features = randomFeatures(Math.floor(Math.random() * 4) + 2);
+			const price = randomPrice();
+			const now = Date.now();
+
+			// Base location for the matching pair
+			const baseLatVariation = (Math.random() - 0.5) * 0.01; 
+			const baseLngVariation = (Math.random() - 0.5) * 0.01;
+			const baseLat = location.lat + baseLatVariation;
+			const baseLng = location.lng + baseLngVariation;
+
+			// Create buyer listing
+			const buyerGeohash = ngeohash.encode(baseLat, baseLng, 7);
+			const buyerType = Math.random() < 0.6 ? "suburb" : "street";
+			
+			await ctx.runMutation(api.seedListings.createSeedListing, {
+				listing: {
+					listingType: "buyer" as const,
+					userId: getRandomElement(userIds),
+					suburb: location.suburb,
+					state: location.state,
+					postcode: location.postcode,
+					latitude: baseLat,
+					longitude: baseLng,
+					geohash: buyerGeohash,
+					buildingType: buildingType as any,
+					bedrooms: Math.floor(Math.random() * 4) + 1,
+					bathrooms: Math.floor(Math.random() * 3) + 1,
+					parking: Math.floor(Math.random() * 3),
+					priceMin: price.min,
+					priceMax: price.max,
+					features,
+					buyerType,
+					searchRadius: buyerType === "street" ? Math.floor(Math.random() * 5) + 1 : undefined,
+					headline: `Looking for ${buildingType} in ${location.suburb}`,
+					description: `Seeking a quality ${buildingType} in ${location.suburb}. Features wanted: ${features.slice(0, 2).join(", ")}.`,
+					images: [],
+					isActive: true,
+					isPremium: Math.random() < 0.2,
+					sample: true,
+					createdAt: now,
+					updatedAt: now,
+				},
+			});
+
+			// Create matching seller listing (very close location, similar features, overlapping price)
+			const sellerLatVariation = (Math.random() - 0.5) * 0.005; // Closer to buyer
+			const sellerLngVariation = (Math.random() - 0.5) * 0.005;
+			const sellerLat = baseLat + sellerLatVariation;
+			const sellerLng = baseLng + sellerLngVariation;
+			const sellerGeohash = ngeohash.encode(sellerLat, sellerLng, 7);
+			const streetNum = Math.floor(Math.random() * 200) + 1;
+			
+			await ctx.runMutation(api.seedListings.createSeedListing, {
+				listing: {
+					listingType: "seller" as const,
+					userId: getRandomElement(userIds),
+					suburb: location.suburb,
+					state: location.state,
+					postcode: location.postcode,
+					address: `${streetNum} Main Street, ${location.suburb} ${location.state} ${location.postcode}`,
+					latitude: sellerLat,
+					longitude: sellerLng,
+					geohash: sellerGeohash,
+					buildingType: buildingType as any,
+					bedrooms: Math.floor(Math.random() * 4) + 1,
+					bathrooms: Math.floor(Math.random() * 3) + 1,
+					parking: Math.floor(Math.random() * 3),
+					priceMin: price.min, // Same price range for potential match
+					priceMax: price.max,
+					features, // Same features the buyer wants
+					sellerType: Math.random() < 0.8 ? "sale" : "offmarket",
+					headline: `Beautiful ${buildingType} in ${location.suburb}`,
+					description: `Stunning ${buildingType} for sale in ${location.suburb}. Features: ${features.join(", ")}.`,
+					images: [],
+					contactEmail: `seller${i}@example.com`,
+					contactPhone: `04${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
+					isActive: true,
+					isPremium: Math.random() < 0.3,
+					sample: true,
+					createdAt: now,
+					updatedAt: now,
+				},
+			});
+		}
+
+		// Create remaining random listings
+		for (let i = 0; i < randomListingCount; i++) {
 			const location = getRandomElement(SUBURBS);
 			const buildingType = getRandomElement(BUILDING_TYPES);
 			const features = randomFeatures(Math.floor(Math.random() * 4) + 2);
@@ -156,8 +249,7 @@ export const seedListings = action({
 			const isBuyer = Math.random() < 0.5;
 			const now = Date.now();
 
-			// Generate address with small location variation
-			const latVariation = (Math.random() - 0.5) * 0.01; // ~1km radius
+			const latVariation = (Math.random() - 0.5) * 0.01;
 			const lngVariation = (Math.random() - 0.5) * 0.01;
 			const lat = location.lat + latVariation;
 			const lng = location.lng + lngVariation;
@@ -173,9 +265,9 @@ export const seedListings = action({
 				longitude: lng,
 				geohash,
 				buildingType: buildingType as any,
-				bedrooms: Math.floor(Math.random() * 4) + 1, // 1-4 bedrooms
-				bathrooms: Math.floor(Math.random() * 3) + 1, // 1-3 bathrooms  
-				parking: Math.floor(Math.random() * 3), // 0-2 parking spaces
+				bedrooms: Math.floor(Math.random() * 4) + 1,
+				bathrooms: Math.floor(Math.random() * 3) + 1,
+				parking: Math.floor(Math.random() * 3),
 				priceMin: price.min,
 				priceMax: price.max,
 				features,
@@ -209,7 +301,7 @@ export const seedListings = action({
 						...baseListing,
 						address: `${streetNum} Main Street, ${location.suburb} ${location.state} ${location.postcode}`,
 						sellerType: Math.random() < 0.8 ? "sale" : "offmarket",
-						contactEmail: `seller${i}@example.com`,
+						contactEmail: `seller${i + matchPairCount}@example.com`,
 						contactPhone: `04${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
 					},
 				});
