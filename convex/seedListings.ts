@@ -4,22 +4,42 @@ import ngeohash from "ngeohash";
 import { api } from "./_generated/api";
 import { PRICE_OPTIONS } from "../shared/constants/priceOptions";
 
-// Sample data for clean, realistic listings
+// Sample data for clean, realistic listings - expanded variety
 const SUBURBS = [
+	// NSW Suburbs
 	{ suburb: "Bondi", state: "NSW", postcode: "2026", lat: -33.8908, lng: 151.2743 },
+	{ suburb: "Edgecliff", state: "NSW", postcode: "2027", lat: -33.87924, lng: 151.23614 },
+	{ suburb: "Paddington", state: "NSW", postcode: "2021", lat: -33.88416, lng: 151.22728 },
+	{ suburb: "Double Bay", state: "NSW", postcode: "2028", lat: -33.87664, lng: 151.24245 },
+	{ suburb: "Potts Point", state: "NSW", postcode: "2029", lat: -33.88151, lng: 151.24355 },
+	// VIC Suburbs
 	{ suburb: "Toorak", state: "VIC", postcode: "3142", lat: -37.8416, lng: 145.0176 },
+	{ suburb: "Richmond", state: "VIC", postcode: "3121", lat: -37.8204, lng: 145.00252 },
+	{ suburb: "West Footscray", state: "VIC", postcode: "3012", lat: -37.80174, lng: 144.88407 },
+	{ suburb: "South Yarra", state: "VIC", postcode: "3141", lat: -37.8389, lng: 144.9922 },
+	{ suburb: "Hawthorn", state: "VIC", postcode: "3122", lat: -37.82442, lng: 145.03172 },
+	{ suburb: "Cremorne", state: "VIC", postcode: "3121", lat: -37.8318, lng: 144.9938 },
+	{ suburb: "Melbourne", state: "VIC", postcode: "3000", lat: -37.81425, lng: 144.96317 },
+	// QLD Suburbs
 	{ suburb: "Paddington", state: "QLD", postcode: "4064", lat: -27.4598, lng: 153.0082 },
+	{ suburb: "Brisbane", state: "QLD", postcode: "4000", lat: -27.46897, lng: 153.0235 },
+	// Other States
 	{ suburb: "Cottesloe", state: "WA", postcode: "6011", lat: -31.9959, lng: 115.7581 },
+	{ suburb: "Perth", state: "WA", postcode: "6000", lat: -31.95589, lng: 115.86059 },
 	{ suburb: "Unley", state: "SA", postcode: "5061", lat: -34.9447, lng: 138.6056 },
+	{ suburb: "Adelaide", state: "SA", postcode: "5000", lat: -34.92818, lng: 138.59993 },
 ];
 
 const BUILDING_TYPES = ["House", "Apartment", "Townhouse", "Villa", "Unit"];
 
-// Features must match the exact enum values from the schema
+// Features must match the comprehensive Feature enum from types.ts
 const FEATURES = [
-	"Pool", "Garden", "Garage", "AirConditioning", "SolarPanels", 
-	"StudyRoom", "WalkInWardrobe", "Ensuite", "Balcony", "Fireplace",
-	"SecuritySystem", "Gym", "Tennis", "Sauna"
+	"CornerBlock", "EnsuiteBathroom", "MatureGarden", "LockUpGarage", "Pool",
+	"SolarPanels", "RenovatedKitchen", "AirConditioning", "HighCeilings", "WaterViews",
+	"StudyRoom", "OpenPlanLiving", "SecuritySystem", "EnergyEfficient", "NorthFacing",
+	"PetFriendly", "WheelchairAccessible", "SmartHome", "Fireplace", "WalkInWardrobe",
+	"LanewayAccess", "Bungalow", "DualLiving", "GrannyFlat", "HeritageListed",
+	"RainwaterTank", "DoubleGlazedWindows", "HomeTheatre", "WineCellar", "OutdoorKitchen"
 ] as const;
 
 type Feature = typeof FEATURES[number];
@@ -75,21 +95,17 @@ export const createSeedListing = mutation({
 			priceMin: v.number(),
 			priceMax: v.number(),
 			features: v.array(v.union(
-		v.literal("Pool"),
-		v.literal("Garden"),
-		v.literal("Garage"),
-		v.literal("AirConditioning"),
-		v.literal("SolarPanels"),
-		v.literal("StudyRoom"),
-		v.literal("WalkInWardrobe"),
-		v.literal("Ensuite"),
-		v.literal("Balcony"),
-		v.literal("Fireplace"),
-		v.literal("SecuritySystem"),
-		v.literal("Gym"),
-		v.literal("Tennis"),
-		v.literal("Sauna")
-	)),
+				v.literal("CornerBlock"), v.literal("EnsuiteBathroom"), v.literal("MatureGarden"), 
+				v.literal("LockUpGarage"), v.literal("Pool"), v.literal("SolarPanels"), 
+				v.literal("RenovatedKitchen"), v.literal("AirConditioning"), v.literal("HighCeilings"), 
+				v.literal("WaterViews"), v.literal("StudyRoom"), v.literal("OpenPlanLiving"), 
+				v.literal("SecuritySystem"), v.literal("EnergyEfficient"), v.literal("NorthFacing"),
+				v.literal("PetFriendly"), v.literal("WheelchairAccessible"), v.literal("SmartHome"), 
+				v.literal("Fireplace"), v.literal("WalkInWardrobe"), v.literal("LanewayAccess"), 
+				v.literal("Bungalow"), v.literal("DualLiving"), v.literal("GrannyFlat"), 
+				v.literal("HeritageListed"), v.literal("RainwaterTank"), v.literal("DoubleGlazedWindows"), 
+				v.literal("HomeTheatre"), v.literal("WineCellar"), v.literal("OutdoorKitchen")
+			)),
 			buyerType: v.optional(v.union(v.literal("street"), v.literal("suburb"))),
 			searchRadius: v.optional(v.number()),
 			sellerType: v.optional(v.union(v.literal("sale"), v.literal("offmarket"))),

@@ -32,23 +32,18 @@ export const listings = defineTable({
 	priceMin: v.number(),
 	priceMax: v.number(),
 	
-	// Features (predefined enum for consistency)
+	// Features (comprehensive enum matching saaskit PropertyFeature)
 	features: v.array(v.union(
-		v.literal("Pool"),
-		v.literal("Garden"),
-		v.literal("Garage"),
-		v.literal("AirConditioning"),
-		v.literal("SolarPanels"),
-		v.literal("StudyRoom"),
-		v.literal("WalkInWardrobe"),
-		v.literal("Ensuite"),
-		v.literal("Balcony"),
-		v.literal("Fireplace"),
-		v.literal("SecuritySystem"),
-		v.literal("Gym"),
-		v.literal("Pool"),
-		v.literal("Tennis"),
-		v.literal("Sauna")
+		v.literal("CornerBlock"), v.literal("EnsuiteBathroom"), v.literal("MatureGarden"), 
+		v.literal("LockUpGarage"), v.literal("Pool"), v.literal("SolarPanels"), 
+		v.literal("RenovatedKitchen"), v.literal("AirConditioning"), v.literal("HighCeilings"), 
+		v.literal("WaterViews"), v.literal("StudyRoom"), v.literal("OpenPlanLiving"), 
+		v.literal("SecuritySystem"), v.literal("EnergyEfficient"), v.literal("NorthFacing"),
+		v.literal("PetFriendly"), v.literal("WheelchairAccessible"), v.literal("SmartHome"), 
+		v.literal("Fireplace"), v.literal("WalkInWardrobe"), v.literal("LanewayAccess"), 
+		v.literal("Bungalow"), v.literal("DualLiving"), v.literal("GrannyFlat"), 
+		v.literal("HeritageListed"), v.literal("RainwaterTank"), v.literal("DoubleGlazedWindows"), 
+		v.literal("HomeTheatre"), v.literal("WineCellar"), v.literal("OutdoorKitchen")
 	)),
 	
 	// Buyer-specific

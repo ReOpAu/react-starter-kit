@@ -118,9 +118,9 @@ const MatchDetailPage: React.FC = () => {
 							<Badge variant={originalListing.listingType === "buyer" ? "default" : "secondary"}>
 								{originalListing.listingType}
 							</Badge>
-							{isBuyerListing(originalListing) && originalListing.subtype === "street" && originalListing.radiusKm && (
+							{isBuyerListing(originalListing) && originalListing.buyerType === "street" && originalListing.searchRadius && (
 								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-									{originalListing.radiusKm}km radius
+									{originalListing.searchRadius}km radius
 								</Badge>
 							)}
 						</CardTitle>
@@ -152,9 +152,9 @@ const MatchDetailPage: React.FC = () => {
 							<Badge variant={matchedListing.listingType === "buyer" ? "default" : "secondary"}>
 								{matchedListing.listingType}
 							</Badge>
-							{isBuyerListing(matchedListing) && matchedListing.subtype === "street" && matchedListing.radiusKm && (
+							{isBuyerListing(matchedListing) && matchedListing.buyerType === "street" && matchedListing.searchRadius && (
 								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-									{matchedListing.radiusKm}km radius
+									{matchedListing.searchRadius}km radius
 								</Badge>
 							)}
 						</CardTitle>
@@ -260,18 +260,14 @@ const MatchDetailPage: React.FC = () => {
 									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 										<div>
 											<h4 className="font-medium mb-2">Original Listing</h4>
-											{originalListing.price && (
-												<p>Price: ${originalListing.price.min.toLocaleString()} - ${originalListing.price.max.toLocaleString()}</p>
-											)}
+											<p>Price: ${originalListing.priceMin.toLocaleString()} - ${originalListing.priceMax.toLocaleString()}</p>
 											{originalListing.pricePreference && (
 												<p>Price Preference: ${originalListing.pricePreference.min.toLocaleString()} - ${originalListing.pricePreference.max.toLocaleString()}</p>
 											)}
 										</div>
 										<div>
 											<h4 className="font-medium mb-2">Matched Listing</h4>
-											{matchedListing.price && (
-												<p>Price: ${matchedListing.price.min.toLocaleString()} - ${matchedListing.price.max.toLocaleString()}</p>
-											)}
+											<p>Price: ${matchedListing.priceMin.toLocaleString()} - ${matchedListing.priceMax.toLocaleString()}</p>
 											{matchedListing.pricePreference && (
 												<p>Price Preference: ${matchedListing.pricePreference.min.toLocaleString()} - ${matchedListing.pricePreference.max.toLocaleString()}</p>
 											)}
@@ -292,34 +288,34 @@ const MatchDetailPage: React.FC = () => {
 										<TableRow>
 											<TableCell className="font-medium">Bedrooms</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.propertyDetails.bedrooms, matchedListing.propertyDetails.bedrooms)}
-												{originalListing.propertyDetails.bedrooms}
+												{renderComparisonIcon(originalListing.bedrooms, matchedListing.bedrooms)}
+												{originalListing.bedrooms}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.propertyDetails.bedrooms, originalListing.propertyDetails.bedrooms)}
-												{matchedListing.propertyDetails.bedrooms}
+												{renderComparisonIcon(matchedListing.bedrooms, originalListing.bedrooms)}
+												{matchedListing.bedrooms}
 											</TableCell>
 										</TableRow>
 										<TableRow>
 											<TableCell className="font-medium">Bathrooms</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.propertyDetails.bathrooms, matchedListing.propertyDetails.bathrooms)}
-												{originalListing.propertyDetails.bathrooms}
+												{renderComparisonIcon(originalListing.bathrooms, matchedListing.bathrooms)}
+												{originalListing.bathrooms}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.propertyDetails.bathrooms, originalListing.propertyDetails.bathrooms)}
-												{matchedListing.propertyDetails.bathrooms}
+												{renderComparisonIcon(matchedListing.bathrooms, originalListing.bathrooms)}
+												{matchedListing.bathrooms}
 											</TableCell>
 										</TableRow>
 										<TableRow>
 											<TableCell className="font-medium">Parking Spaces</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(originalListing.propertyDetails.parkingSpaces, matchedListing.propertyDetails.parkingSpaces)}
-												{originalListing.propertyDetails.parkingSpaces}
+												{renderComparisonIcon(originalListing.parking, matchedListing.parking)}
+												{originalListing.parking}
 											</TableCell>
 											<TableCell className="flex items-center gap-2">
-												{renderComparisonIcon(matchedListing.propertyDetails.parkingSpaces, originalListing.propertyDetails.parkingSpaces)}
-												{matchedListing.propertyDetails.parkingSpaces}
+												{renderComparisonIcon(matchedListing.parking, originalListing.parking)}
+												{matchedListing.parking}
 											</TableCell>
 										</TableRow>
 									</TableBody>

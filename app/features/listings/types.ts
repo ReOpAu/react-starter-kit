@@ -7,22 +7,38 @@ export type BuildingType = "House" | "Apartment" | "Townhouse" | "Villa" | "Unit
 export type BuyerType = "street" | "suburb";
 export type SellerType = "sale" | "offmarket";
 
-// Predefined feature enum matching Convex schema
+// Comprehensive feature enum matching saaskit PropertyFeature definitions
 export type Feature = 
-	| "Pool" 
-	| "Garden" 
-	| "Garage" 
-	| "AirConditioning" 
-	| "SolarPanels" 
-	| "StudyRoom" 
-	| "WalkInWardrobe" 
-	| "Ensuite" 
-	| "Balcony" 
-	| "Fireplace" 
-	| "SecuritySystem" 
-	| "Gym" 
-	| "Tennis" 
-	| "Sauna";
+	| "CornerBlock"
+	| "EnsuiteBathroom"
+	| "MatureGarden"
+	| "LockUpGarage"
+	| "Pool"
+	| "SolarPanels"
+	| "RenovatedKitchen"
+	| "AirConditioning"
+	| "HighCeilings"
+	| "WaterViews"
+	| "StudyRoom"
+	| "OpenPlanLiving"
+	| "SecuritySystem"
+	| "EnergyEfficient"
+	| "NorthFacing"
+	| "PetFriendly"
+	| "WheelchairAccessible"
+	| "SmartHome"
+	| "Fireplace"
+	| "WalkInWardrobe"
+	| "LanewayAccess"
+	| "Bungalow"
+	| "DualLiving"
+	| "GrannyFlat"
+	| "HeritageListed"
+	| "RainwaterTank"
+	| "DoubleGlazedWindows"
+	| "HomeTheatre"
+	| "WineCellar"
+	| "OutdoorKitchen";
 
 // Clean listing type directly from Convex
 export type ConvexListing = Doc<"listings">;

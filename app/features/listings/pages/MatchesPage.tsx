@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import { useParams } from "react-router";
-import { useQuery } from "convex/react";
+// Remove unused import
 import { api } from "../../../../convex/_generated/api";
 import { useListingById, useMatchesForListing } from "../data/listingsService";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
@@ -112,10 +112,10 @@ const MatchesPage: React.FC = () => {
 						<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
 							{listing.listingType}
 						</Badge>
-						<Badge variant="outline">{listing.subtype}</Badge>
-						{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+						<Badge variant="outline">{listing.buyerType || listing.sellerType}</Badge>
+						{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
 							<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-								{listing.radiusKm}km radius
+								{listing.searchRadius}km radius
 							</Badge>
 						)}
 					</CardTitle>
@@ -127,17 +127,12 @@ const MatchesPage: React.FC = () => {
 							<p className="text-sm text-gray-600">{listing.description}</p>
 						</div>
 						<div className="text-sm">
-							<p><strong>Bedrooms:</strong> {listing.propertyDetails.bedrooms}</p>
-							<p><strong>Bathrooms:</strong> {listing.propertyDetails.bathrooms}</p>
-							<p><strong>Parking:</strong> {listing.propertyDetails.parkingSpaces}</p>
-							{listing.price && (
-								<p><strong>Price:</strong> ${listing.price.min.toLocaleString()} - ${listing.price.max.toLocaleString()}</p>
-							)}
-							{listing.pricePreference && (
-								<p><strong>Price Preference:</strong> ${listing.pricePreference.min.toLocaleString()} - ${listing.pricePreference.max.toLocaleString()}</p>
-							)}
-							{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
-								<p><strong>Search Radius:</strong> {listing.radiusKm}km</p>
+							<p><strong>Bedrooms:</strong> {listing.bedrooms}</p>
+							<p><strong>Bathrooms:</strong> {listing.bathrooms}</p>
+							<p><strong>Parking:</strong> {listing.parking}</p>
+							<p><strong>Price:</strong> ${listing.priceMin.toLocaleString()} - ${listing.priceMax.toLocaleString()}</p>
+							{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
+								<p><strong>Search Radius:</strong> {listing.searchRadius}km</p>
 							)}
 						</div>
 					</div>
@@ -150,9 +145,9 @@ const MatchesPage: React.FC = () => {
 					<div className="flex justify-between items-start">
 						<div>
 							<CardTitle>Matching Properties</CardTitle>
-							{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+							{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
 								<p className="text-sm text-gray-600 mt-1">
-									Showing matches within {listing.radiusKm}km radius
+									Showing matches within {listing.searchRadius}km radius
 								</p>
 							)}
 							{listing.listingType === "seller" && (
@@ -198,10 +193,10 @@ const MatchesPage: React.FC = () => {
 													<Badge variant={match.listing.listingType === "buyer" ? "default" : "secondary"}>
 														{match.listing.listingType}
 													</Badge>
-													<Badge variant="outline" className="text-xs">{match.listing.subtype}</Badge>
-													{isBuyerListing(match.listing) && match.listing.subtype === "street" && match.listing.radiusKm && (
+													<Badge variant="outline" className="text-xs">{match.listing.buyerType || match.listing.sellerType}</Badge>
+													{isBuyerListing(match.listing) && match.listing.buyerType === "street" && match.listing.searchRadius && (
 														<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-															{match.listing.radiusKm}km
+															{match.listing.searchRadius}km
 														</Badge>
 													)}
 												</div>
@@ -225,8 +220,8 @@ const MatchesPage: React.FC = () => {
 															match.listing.latitude, match.listing.longitude
 														);
 														const isWithinRadius = 
-															(isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && distance <= listing.radiusKm) ||
-															(isBuyerListing(match.listing) && match.listing.subtype === "street" && match.listing.radiusKm && distance <= match.listing.radiusKm);
+															(isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && distance <= listing.searchRadius) ||
+															(isBuyerListing(match.listing) && match.listing.buyerType === "street" && match.listing.searchRadius && distance <= match.listing.searchRadius);
 														
 														return (
 															<div>
@@ -246,18 +241,13 @@ const MatchesPage: React.FC = () => {
 										</TableCell>
 										<TableCell>
 											<div className="text-sm">
-												{match.listing.price && (
-													<p>${match.listing.price.min.toLocaleString()} - ${match.listing.price.max.toLocaleString()}</p>
-												)}
-												{match.listing.pricePreference && (
-													<p>${match.listing.pricePreference.min.toLocaleString()} - ${match.listing.pricePreference.max.toLocaleString()}</p>
-												)}
+												<p>${match.listing.priceMin.toLocaleString()} - ${match.listing.priceMax.toLocaleString()}</p>
 											</div>
 										</TableCell>
 										<TableCell>
 											<div className="text-sm">
-												<p>{match.listing.propertyDetails.bedrooms}bed, {match.listing.propertyDetails.bathrooms}bath</p>
-												<p>{match.listing.propertyDetails.parkingSpaces} parking</p>
+												<p>{match.listing.bedrooms}bed, {match.listing.bathrooms}bath</p>
+												<p>{match.listing.parking} parking</p>
 											</div>
 										</TableCell>
 										<TableCell>

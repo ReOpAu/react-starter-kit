@@ -17,11 +17,12 @@ const ListingDetailPage: React.FC = () => {
   const params = useParams();
   const { id: listingId, state, type, suburb } = parseListingParams(params);
   const listing = useListingById(listingId || "");
-  const matches = useMatchesForListing(listingId || "", {
+  const matchesResult = useMatchesForListing(listingId || "", {
     minScore: 60,
     limit: 4,
     includeScoreBreakdown: false
   });
+  const matches = matchesResult?.matches || [];
 
   if (!listing) {
     return (
