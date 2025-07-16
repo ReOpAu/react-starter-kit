@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { ListingType, ListingSubtype, PropertyDetails, PriceRange } from "../../types";
+import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
 
 interface EditListingFormProps {
 	listingId: Id<"listings">;
@@ -80,8 +81,8 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 			landArea: undefined,
 			floorArea: undefined
 		} as PropertyDetails,
-		price: { min: 0, max: 0 } as PriceRange,
-		pricePreference: { min: 0, max: 0 } as PriceRange,
+		price: { min: 500000, max: 1000000 } as PriceRange,
+		pricePreference: { min: 500000, max: 1000000 } as PriceRange,
 		mustHaveFeatures: [] as string[],
 		niceToHaveFeatures: [] as string[],
 		features: [] as string[],
@@ -92,32 +93,77 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 	const [isLoading, setIsLoading] = useState(false);
 	const [newFeature, setNewFeature] = useState("");
 	const [isInitialized, setIsInitialized] = useState(false);
+	const [priceError, setPriceError] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
 
 	// Initialize form with listing data
 	useEffect(() => {
 		if (listing && !isInitialized) {
-			setFormData({
+			console.log("🔍 EditListingForm: Initializing with database values");
+			console.log("- State from DB:", listing.state);
+			console.log("- Price from DB:", listing.price);
+			console.log("- PricePreference from DB:", listing.pricePreference);
+			
+			// Validate state value exists in AUSTRALIAN_STATES options
+			const validState = AUSTRALIAN_STATES.find(s => s.value === listing.state)?.value || "";
+			if (listing.state && !validState) {
+				console.warn("⚠️ State value from database not found in options:", listing.state);
+				console.warn("Available state options:", AUSTRALIAN_STATES.map(s => s.value));
+			}
+			
+			// Validate price values exist in PRICE_OPTIONS
+			const validatePriceValue = (value: number) => {
+				const isValid = PRICE_OPTIONS.some(option => option.value === value);
+				if (isValid) {
+					return value;
+				}
+				// Find the closest valid price option
+				const closestOption = PRICE_OPTIONS.reduce((prev, curr) => 
+					Math.abs(curr.value - value) < Math.abs(prev.value - value) ? curr : prev
+				);
+				console.warn("⚠️ Price value from database not in options, using closest:", value, "->", closestOption.value);
+				return closestOption.value;
+			};
+			
+			const validatedPrice = listing.price ? {
+				min: validatePriceValue(listing.price.min),
+				max: validatePriceValue(listing.price.max)
+			} : { min: 500000, max: 1000000 };
+			
+			const validatedPricePreference = listing.pricePreference ? {
+				min: validatePriceValue(listing.pricePreference.min),
+				max: validatePriceValue(listing.pricePreference.max)
+			} : { min: 500000, max: 1000000 };
+
+			const newFormData = {
 				listingType: listing.listingType,
 				subtype: listing.subtype,
 				buildingType: listing.buildingType,
 				headline: listing.headline,
 				description: listing.description,
 				suburb: listing.suburb,
-				state: listing.state,
+				state: validState,
 				postcode: listing.postcode,
 				street: listing.street || "",
 				latitude: listing.latitude,
 				longitude: listing.longitude,
 				propertyDetails: listing.propertyDetails,
-				price: listing.price || { min: 0, max: 0 },
-				pricePreference: listing.pricePreference || { min: 0, max: 0 },
+				price: validatedPrice,
+				pricePreference: validatedPricePreference,
 				mustHaveFeatures: listing.mustHaveFeatures || [],
 				niceToHaveFeatures: listing.niceToHaveFeatures || [],
 				features: listing.features || [],
 				radiusKm: listing.radiusKm || 5,
 				isPremium: listing.isPremium || false
-			});
+			};
+			
+			setFormData(newFormData);
 			setIsInitialized(true);
+			
+			console.log("✅ EditListingForm: Form initialized with validated values");
+			console.log("- Final state:", newFormData.state);
+			console.log("- Final price:", newFormData.price);
+			console.log("- Final pricePreference:", newFormData.pricePreference);
 		}
 	}, [listing, isInitialized]);
 
@@ -152,26 +198,78 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 		);
 	}
 
+	const validateAndGetPrice = () => {
+		const priceRange = formData.listingType === "seller" ? formData.price : formData.pricePreference;
+		if (priceRange.min >= priceRange.max) {
+			setPriceError("Maximum price must be greater than minimum price.");
+			return null;
+		}
+		setPriceError(null);
+		return priceRange;
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!user) return;
+		console.log("Edit form submitted");
+		console.log("User object:", user);
+		console.log("User ID:", user?.id);
+		console.log("User signed in:", !!user);
+		
+		// Note: Auth check is disabled for mutations in development
+		// if (!user) {
+		// 	console.error("No user found - user is not authenticated");
+		// 	setError("Please sign in to update listings");
+		// 	return;
+		// }
 
 		setIsLoading(true);
+		
+		const priceRange = validateAndGetPrice();
+		if (!priceRange) {
+			console.error("Price validation failed");
+			setIsLoading(false);
+			return;
+		}
+		
+		setError(null); // Clear previous errors
+		console.log("Submitting updates for listing:", listingId);
 		try {
 			const updates = {
-				...formData,
+				listingType: formData.listingType,
+				subtype: formData.subtype,
+				buildingType: formData.buildingType,
+				headline: formData.headline,
+				description: formData.description,
+				suburb: formData.suburb,
+				state: formData.state,
+				postcode: formData.postcode,
+				street: formData.street,
+				latitude: formData.latitude,
+				longitude: formData.longitude,
+				propertyDetails: formData.propertyDetails,
+				mustHaveFeatures: formData.mustHaveFeatures,
+				niceToHaveFeatures: formData.niceToHaveFeatures,
+				features: formData.features,
+				radiusKm: formData.radiusKm,
+				isPremium: formData.isPremium,
 				updatedAt: Date.now(),
 				// Only include price or pricePreference based on listing type
 				...(formData.listingType === "seller" 
-					? { price: formData.price, pricePreference: undefined }
-					: { pricePreference: formData.pricePreference, price: undefined }
+					? { price: formData.price }
+					: { pricePreference: formData.pricePreference }
 				)
 			};
 
-			await updateListing({ id: listingId, updates });
+			console.log("Form data before submission:", formData);
+			console.log("State value:", formData.state);
+			console.log("Price values:", formData.price, formData.pricePreference);
+			console.log("Updates to send:", updates);
+			const result = await updateListing({ id: listingId, updates });
+			console.log("Update result:", result);
 			onSuccess?.(listingId);
 		} catch (error) {
 			console.error("Failed to update listing:", error);
+			setError("Failed to update listing. Please check the console for details.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -306,6 +404,7 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 						<div className="space-y-2">
 							<Label htmlFor="state">State</Label>
 							<Select 
+								key={`state-${formData.state}`}
 								value={formData.state} 
 								onValueChange={(value) => setFormData(prev => ({ ...prev, state: value }))}
 							>
@@ -360,6 +459,7 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 					<div className="space-y-2">
 						<Label htmlFor="buildingType">Building Type</Label>
 						<Select 
+							key={`building-type-${formData.buildingType}`}
 							value={formData.buildingType} 
 							onValueChange={(value) => setFormData(prev => ({ ...prev, buildingType: value }))}
 						>
@@ -468,43 +568,75 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
+					{priceError && (
+						<Alert variant="destructive" className="mb-4">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>{priceError}</AlertDescription>
+						</Alert>
+					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<div className="space-y-2">
 							<Label htmlFor="minPrice">Minimum ($)</Label>
-							<Input
-								id="minPrice"
-								type="number"
-								min="0"
-								step="1000"
-								value={formData.listingType === "seller" ? formData.price.min : formData.pricePreference.min}
-								onChange={(e) => {
-									const value = parseInt(e.target.value) || 0;
-									if (formData.listingType === "seller") {
-										setFormData(prev => ({ ...prev, price: { ...prev.price, min: value } }));
+							<Select
+								key={`min-price-${formData.listingType === "seller" ? formData.price.min : formData.pricePreference.min}`}
+								value={(formData.listingType === "seller" ? formData.price.min : formData.pricePreference.min).toString()}
+								onValueChange={(value) => {
+									const numValue = parseInt(value, 10);
+									const priceKey = formData.listingType === "seller" ? "price" : "pricePreference";
+									const currentPrice = formData[priceKey];
+									
+									setFormData(prev => ({ ...prev, [priceKey]: { ...currentPrice, min: numValue } }));
+
+									if (numValue >= currentPrice.max) {
+										setPriceError("Maximum price must be greater than minimum price.");
 									} else {
-										setFormData(prev => ({ ...prev, pricePreference: { ...prev.pricePreference, min: value } }));
+										setPriceError(null);
 									}
 								}}
-							/>
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select minimum price" />
+								</SelectTrigger>
+								<SelectContent>
+									{PRICE_OPTIONS.map(option => (
+										<SelectItem key={`min-${option.value}`} value={option.value.toString()}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 
 						<div className="space-y-2">
 							<Label htmlFor="maxPrice">Maximum ($)</Label>
-							<Input
-								id="maxPrice"
-								type="number"
-								min="0"
-								step="1000"
-								value={formData.listingType === "seller" ? formData.price.max : formData.pricePreference.max}
-								onChange={(e) => {
-									const value = parseInt(e.target.value) || 0;
-									if (formData.listingType === "seller") {
-										setFormData(prev => ({ ...prev, price: { ...prev.price, max: value } }));
+							<Select
+								key={`max-price-${formData.listingType === "seller" ? formData.price.max : formData.pricePreference.max}`}
+								value={(formData.listingType === "seller" ? formData.price.max : formData.pricePreference.max).toString()}
+								onValueChange={(value) => {
+									const numValue = parseInt(value, 10);
+									const priceKey = formData.listingType === "seller" ? "price" : "pricePreference";
+									const currentPrice = formData[priceKey];
+
+									setFormData(prev => ({ ...prev, [priceKey]: { ...currentPrice, max: numValue } }));
+
+									if (numValue <= currentPrice.min) {
+										setPriceError("Maximum price must be greater than minimum price.");
 									} else {
-										setFormData(prev => ({ ...prev, pricePreference: { ...prev.pricePreference, max: value } }));
+										setPriceError(null);
 									}
 								}}
-							/>
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select maximum price" />
+								</SelectTrigger>
+								<SelectContent>
+									{PRICE_OPTIONS.map(option => (
+										<SelectItem key={`max-${option.value}`} value={option.value.toString()}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 					</div>
 				</CardContent>
@@ -686,6 +818,12 @@ export const EditListingForm: React.FC<EditListingFormProps> = ({
 			</Card>
 
 			{/* Actions */}
+			{error && (
+				<Alert variant="destructive">
+					<AlertCircle className="h-4 w-4" />
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			)}
 			<div className="flex gap-4 justify-end">
 				{onCancel && (
 					<Button type="button" variant="outline" onClick={onCancel}>

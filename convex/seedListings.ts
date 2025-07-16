@@ -1,6 +1,8 @@
 import { action, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import ngeohash from "ngeohash";
+import { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } from "../shared/constants/listingPrices";
+import { PRICE_OPTIONS } from "../shared/constants/priceOptions";
 
 const SAMPLE_SUBURBS_WITH_STATES = [
 	// NSW - Sydney Area
@@ -53,8 +55,23 @@ const SAMPLE_SUBURBS_WITH_STATES = [
 ];
 
 const SAMPLE_STREETS = ["Main St", "Park Rd", "Beach Ave", "Hill St", "River Rd"];
-const BUILDING_TYPES = ["Apartment", "House", "Townhouse"];
-const FEATURES = ["pool", "garage", "balcony", "garden", "aircon", "solar", "study", "ensuite", "walk-in robe"];
+const BUILDING_TYPES = [
+	"House",
+	"Apartment", 
+	"Townhouse",
+	"Villa",
+	"Unit",
+	"Duplex",
+	"Studio",
+	"Land",
+	"Other"
+];
+const FEATURES = [
+	"Pool", "Garden", "Garage", "Carport", "Air Conditioning", 
+	"Heating", "Fireplace", "Balcony", "Deck", "Shed",
+	"Study", "Walk-in Wardrobe", "Ensuite", "Dishwasher",
+	"Solar Panels", "Security System", "Intercom", "Gym"
+];
 const BUYER_RADIUS_OPTIONS = [1, 3, 5, 7]; // Search radius options for street buyers (km)
 
 function getRandomElement<T>(array: T[]): T {
@@ -97,9 +114,15 @@ function randomFeatures(min = 3, max = 7) {
 	return [...FEATURES].sort(() => Math.random() - 0.5).slice(0, count);
 }
 
-function randomPrice(min = 500000, max = 2500000) {
-	const base = Math.floor(Math.random() * (max - min + 1)) + min;
-	return { min: base, max: base + Math.floor(Math.random() * 200000) };
+function randomPrice() {
+	// Get two valid price options for min and max
+	const minIndex = Math.floor(Math.random() * (PRICE_OPTIONS.length - 1));
+	const maxIndex = minIndex + Math.floor(Math.random() * (PRICE_OPTIONS.length - minIndex - 1)) + 1;
+	
+	return { 
+		min: PRICE_OPTIONS[minIndex].value, 
+		max: PRICE_OPTIONS[maxIndex].value 
+	};
 }
 
 function randomPropertyDetails() {
@@ -270,7 +293,7 @@ export const seedListings = action({
 			const propertyDetails = randomPropertyDetails();
 			const features = randomFeatures();
 			const now = Date.now();
-			const price = randomPrice(400000, 1500000); // Overlapping price range
+			const price = randomPrice(); // Use valid price options
 			
 			// Create buyer listing
 			const buyerAddress = {
@@ -306,10 +329,7 @@ export const seedListings = action({
 					expiresAt: now + 1000 * 60 * 60 * 24 * 30,
 					createdAt: now,
 					updatedAt: now,
-					pricePreference: {
-						min: Math.max(price.min - 100000, 200000),
-						max: price.max + 100000
-					},
+					pricePreference: randomPrice(),
 					mustHaveFeatures: features.slice(0, 2), // Must have some of the seller's features
 					niceToHaveFeatures: features.slice(2, 4),
 					// Add radius for street buyers
@@ -398,19 +418,17 @@ export const deleteSampleData = action({
 // Action to delete ALL listings (use with caution!)
 export const deleteAllListings = action({
 	args: {},
-	handler: async (ctx) => {
-		const listingsResult = await ctx.runQuery(api.listings.listListings, {});
-		let deletedCount = 0;
-
-		for (const listing of listingsResult.listings) {
-			await ctx.runMutation(api.listings.deleteListing, { id: listing._id });
-			deletedCount++;
-		}
-
+	handler: async (ctx): Promise<{
+		success: boolean;
+		message: string;
+		deletedListings: number;
+	}> => {
+		const result: { success: boolean; cleared: number } = await ctx.runMutation(api.listings.clearAllListings, {});
+		
 		return {
 			success: true,
-			message: `Deleted ALL ${deletedCount} listings (sample and real)`,
-			deletedListings: deletedCount
+			message: `Deleted ALL ${result.cleared} listings (sample and real)`,
+			deletedListings: result.cleared
 		};
 	},
 });

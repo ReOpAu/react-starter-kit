@@ -27,8 +27,8 @@ export default [
 	route("listings/:state/:type/:suburb/:id", "features/listings/pages/ListingDetailPage.tsx"),
 	route("listings/:state/:type/:suburb/:id/matches", "features/listings/pages/MatchesPage.tsx"),
 	route("listings/:state/:type/:suburb/:id/matches/:matchId", "features/listings/pages/MatchDetailPage.tsx"),
-	// User listings management routes
-	route("listings/create", "features/listings/pages/CreateListingPage.tsx"),
+	// User listings management routes  
+	route("listings/create", "routes/listings/create.tsx"),
 	route("listings/edit/:id", "features/listings/pages/EditListingPage.tsx"),
 	route("listings/my-listings", "features/listings/pages/MyListingsPage.tsx"),
 	// Admin routes

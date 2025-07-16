@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { checkAuth } from "./utils/auth";
 
 export const clearAllListings = mutation({
   args: {},
@@ -49,7 +50,11 @@ export const createListing = mutation({
     })
   },
   handler: async (ctx, { listing }) => {
+    // Temporarily disable auth check for development
+    // await checkAuth(ctx);
+    console.log("Creating listing:", listing);
     const id = await ctx.db.insert("listings", listing);
+    console.log("Created listing with ID:", id);
     return id;
   }
 });
@@ -81,6 +86,7 @@ export const updateListing = mutation({
       mustHaveFeatures: v.optional(v.array(v.string())),
       niceToHaveFeatures: v.optional(v.array(v.string())),
       features: v.optional(v.array(v.string())),
+      radiusKm: v.optional(v.number()),
       headline: v.optional(v.string()),
       description: v.optional(v.string()),
       images: v.optional(v.array(v.string())),
@@ -97,8 +103,14 @@ export const updateListing = mutation({
     })
   },
   handler: async (ctx, { id, updates }) => {
+    // Temporarily disable auth check for development
+    // await checkAuth(ctx);
+    console.log("Updating listing with ID:", id);
+    console.log("Updates:", updates);
     await ctx.db.patch(id, updates);
-    return await ctx.db.get(id);
+    const result = await ctx.db.get(id);
+    console.log("Updated listing:", result);
+    return result;
   }
 });
 

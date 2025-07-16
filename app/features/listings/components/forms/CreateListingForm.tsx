@@ -9,9 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Badge } from "../../../../components/ui/badge";
 import { Switch } from "../../../../components/ui/switch";
-import { Plus, X, Home, Building2 } from "lucide-react";
+import { Plus, X, Home, Building2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { api } from "@/convex/_generated/api";
 import type { ListingType, ListingSubtype, PropertyDetails, PriceRange } from "../../types";
+import { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } from "../../../../../shared/constants/listingPrices";
+import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
 
 interface CreateListingFormProps {
 	onSuccess?: (listingId: string) => void;
@@ -74,8 +77,8 @@ export const CreateListingForm: React.FC<CreateListingFormProps> = ({
 			landArea: undefined,
 			floorArea: undefined
 		} as PropertyDetails,
-		price: { min: 0, max: 0 } as PriceRange,
-		pricePreference: { min: 0, max: 0 } as PriceRange,
+		price: { min: DEFAULT_MIN_PRICE, max: DEFAULT_MAX_PRICE } as PriceRange,
+		pricePreference: { min: DEFAULT_MIN_PRICE, max: DEFAULT_MAX_PRICE } as PriceRange,
 		mustHaveFeatures: [] as string[],
 		niceToHaveFeatures: [] as string[],
 		features: [] as string[],
@@ -85,10 +88,27 @@ export const CreateListingForm: React.FC<CreateListingFormProps> = ({
 
 	const [isLoading, setIsLoading] = useState(false);
 	const [newFeature, setNewFeature] = useState("");
+	const [priceError, setPriceError] = useState<string | null>(null);
+
+	const validateAndGetPrice = () => {
+		const priceRange = formData.listingType === "seller" ? formData.price : formData.pricePreference;
+		if (priceRange.min >= priceRange.max) {
+			setPriceError("Maximum price must be greater than minimum price.");
+			return null;
+		}
+		setPriceError(null);
+		return priceRange;
+	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!user) return;
+
+		const priceRange = validateAndGetPrice();
+		if (!priceRange) {
+			setIsLoading(false);
+			return;
+		}
 
 		setIsLoading(true);
 		try {
@@ -406,43 +426,73 @@ export const CreateListingForm: React.FC<CreateListingFormProps> = ({
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
+					{priceError && (
+						<Alert variant="destructive" className="mb-4">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>{priceError}</AlertDescription>
+						</Alert>
+					)}
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 						<div className="space-y-2">
 							<Label htmlFor="minPrice">Minimum ($)</Label>
-							<Input
-								id="minPrice"
-								type="number"
-								min="0"
-								step="1000"
-								value={formData.listingType === "seller" ? formData.price.min : formData.pricePreference.min}
-								onChange={(e) => {
-									const value = parseInt(e.target.value) || 0;
-									if (formData.listingType === "seller") {
-										setFormData(prev => ({ ...prev, price: { ...prev.price, min: value } }));
+							<Select
+								value={(formData.listingType === "seller" ? formData.price.min : formData.pricePreference.min).toString()}
+								onValueChange={(value) => {
+									const numValue = parseInt(value, 10);
+									const priceKey = formData.listingType === "seller" ? "price" : "pricePreference";
+									const currentPrice = formData[priceKey];
+									
+									setFormData(prev => ({ ...prev, [priceKey]: { ...currentPrice, min: numValue } }));
+
+									if (numValue >= currentPrice.max) {
+										setPriceError("Maximum price must be greater than minimum price.");
 									} else {
-										setFormData(prev => ({ ...prev, pricePreference: { ...prev.pricePreference, min: value } }));
+										setPriceError(null);
 									}
 								}}
-							/>
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select minimum price" />
+								</SelectTrigger>
+								<SelectContent>
+									{PRICE_OPTIONS.map(option => (
+										<SelectItem key={`min-${option.value}`} value={option.value.toString()}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 
 						<div className="space-y-2">
 							<Label htmlFor="maxPrice">Maximum ($)</Label>
-							<Input
-								id="maxPrice"
-								type="number"
-								min="0"
-								step="1000"
-								value={formData.listingType === "seller" ? formData.price.max : formData.pricePreference.max}
-								onChange={(e) => {
-									const value = parseInt(e.target.value) || 0;
-									if (formData.listingType === "seller") {
-										setFormData(prev => ({ ...prev, price: { ...prev.price, max: value } }));
+							<Select
+								value={(formData.listingType === "seller" ? formData.price.max : formData.pricePreference.max).toString()}
+								onValueChange={(value) => {
+									const numValue = parseInt(value, 10);
+									const priceKey = formData.listingType === "seller" ? "price" : "pricePreference";
+									const currentPrice = formData[priceKey];
+
+									setFormData(prev => ({ ...prev, [priceKey]: { ...currentPrice, max: numValue } }));
+
+									if (numValue <= currentPrice.min) {
+										setPriceError("Maximum price must be greater than minimum price.");
 									} else {
-										setFormData(prev => ({ ...prev, pricePreference: { ...prev.pricePreference, max: value } }));
+										setPriceError(null);
 									}
 								}}
-							/>
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select maximum price" />
+								</SelectTrigger>
+								<SelectContent>
+									{PRICE_OPTIONS.map(option => (
+										<SelectItem key={`max-${option.value}`} value={option.value.toString()}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						</div>
 					</div>
 				</CardContent>

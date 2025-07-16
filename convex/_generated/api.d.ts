@@ -33,6 +33,7 @@ import type * as testing_runValidationTests from "../testing/runValidationTests.
 import type * as testing_transcriptionSimulator from "../testing/transcriptionSimulator.js";
 import type * as testing_validationTestCases from "../testing/validationTestCases.js";
 import type * as users from "../users.js";
+import type * as utils_auth from "../utils/auth.js";
 import type * as utils_logger from "../utils/logger.js";
 
 import type {
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   "testing/transcriptionSimulator": typeof testing_transcriptionSimulator;
   "testing/validationTestCases": typeof testing_validationTestCases;
   users: typeof users;
+  "utils/auth": typeof utils_auth;
   "utils/logger": typeof utils_logger;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

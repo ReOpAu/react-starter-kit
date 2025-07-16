@@ -1,14 +1,19 @@
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const priceRangeSchema = v.object({
+	min: v.number(),
+	max: v.number(),
+});
+
 export const listings = defineTable({
 	listingType: v.union(v.literal("buyer"), v.literal("seller")),
 	subtype: v.union(v.literal("street"), v.literal("suburb")),
 	userId: v.id("users"),
 	geohash: v.string(),
 	buildingType: v.string(),
-	price: v.optional(v.object({ min: v.number(), max: v.number() })),
-	pricePreference: v.optional(v.object({ min: v.number(), max: v.number() })),
+	price: v.optional(priceRangeSchema),
+	pricePreference: v.optional(priceRangeSchema),
 	propertyDetails: v.object({
 		bedrooms: v.number(),
 		bathrooms: v.number(),
