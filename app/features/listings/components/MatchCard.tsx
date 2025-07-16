@@ -11,6 +11,7 @@ import {
 } from "../../../components/ui/card";
 import type { Listing } from "../types";
 import { isBuyerListing } from "../utils";
+import { formatDistance } from "../utils";
 import {
 	generateListingUrl,
 	generateMatchDetailUrl,
@@ -36,11 +37,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 	showActions = true,
 	compact = false,
 }) => {
-	const formatDistance = (dist?: number) => {
-		if (!dist) return null;
-		return dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`;
-	};
-
 	const formatPrice = (listing: Listing) => {
 		if (!listing.priceMin || !listing.priceMax) return "Price not specified";
 		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
@@ -88,7 +84,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 						</span>
 						{distance && (
 							<Badge variant="outline" className="text-xs">
-								{formatDistance(distance)} away
+								{distance ? formatDistance(distance) : "Distance unknown"} away
 							</Badge>
 						)}
 					</div>

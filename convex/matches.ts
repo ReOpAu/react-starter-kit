@@ -3,154 +3,233 @@ import type { Doc } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { getSearchGeohashes } from "./geohashUtils";
 
-const MATCHING_CONFIG = {
+// Standardized score breakdown interface - aligned with frontend
+interface StandardScoreBreakdown {
+	overall: number;
+	components: {
+		distance: number;
+		price: number;
+		propertyType: number;
+		bedrooms: number;
+		parking: number;
+		features: number;
+	};
 	weights: {
-		location: 30,
-		buildingType: 25,
-		price: 20,
-		propertyDetails: 15,
-		features: 10,
-	} as const,
-	featureWeights: {
-		mustHave: 1.0,
-		niceToHave: 0.4,
-	},
-	propertyDetailWeights: {
-		bedrooms: 0.4,
-		bathrooms: 0.3,
-		parkingSpaces: 0.3,
-	},
-	propertyDetailMismatchPenalty: 25,
-};
+		distance: number;
+		price: number;
+		propertyType: number;
+		bedrooms: number;
+		parking: number;
+		features: number;
+	};
+}
 
-type ScoreKey = keyof typeof MATCHING_CONFIG.weights;
+// Standard weights for score calculation - aligned with frontend
+const DEFAULT_WEIGHTS = {
+	distance: 30,
+	price: 25,
+	propertyType: 20,
+	bedrooms: 15,
+	parking: 5,
+	features: 5,
+} as const;
 
+/**
+ * Calculate comprehensive match score between two listings
+ * Uses standardized interface aligned with frontend service
+ */
 function calculateMatchScore(
 	listingA: Doc<"listings">,
 	listingB: Doc<"listings">,
-) {
-	const buyer = listingA.listingType === "buyer" ? listingA : listingB;
-	const seller = listingA.listingType === "seller" ? listingA : listingB;
-	const breakdown: Record<ScoreKey, number> = {
-		location: 0,
-		buildingType: 0,
-		price: 0,
-		propertyDetails: 0,
-		features: 0,
+	weights: typeof DEFAULT_WEIGHTS = DEFAULT_WEIGHTS,
+): StandardScoreBreakdown {
+	// Calculate individual component scores
+	const distanceScore = calculateDistanceScore(listingA, listingB);
+	const priceScore = calculatePriceScore(listingA, listingB);
+	const propertyTypeScore = calculatePropertyTypeScore(listingA, listingB);
+	const bedroomScore = calculateBedroomScore(listingA, listingB);
+	const parkingScore = calculateParkingScore(listingA, listingB);
+	const featureScore = calculateFeatureScore(listingA, listingB);
+
+	// Calculate weighted overall score
+	const totalScore =
+		distanceScore * weights.distance +
+		priceScore * weights.price +
+		propertyTypeScore * weights.propertyType +
+		bedroomScore * weights.bedrooms +
+		parkingScore * weights.parking +
+		featureScore * weights.features;
+
+	const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+	const overall = Math.round(totalScore / totalWeight);
+
+	return {
+		overall,
+		components: {
+			distance: distanceScore,
+			price: priceScore,
+			propertyType: propertyTypeScore,
+			bedrooms: bedroomScore,
+			parking: parkingScore,
+			features: featureScore,
+		},
+		weights,
 	};
-
-	breakdown.location = scoreLocation(buyer, seller);
-	breakdown.buildingType = scoreBuildingType(buyer, seller);
-	breakdown.price = scorePrice(buyer, seller);
-	breakdown.propertyDetails = scorePropertyDetails(buyer, seller);
-	breakdown.features = scoreFeatures(buyer, seller);
-
-	let totalScore = 0;
-	let totalWeight = 0;
-	for (const key of Object.keys(MATCHING_CONFIG.weights) as ScoreKey[]) {
-		totalScore += breakdown[key] * MATCHING_CONFIG.weights[key];
-		totalWeight += MATCHING_CONFIG.weights[key];
-	}
-	const finalScore = Math.round(totalScore / totalWeight);
-	return { score: finalScore, breakdown };
 }
 
-function scoreBuildingType(buyer: Doc<"listings">, seller: Doc<"listings">) {
-	return buyer.buildingType === seller.buildingType ? 100 : 0;
-}
-
-function scorePrice(buyer: Doc<"listings">, seller: Doc<"listings">) {
-	// Use clean schema price fields
-	const bMin = buyer.priceMin;
-	const bMax = buyer.priceMax;
-	const sMin = seller.priceMin;
-	const sMax = seller.priceMax;
-	if (bMax < sMin || sMax < bMin) return 0;
-	return 100;
-}
-
-function scorePropertyDetails(buyer: Doc<"listings">, seller: Doc<"listings">) {
-	const weights = MATCHING_CONFIG.propertyDetailWeights;
-	let score = 0;
-	let total = 0;
-
-	// Score bedrooms
-	const bedroomDiff = Math.abs(buyer.bedrooms - seller.bedrooms);
-	const bedroomScore = Math.max(
-		0,
-		100 - bedroomDiff * MATCHING_CONFIG.propertyDetailMismatchPenalty,
-	);
-	score += bedroomScore * weights.bedrooms;
-	total += weights.bedrooms;
-
-	// Score bathrooms
-	const bathroomDiff = Math.abs(buyer.bathrooms - seller.bathrooms);
-	const bathroomScore = Math.max(
-		0,
-		100 - bathroomDiff * MATCHING_CONFIG.propertyDetailMismatchPenalty,
-	);
-	score += bathroomScore * weights.bathrooms;
-	total += weights.bathrooms;
-
-	// Score parking
-	const parkingDiff = Math.abs(buyer.parking - seller.parking);
-	const parkingScore = Math.max(
-		0,
-		100 - parkingDiff * MATCHING_CONFIG.propertyDetailMismatchPenalty,
-	);
-	score += parkingScore * weights.parkingSpaces;
-	total += weights.parkingSpaces;
-
-	return total ? score / total : 100;
-}
-
-function scoreFeatures(buyer: Doc<"listings">, seller: Doc<"listings">) {
-	// Simplified feature matching using clean schema
-	const buyerFeatures = buyer.features || [];
-	const sellerFeatures = seller.features || [];
-
-	if (buyerFeatures.length === 0) return 100; // No feature preferences
-
-	// Calculate overlap percentage
-	const overlappingFeatures = buyerFeatures.filter((f) =>
-		sellerFeatures.includes(f),
-	);
-	const overlapPercentage =
-		(overlappingFeatures.length / buyerFeatures.length) * 100;
-
-	return Math.round(overlapPercentage);
-}
-
-function scoreLocation(buyer: Doc<"listings">, seller: Doc<"listings">) {
-	// Perfect score for suburb buyers in the same suburb
-	if (buyer.buyerType === "suburb" && buyer.suburb === seller.suburb)
+/**
+ * Calculate distance-based score between two listings
+ * Aligned with frontend calculateDistanceScore logic
+ */
+function calculateDistanceScore(
+	originalListing: Doc<"listings">,
+	matchedListing: Doc<"listings">,
+): number {
+	// Handle same suburb case
+	if (originalListing.suburb.toLowerCase() === matchedListing.suburb.toLowerCase()) {
 		return 100;
-
-	const dist = haversine(
-		buyer.latitude,
-		buyer.longitude,
-		seller.latitude,
-		seller.longitude,
-	);
-
-	// For street buyers with radius, use radius-based scoring
-	if (buyer.buyerType === "street" && buyer.searchRadius) {
-		if (dist <= buyer.searchRadius) {
-			// Score within radius: 100% at center, decreasing to 60% at radius edge
-			const distanceRatio = dist / buyer.searchRadius;
-			return Math.max(60, Math.round(100 - distanceRatio * 40));
-		} else {
-			// Outside radius: very low score based on overage
-			const overageRatio = Math.min(
-				1,
-				(dist - buyer.searchRadius) / buyer.searchRadius,
-			);
-			return Math.max(0, Math.round(60 - overageRatio * 60));
-		}
 	}
 
-	// Default distance-based scoring (legacy behavior)
-	return Math.max(0, 100 - dist * 20);
+	// Calculate distance if coordinates available
+	if (
+		originalListing.latitude &&
+		originalListing.longitude &&
+		matchedListing.latitude &&
+		matchedListing.longitude
+	) {
+		const distance = haversine(
+			originalListing.latitude,
+			originalListing.longitude,
+			matchedListing.latitude,
+			matchedListing.longitude,
+		);
+
+		// Distance-based scoring: 100 at 0km, decreasing to 0 at 50km
+		const maxDistance = 50; // km
+		const score = Math.max(0, Math.round(100 * (1 - distance / maxDistance)));
+		return score;
+	}
+
+	// Fallback: different suburbs with no coordinates = low score
+	return 20;
+}
+
+/**
+ * Calculate price compatibility score
+ * Uses buyer-seller dynamics for optimal matching
+ */
+function calculatePriceScore(
+	originalListing: Doc<"listings">,
+	matchedListing: Doc<"listings">,
+): number {
+	const originalMin = originalListing.priceMin;
+	const originalMax = originalListing.priceMax;
+	const matchedMin = matchedListing.priceMin;
+	const matchedMax = matchedListing.priceMax;
+
+	// Handle missing price data
+	if (!originalMin || !originalMax || !matchedMin || !matchedMax) {
+		return 50; // Neutral score when price data unavailable
+	}
+
+	// Check for overlap
+	const hasOverlap = originalMax >= matchedMin && matchedMax >= originalMin;
+
+	if (!hasOverlap) {
+		// Calculate how far apart the ranges are
+		const gap = Math.min(
+			Math.abs(originalMin - matchedMax),
+			Math.abs(matchedMin - originalMax),
+		);
+		const averagePrice = (originalMin + originalMax + matchedMin + matchedMax) / 4;
+		const gapRatio = gap / averagePrice;
+
+		// Score decreases as gap increases (max gap ratio of 0.5 = 0 score)
+		return Math.max(0, Math.round(100 * (1 - gapRatio * 2)));
+	}
+
+	// Calculate overlap quality
+	const overlapMin = Math.max(originalMin, matchedMin);
+	const overlapMax = Math.min(originalMax, matchedMax);
+	const overlapSize = overlapMax - overlapMin;
+
+	const originalRange = originalMax - originalMin;
+	const matchedRange = matchedMax - matchedMin;
+	const averageRange = (originalRange + matchedRange) / 2;
+
+	const overlapRatio = overlapSize / averageRange;
+	return Math.min(100, Math.round(70 + overlapRatio * 30));
+}
+
+/**
+ * Calculate property type compatibility score
+ */
+function calculatePropertyTypeScore(
+	originalListing: Doc<"listings">,
+	matchedListing: Doc<"listings">,
+): number {
+	return originalListing.buildingType === matchedListing.buildingType ? 100 : 0;
+}
+
+/**
+ * Calculate bedroom count compatibility score
+ */
+function calculateBedroomScore(
+	originalListing: Doc<"listings">,
+	matchedListing: Doc<"listings">,
+): number {
+	const diff = Math.abs(originalListing.bedrooms - matchedListing.bedrooms);
+	
+	// Perfect match = 100, each bedroom difference reduces score by 25
+	return Math.max(0, 100 - diff * 25);
+}
+
+/**
+ * Calculate parking compatibility score
+ */
+function calculateParkingScore(
+	originalListing: Doc<"listings">,
+	matchedListing: Doc<"listings">,
+): number {
+	const diff = Math.abs(originalListing.parking - matchedListing.parking);
+	
+	// Perfect match = 100, each parking space difference reduces score by 20
+	return Math.max(0, 100 - diff * 20);
+}
+
+/**
+ * Calculate feature compatibility score
+ */
+function calculateFeatureScore(
+	originalListing: Doc<"listings">,
+	matchedListing: Doc<"listings">,
+): number {
+	const originalFeatures = originalListing.features || [];
+	const matchedFeatures = matchedListing.features || [];
+
+	// If no features specified, perfect compatibility
+	if (originalFeatures.length === 0 && matchedFeatures.length === 0) {
+		return 100;
+	}
+
+	// If only one has features, partial score
+	if (originalFeatures.length === 0 || matchedFeatures.length === 0) {
+		return 60;
+	}
+
+	// Calculate overlap
+	const commonFeatures = originalFeatures.filter(feature =>
+		matchedFeatures.includes(feature)
+	);
+
+	const totalUniqueFeatures = new Set([
+		...originalFeatures,
+		...matchedFeatures
+	]).size;
+
+	// Score based on common features vs total unique features
+	const overlapRatio = commonFeatures.length / totalUniqueFeatures;
+	return Math.round(overlapRatio * 100);
 }
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -289,14 +368,14 @@ export const findMatches = query({
 		}
 		let scoredMatches = [];
 		for (const candidate of candidates) {
-			const { score, breakdown } = calculateMatchScore(
+			const matchResult = calculateMatchScore(
 				originalListing,
 				candidate,
 			);
 			scoredMatches.push({
 				listing: candidate,
-				score,
-				breakdown: options?.includeScoreBreakdown ? breakdown : undefined,
+				score: matchResult.overall,
+				breakdown: options?.includeScoreBreakdown ? matchResult : undefined,
 			});
 		}
 		scoredMatches = scoredMatches.filter(
@@ -352,7 +431,7 @@ export const getMatchDetails = query({
 		}
 
 		// Calculate match score and breakdown
-		const { score, breakdown } = calculateMatchScore(
+		const matchResult = calculateMatchScore(
 			originalListing,
 			matchedListing,
 		);
@@ -360,8 +439,8 @@ export const getMatchDetails = query({
 		return {
 			originalListing,
 			matchedListing,
-			score,
-			breakdown: includeScoreBreakdown ? breakdown : undefined,
+			score: matchResult.overall,
+			breakdown: includeScoreBreakdown ? matchResult : undefined,
 			distance:
 				originalListing.latitude &&
 				originalListing.longitude &&

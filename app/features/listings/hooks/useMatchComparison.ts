@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { ConvexListing } from "../types";
 import { calculateListingDistance, formatDistance } from "../utils";
+import { calculatePriceScore } from "../services/matchingService";
 
 interface PriceComparison {
 	original: { min: number; max: number };
@@ -43,7 +44,7 @@ export function useMatchComparison(
 	matchedListing: ConvexListing,
 ): MatchComparisonResult {
 	const result = useMemo(() => {
-		// Calculate price comparison
+		// Calculate price comparison using centralized service
 		const calculatePriceComparison = (): PriceComparison | null => {
 			const originalPrice =
 				originalListing.price || originalListing.pricePreference;
@@ -51,9 +52,12 @@ export function useMatchComparison(
 
 			if (!originalPrice || !matchPrice) return null;
 
-			const overlap =
-				originalPrice.max >= matchPrice.min &&
-				matchPrice.max >= originalPrice.min;
+			// Use centralized scoring for consistency
+			const priceScore = calculatePriceScore(originalListing, matchedListing);
+			
+			// Derive overlap from centralized score (score >= 70 indicates good price compatibility)
+			const overlap = priceScore >= 70;
+			
 			const avgOriginal = (originalPrice.min + originalPrice.max) / 2;
 			const avgMatch = (matchPrice.min + matchPrice.max) / 2;
 			const difference = Math.abs(avgOriginal - avgMatch);
