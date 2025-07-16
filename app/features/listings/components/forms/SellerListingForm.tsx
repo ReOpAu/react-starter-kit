@@ -26,7 +26,7 @@ import {
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { Switch } from "../../../../components/ui/switch";
 import { Textarea } from "../../../../components/ui/textarea";
-import type { BuildingType, Feature, SellerType } from "../../types";
+import type { BuildingType, Feature, SellerType } from "../../../../../shared/constants/listingConstants";
 import { FeaturesFields } from "./shared/FeaturesFields";
 import { LocationFields } from "./shared/LocationFields";
 import { PriceFields } from "./shared/PriceFields";
@@ -243,12 +243,12 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const handlePriceChange = (field: "priceMin" | "priceMax", value: number) => {
-		setFormData((prev) => ({ ...prev, [field]: value }));
+	const handlePriceChange = (price: { priceMin?: number; priceMax?: number }) => {
+		setFormData((prev) => ({ ...prev, ...price }));
 
 		// Validate price range
-		const newMin = field === "priceMin" ? value : formData.priceMin;
-		const newMax = field === "priceMax" ? value : formData.priceMax;
+		const newMin = price.priceMin ?? formData.priceMin;
+		const newMax = price.priceMax ?? formData.priceMax;
 
 		if (newMin >= newMax) {
 			setPriceError("Maximum price must be greater than minimum price.");
@@ -322,10 +322,10 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				state={formData.state}
 				postcode={formData.postcode}
 				address={formData.address}
-				showAddress={true}
+				showStreetField={true}
 				addressLabel="Property Address"
 				addressPlaceholder="e.g., 123 Campbell Parade"
-				onChange={handleFieldChange}
+				onLocationChange={(location) => setFormData(prev => ({ ...prev, ...location }))}
 			/>
 
 			{/* Property Details - Shared Component */}
@@ -335,7 +335,7 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				bathrooms={formData.bathrooms}
 				parking={formData.parking}
 				title="Property Specifications"
-				onChange={handleFieldChange}
+				onPropertyChange={(property) => setFormData(prev => ({ ...prev, ...property }))}
 			/>
 
 			{/* Asking Price - Shared Component */}
@@ -346,7 +346,7 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				minLabel="Minimum Price"
 				maxLabel="Maximum Price"
 				error={priceError}
-				onChange={handlePriceChange}
+				onPriceChange={handlePriceChange}
 			/>
 
 			{/* Features - Shared Component */}
@@ -354,7 +354,7 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				features={formData.features}
 				title="Property Features"
 				description="What features does your property have?"
-				onChange={handleFeaturesChange}
+				onFeaturesChange={handleFeaturesChange}
 			/>
 
 			{/* Contact Information */}

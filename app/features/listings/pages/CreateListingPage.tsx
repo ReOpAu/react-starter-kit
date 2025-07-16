@@ -9,7 +9,7 @@ const CreateListingPage: React.FC = () => {
 
 	const handleSuccess = (listingId: string) => {
 		// Navigate to the created listing or listings overview
-		navigate(`/listings/my-listings`);
+		navigate("/listings/my-listings");
 	};
 
 	const handleCancel = () => {
@@ -22,9 +22,9 @@ const CreateListingPage: React.FC = () => {
 				{/* Header */}
 				<div className="flex items-center gap-4 mb-8">
 					<Button variant="ghost" asChild>
-						<Link to="/listings">
+						<Link to="/listings/my-listings">
 							<ArrowLeft className="w-4 h-4 mr-2" />
-							Back to Listings
+							Back to My Listings
 						</Link>
 					</Button>
 				</div>

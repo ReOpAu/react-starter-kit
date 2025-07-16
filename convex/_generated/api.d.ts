@@ -20,6 +20,7 @@ import type * as http from "../http.js";
 import type * as listings from "../listings.js";
 import type * as matches from "../matches.js";
 import type * as schemas_index from "../schemas/index.js";
+import type * as schemas_listings_validator from "../schemas/listings/validator.js";
 import type * as schemas_listings from "../schemas/listings.js";
 import type * as schemas_savedListings from "../schemas/savedListings.js";
 import type * as schemas_searches from "../schemas/searches.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   listings: typeof listings;
   matches: typeof matches;
   "schemas/index": typeof schemas_index;
+  "schemas/listings/validator": typeof schemas_listings_validator;
   "schemas/listings": typeof schemas_listings;
   "schemas/savedListings": typeof schemas_savedListings;
   "schemas/searches": typeof schemas_searches;

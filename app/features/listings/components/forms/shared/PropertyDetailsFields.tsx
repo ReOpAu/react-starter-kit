@@ -15,18 +15,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../../../../components/ui/select";
-import type { BuildingType } from "../../../types";
-
-const BUILDING_TYPES: BuildingType[] = [
-	"House",
-	"Apartment",
-	"Townhouse",
-	"Villa",
-	"Unit",
-];
+import { BUILDING_TYPES, type BuildingType } from "../../../../../../shared/constants/listingConstants";
 
 interface PropertyDetailsFieldsProps {
-	buildingType: BuildingType | undefined;
+	buildingType: BuildingType | "";
 	bedrooms: number;
 	bathrooms: number;
 	parking: number;
@@ -34,7 +26,12 @@ interface PropertyDetailsFieldsProps {
 	bedroomsLabel?: string;
 	bathroomsLabel?: string;
 	parkingLabel?: string;
-	onChange: (field: string, value: string | number) => void;
+	onPropertyChange: (property: {
+		buildingType?: BuildingType | "";
+		bedrooms?: number;
+		bathrooms?: number;
+		parking?: number;
+	}) => void;
 }
 
 export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
@@ -46,7 +43,7 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 	bedroomsLabel = "Bedrooms",
 	bathroomsLabel = "Bathrooms",
 	parkingLabel = "Parking Spaces",
-	onChange,
+	onPropertyChange,
 }) => {
 	return (
 		<Card>
@@ -62,7 +59,7 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 					<Select
 						key={`buildingType-${buildingType}`}
 						value={buildingType || ""}
-						onValueChange={(value) => onChange("buildingType", value)}
+						onValueChange={(value) => onPropertyChange({ buildingType: value as BuildingType })}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder="Select property type" />
@@ -86,7 +83,7 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 							min="0"
 							value={bedrooms}
 							onChange={(e) =>
-								onChange("bedrooms", Number.parseInt(e.target.value) || 0)
+								onPropertyChange({ bedrooms: Number.parseInt(e.target.value) || 0 })
 							}
 						/>
 					</div>
@@ -99,7 +96,7 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 							min="0"
 							value={bathrooms}
 							onChange={(e) =>
-								onChange("bathrooms", Number.parseInt(e.target.value) || 0)
+								onPropertyChange({ bathrooms: Number.parseInt(e.target.value) || 0 })
 							}
 						/>
 					</div>
@@ -112,7 +109,7 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 							min="0"
 							value={parking}
 							onChange={(e) =>
-								onChange("parking", Number.parseInt(e.target.value) || 0)
+								onPropertyChange({ parking: Number.parseInt(e.target.value) || 0 })
 							}
 						/>
 					</div>

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { createListingValidator, listingValidator, updateListingValidator } from "./schemas/listings/validator";
 import { checkAuth } from "./utils/auth";
 // Clean schema - no migration utilities needed
 
@@ -16,84 +17,22 @@ export const clearAllListings = mutation({
 
 export const createListing = mutation({
 	args: {
-		listing: v.object({
-			listingType: v.union(v.literal("buyer"), v.literal("seller")),
-			userId: v.id("users"),
-			suburb: v.string(),
-			state: v.string(),
-			postcode: v.string(),
-			address: v.optional(v.string()),
-			latitude: v.number(),
-			longitude: v.number(),
-			geohash: v.string(),
-			buildingType: v.union(
-				v.literal("House"),
-				v.literal("Apartment"),
-				v.literal("Townhouse"),
-				v.literal("Villa"),
-				v.literal("Unit"),
-			),
-			bedrooms: v.number(),
-			bathrooms: v.number(),
-			parking: v.number(),
-			priceMin: v.number(),
-			priceMax: v.number(),
-			features: v.array(
-				v.union(
-					v.literal("CornerBlock"),
-					v.literal("EnsuiteBathroom"),
-					v.literal("MatureGarden"),
-					v.literal("LockUpGarage"),
-					v.literal("Pool"),
-					v.literal("SolarPanels"),
-					v.literal("RenovatedKitchen"),
-					v.literal("AirConditioning"),
-					v.literal("HighCeilings"),
-					v.literal("WaterViews"),
-					v.literal("StudyRoom"),
-					v.literal("OpenPlanLiving"),
-					v.literal("SecuritySystem"),
-					v.literal("EnergyEfficient"),
-					v.literal("NorthFacing"),
-					v.literal("PetFriendly"),
-					v.literal("WheelchairAccessible"),
-					v.literal("SmartHome"),
-					v.literal("Fireplace"),
-					v.literal("WalkInWardrobe"),
-					v.literal("LanewayAccess"),
-					v.literal("Bungalow"),
-					v.literal("DualLiving"),
-					v.literal("GrannyFlat"),
-					v.literal("HeritageListed"),
-					v.literal("RainwaterTank"),
-					v.literal("DoubleGlazedWindows"),
-					v.literal("HomeTheatre"),
-					v.literal("WineCellar"),
-					v.literal("OutdoorKitchen"),
-				),
-			),
-			buyerType: v.optional(v.union(v.literal("street"), v.literal("suburb"))),
-			searchRadius: v.optional(v.number()),
-			sellerType: v.optional(
-				v.union(v.literal("sale"), v.literal("offmarket")),
-			),
-			headline: v.string(),
-			description: v.string(),
-			images: v.optional(v.array(v.string())),
-			contactEmail: v.optional(v.string()),
-			contactPhone: v.optional(v.string()),
-			isActive: v.boolean(),
-			isPremium: v.optional(v.boolean()),
-			sample: v.optional(v.boolean()),
-			createdAt: v.number(),
-			updatedAt: v.number(),
-		}),
+		listing: v.object(createListingValidator),
 	},
 	handler: async (ctx, { listing }) => {
 		// Temporarily disable auth check for development
 		// await checkAuth(ctx);
-		console.log("Creating listing:", listing);
-		const id = await ctx.db.insert("listings", listing);
+		
+		// Add server-generated timestamps
+		const now = Date.now();
+		const listingWithTimestamps = {
+			...listing,
+			createdAt: listing.createdAt || now,
+			updatedAt: now,
+		};
+		
+		console.log("Creating listing:", listingWithTimestamps);
+		const id = await ctx.db.insert("listings", listingWithTimestamps);
 		console.log("Created listing with ID:", id);
 		return id;
 	},
@@ -109,78 +48,7 @@ export const getListing = query({
 export const updateListing = mutation({
 	args: {
 		id: v.id("listings"),
-		updates: v.object({
-			suburb: v.optional(v.string()),
-			state: v.optional(v.string()),
-			postcode: v.optional(v.string()),
-			address: v.optional(v.string()),
-			latitude: v.optional(v.number()),
-			longitude: v.optional(v.number()),
-			geohash: v.optional(v.string()),
-			buildingType: v.optional(
-				v.union(
-					v.literal("House"),
-					v.literal("Apartment"),
-					v.literal("Townhouse"),
-					v.literal("Villa"),
-					v.literal("Unit"),
-				),
-			),
-			bedrooms: v.optional(v.number()),
-			bathrooms: v.optional(v.number()),
-			parking: v.optional(v.number()),
-			priceMin: v.optional(v.number()),
-			priceMax: v.optional(v.number()),
-			features: v.optional(
-				v.array(
-					v.union(
-						v.literal("CornerBlock"),
-						v.literal("EnsuiteBathroom"),
-						v.literal("MatureGarden"),
-						v.literal("LockUpGarage"),
-						v.literal("Pool"),
-						v.literal("SolarPanels"),
-						v.literal("RenovatedKitchen"),
-						v.literal("AirConditioning"),
-						v.literal("HighCeilings"),
-						v.literal("WaterViews"),
-						v.literal("StudyRoom"),
-						v.literal("OpenPlanLiving"),
-						v.literal("SecuritySystem"),
-						v.literal("EnergyEfficient"),
-						v.literal("NorthFacing"),
-						v.literal("PetFriendly"),
-						v.literal("WheelchairAccessible"),
-						v.literal("SmartHome"),
-						v.literal("Fireplace"),
-						v.literal("WalkInWardrobe"),
-						v.literal("LanewayAccess"),
-						v.literal("Bungalow"),
-						v.literal("DualLiving"),
-						v.literal("GrannyFlat"),
-						v.literal("HeritageListed"),
-						v.literal("RainwaterTank"),
-						v.literal("DoubleGlazedWindows"),
-						v.literal("HomeTheatre"),
-						v.literal("WineCellar"),
-						v.literal("OutdoorKitchen"),
-					),
-				),
-			),
-			buyerType: v.optional(v.union(v.literal("street"), v.literal("suburb"))),
-			searchRadius: v.optional(v.number()),
-			sellerType: v.optional(
-				v.union(v.literal("sale"), v.literal("offmarket")),
-			),
-			headline: v.optional(v.string()),
-			description: v.optional(v.string()),
-			images: v.optional(v.array(v.string())),
-			contactEmail: v.optional(v.string()),
-			contactPhone: v.optional(v.string()),
-			isActive: v.optional(v.boolean()),
-			isPremium: v.optional(v.boolean()),
-			updatedAt: v.optional(v.number()),
-		}),
+		updates: v.object(updateListingValidator),
 	},
 	handler: async (ctx, { id, updates }) => {
 		// Temporarily disable auth check for development

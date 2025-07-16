@@ -11,7 +11,7 @@ import {
 } from "../../../../../components/ui/card";
 import { Input } from "../../../../../components/ui/input";
 import { Label } from "../../../../../components/ui/label";
-import type { Feature } from "../../../types";
+import type { Feature } from "../../../../../../shared/constants/listingConstants";
 
 // Feature categories for better UX - based on saaskit categorization
 const FEATURE_CATEGORIES = {
@@ -66,25 +66,27 @@ interface FeaturesFieldsProps {
 	features: Feature[];
 	title?: string;
 	description?: string;
-	onChange: (features: Feature[]) => void;
+	listingType?: "buyer" | "seller";
+	onFeaturesChange: (features: Feature[]) => void;
 }
 
 export const FeaturesFields: React.FC<FeaturesFieldsProps> = ({
 	features,
 	title = "Features",
 	description = "Select property features",
-	onChange,
+	listingType = "buyer",
+	onFeaturesChange,
 }) => {
 	const [newFeature, setNewFeature] = useState("");
 
 	const addFeature = (feature: Feature) => {
 		if (!features.includes(feature)) {
-			onChange([...features, feature]);
+			onFeaturesChange([...features, feature]);
 		}
 	};
 
 	const removeFeature = (featureToRemove: Feature) => {
-		onChange(features.filter((f) => f !== featureToRemove));
+		onFeaturesChange(features.filter((f) => f !== featureToRemove));
 	};
 
 	const addCustomFeature = () => {

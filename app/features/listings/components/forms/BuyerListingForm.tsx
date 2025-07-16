@@ -26,7 +26,7 @@ import {
 import { Skeleton } from "../../../../components/ui/skeleton";
 import { Switch } from "../../../../components/ui/switch";
 import { Textarea } from "../../../../components/ui/textarea";
-import type { BuildingType, BuyerType, Feature } from "../../types";
+import type { BuildingType, BuyerType, Feature } from "../../../../../shared/constants/listingConstants";
 import { FeaturesFields } from "./shared/FeaturesFields";
 import { LocationFields } from "./shared/LocationFields";
 import { PriceFields } from "./shared/PriceFields";
@@ -41,12 +41,13 @@ interface BuyerListingFormProps {
 // Clean schema form data interface
 interface BuyerFormData {
 	buyerType: BuyerType;
-	buildingType: BuildingType | undefined;
+	buildingType: BuildingType | "";
 	headline: string;
 	description: string;
 	suburb: string;
 	state: string;
 	postcode: string;
+	address: string;
 	latitude: number;
 	longitude: number;
 	bedrooms: number;
@@ -70,12 +71,13 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 
 	const [formData, setFormData] = useState<BuyerFormData>({
 		buyerType: "suburb",
-		buildingType: undefined,
+		buildingType: "",
 		headline: "",
 		description: "",
 		suburb: "",
 		state: "",
 		postcode: "",
+		address: "",
 		latitude: 0,
 		longitude: 0,
 		bedrooms: 0,
@@ -116,12 +118,13 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 
 			const newFormData: BuyerFormData = {
 				buyerType: listing.buyerType || "suburb",
-				buildingType: listing.buildingType || undefined,
+				buildingType: listing.buildingType || "",
 				headline: listing.headline,
 				description: listing.description,
 				suburb: listing.suburb,
 				state: listing.state,
 				postcode: listing.postcode,
+				address: listing.address || "",
 				latitude: listing.latitude,
 				longitude: listing.longitude,
 				bedrooms: listing.bedrooms,
@@ -206,6 +209,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				suburb: formData.suburb,
 				state: formData.state,
 				postcode: formData.postcode,
+				address: formData.address,
 				latitude: formData.latitude,
 				longitude: formData.longitude,
 				bedrooms: formData.bedrooms,
@@ -235,12 +239,12 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const handlePriceChange = (field: "priceMin" | "priceMax", value: number) => {
-		setFormData((prev) => ({ ...prev, [field]: value }));
+	const handlePriceChange = (price: { priceMin?: number; priceMax?: number }) => {
+		setFormData((prev) => ({ ...prev, ...price }));
 
 		// Validate price range
-		const newMin = field === "priceMin" ? value : formData.priceMin;
-		const newMax = field === "priceMax" ? value : formData.priceMax;
+		const newMin = price.priceMin ?? formData.priceMin;
+		const newMax = price.priceMax ?? formData.priceMax;
 
 		if (newMin >= newMax) {
 			setPriceError("Maximum budget must be greater than minimum budget.");
@@ -336,7 +340,11 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				suburb={formData.suburb}
 				state={formData.state}
 				postcode={formData.postcode}
-				onChange={handleFieldChange}
+				address={formData.address}
+				showStreetField={formData.buyerType === "street"}
+				addressLabel="Street Address"
+				addressPlaceholder="e.g., 123 Main Street"
+				onLocationChange={(location) => setFormData(prev => ({ ...prev, ...location }))}
 			/>
 
 			{/* Property Details - Shared Component */}
@@ -349,7 +357,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				bedroomsLabel="Minimum Bedrooms"
 				bathroomsLabel="Minimum Bathrooms"
 				parkingLabel="Minimum Parking"
-				onChange={handleFieldChange}
+				onPropertyChange={(property) => setFormData(prev => ({ ...prev, ...property }))}
 			/>
 
 			{/* Budget - Shared Component */}
@@ -360,7 +368,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				minLabel="Minimum Budget"
 				maxLabel="Maximum Budget"
 				error={priceError}
-				onChange={handlePriceChange}
+				onPriceChange={handlePriceChange}
 			/>
 
 			{/* Features - Shared Component */}
@@ -368,7 +376,7 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				features={formData.features}
 				title="Desired Features"
 				description="What features would you like the property to have?"
-				onChange={handleFeaturesChange}
+				onFeaturesChange={handleFeaturesChange}
 			/>
 
 			{/* Additional Options */}

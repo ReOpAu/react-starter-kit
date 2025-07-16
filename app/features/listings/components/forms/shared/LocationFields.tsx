@@ -31,10 +31,15 @@ interface LocationFieldsProps {
 	state: string;
 	postcode: string;
 	address?: string;
-	showAddress?: boolean;
+	showStreetField?: boolean;
 	addressLabel?: string;
 	addressPlaceholder?: string;
-	onChange: (field: string, value: string) => void;
+	onLocationChange: (location: {
+		suburb?: string;
+		state?: string;
+		postcode?: string;
+		address?: string;
+	}) => void;
 }
 
 export const LocationFields: React.FC<LocationFieldsProps> = ({
@@ -42,10 +47,10 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 	state,
 	postcode,
 	address = "",
-	showAddress = false,
+	showStreetField = false,
 	addressLabel = "Address",
 	addressPlaceholder = "Enter address",
-	onChange,
+	onLocationChange,
 }) => {
 	return (
 		<Card>
@@ -53,15 +58,15 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 				<CardTitle>Location</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-6">
-				{showAddress && (
+				{showStreetField && (
 					<div className="space-y-2">
 						<Label htmlFor="address">{addressLabel}</Label>
 						<Input
 							id="address"
 							value={address}
-							onChange={(e) => onChange("address", e.target.value)}
+							onChange={(e) => onLocationChange({ address: e.target.value })}
 							placeholder={addressPlaceholder}
-							required={showAddress}
+							required={showStreetField}
 						/>
 					</div>
 				)}
@@ -72,7 +77,7 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 						<Input
 							id="suburb"
 							value={suburb}
-							onChange={(e) => onChange("suburb", e.target.value)}
+							onChange={(e) => onLocationChange({ suburb: e.target.value })}
 							placeholder="e.g., Bondi"
 							required
 						/>
@@ -83,7 +88,7 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 						<Select
 							key={`state-${state}`}
 							value={state || ""}
-							onValueChange={(value) => onChange("state", value)}
+							onValueChange={(value) => onLocationChange({ state: value })}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Select state" />
@@ -103,7 +108,7 @@ export const LocationFields: React.FC<LocationFieldsProps> = ({
 						<Input
 							id="postcode"
 							value={postcode}
-							onChange={(e) => onChange("postcode", e.target.value)}
+							onChange={(e) => onLocationChange({ postcode: e.target.value })}
 							placeholder="e.g., 2026"
 							required
 						/>

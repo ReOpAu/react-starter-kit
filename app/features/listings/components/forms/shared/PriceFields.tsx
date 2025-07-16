@@ -24,7 +24,7 @@ interface PriceFieldsProps {
 	minLabel?: string;
 	maxLabel?: string;
 	error?: string | null;
-	onChange: (field: "priceMin" | "priceMax", value: number) => void;
+	onPriceChange: (price: { priceMin?: number; priceMax?: number }) => void;
 }
 
 export const PriceFields: React.FC<PriceFieldsProps> = ({
@@ -34,7 +34,7 @@ export const PriceFields: React.FC<PriceFieldsProps> = ({
 	minLabel = "Minimum ($)",
 	maxLabel = "Maximum ($)",
 	error,
-	onChange,
+	onPriceChange,
 }) => {
 	return (
 		<Card>
@@ -55,7 +55,7 @@ export const PriceFields: React.FC<PriceFieldsProps> = ({
 							key={`priceMin-${priceMin}`}
 							value={priceMin ? priceMin.toString() : ""}
 							onValueChange={(value) =>
-								onChange("priceMin", Number.parseInt(value, 10))
+								onPriceChange({ priceMin: Number.parseInt(value, 10) })
 							}
 						>
 							<SelectTrigger>
@@ -80,7 +80,7 @@ export const PriceFields: React.FC<PriceFieldsProps> = ({
 							key={`priceMax-${priceMax}`}
 							value={priceMax ? priceMax.toString() : ""}
 							onValueChange={(value) =>
-								onChange("priceMax", Number.parseInt(value, 10))
+								onPriceChange({ priceMax: Number.parseInt(value, 10) })
 							}
 						>
 							<SelectTrigger>
