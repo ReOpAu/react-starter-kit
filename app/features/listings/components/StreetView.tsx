@@ -85,7 +85,7 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
-			<DialogContent className="max-w-5xl w-[90vw] h-[80vh]">
+			<DialogContent showCloseButton={false} className="w-[95vw] max-w-[95vw] h-[80vh] sm:max-w-[95vw] flex flex-col">
 				<DialogHeader>
 					<DialogTitle className="flex items-center justify-between">
 						Street View
@@ -99,7 +99,7 @@ export const StreetView: React.FC<StreetViewProps> = ({ lat, lng, isOpen, onClos
 						</Button>
 					</DialogTitle>
 				</DialogHeader>
-				<div ref={streetViewRef} className="w-full h-[500px] rounded-lg overflow-hidden"></div>
+				<div ref={streetViewRef} className="w-full flex-grow rounded-lg overflow-hidden"></div>
 			</DialogContent>
 		</Dialog>
 	);
