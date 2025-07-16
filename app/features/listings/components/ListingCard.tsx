@@ -18,8 +18,7 @@ export interface ListingCardProps {
 export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 	// Helper functions
 	const formatPrice = () => {
-		const priceObj = listing.listingType === "buyer" ? listing.pricePreference : listing.price;
-		if (!priceObj) return "Price not specified";
+		if (!listing.priceMin || !listing.priceMax) return "Price not specified";
 		
 		const formatCurrency = (num: number) => {
 			if (num >= 1000000) {
@@ -31,10 +30,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 			}
 		};
 
-		if (priceObj.min && priceObj.max) {
-			return `${formatCurrency(priceObj.min)} - ${formatCurrency(priceObj.max)}`;
-		}
-		return "Price not specified";
+		return `${formatCurrency(listing.priceMin)} - ${formatCurrency(listing.priceMax)}`;
 	};
 
 	const isNewListing = () => {
@@ -83,10 +79,15 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 						<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
 							{listing.listingType}
 						</Badge>
-						<Badge variant="outline">{listing.subtype}</Badge>
-						{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+						{listing.listingType === "buyer" && listing.buyerType && (
+							<Badge variant="outline">{listing.buyerType}</Badge>
+						)}
+						{listing.listingType === "seller" && listing.sellerType && (
+							<Badge variant="outline">{listing.sellerType}</Badge>
+						)}
+						{listing.listingType === "buyer" && listing.buyerType === "street" && listing.searchRadius && (
 							<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-								{listing.radiusKm}km radius
+								{listing.searchRadius}km radius
 							</Badge>
 						)}
 					</div>
@@ -109,9 +110,9 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 					{/* Property Icons */}
 					<PropertyIcons
 						buildingType={listing.buildingType}
-						bedrooms={listing.propertyDetails.bedrooms}
-						bathrooms={listing.propertyDetails.bathrooms}
-						parkingSpaces={listing.propertyDetails.parkingSpaces}
+						bedrooms={listing.bedrooms}
+						bathrooms={listing.bathrooms}
+						parkingSpaces={listing.parking}
 					/>
 
 					{/* Features */}

@@ -1,85 +1,79 @@
-// Canonical Listing Types for the Listings Feature
+// Clean Schema Types - aligned with Convex schema
+
+import type { Doc } from "~/convex/_generated/dataModel";
 
 export type ListingType = "buyer" | "seller";
-export type ListingSubtype = "street" | "suburb";
+export type BuildingType = "House" | "Apartment" | "Townhouse" | "Villa" | "Unit";
+export type BuyerType = "street" | "suburb";
+export type SellerType = "sale" | "offmarket";
 
-export interface PriceRange {
-	min: number;
-	max: number;
-}
+// Predefined feature enum matching Convex schema
+export type Feature = 
+	| "Pool" 
+	| "Garden" 
+	| "Garage" 
+	| "AirConditioning" 
+	| "SolarPanels" 
+	| "StudyRoom" 
+	| "WalkInWardrobe" 
+	| "Ensuite" 
+	| "Balcony" 
+	| "Fireplace" 
+	| "SecuritySystem" 
+	| "Gym" 
+	| "Tennis" 
+	| "Sauna";
 
-export interface PropertyDetails {
-	bedrooms: number;
-	bathrooms: number;
-	parkingSpaces: number;
-	landArea?: number;
-	floorArea?: number;
-}
+// Clean listing type directly from Convex
+export type ConvexListing = Doc<"listings">;
 
-export interface ListingBase {
-	_id?: string; // Convex document id
-	listingType: ListingType;
-	subtype: ListingSubtype;
-	userId: string;
-	geohash: string;
-	buildingType: string;
-	price?: PriceRange;
-	pricePreference?: PriceRange;
-	propertyDetails: PropertyDetails;
-	mustHaveFeatures?: string[];
-	niceToHaveFeatures?: string[];
-	features?: string[];
-	headline: string;
-	description: string;
-	images?: string[];
-	suburb: string;
-	state: string;
-	postcode: string;
-	latitude: number;
-	longitude: number;
-	location?: {
-		latitude: number;
-		longitude: number;
-	};
-	street?: string;
-	isPremium?: boolean;
-	sample?: boolean;
-	expiresAt?: number;
-	createdAt: number;
-	updatedAt: number;
-}
+// Main unified listing type
+export type Listing = ConvexListing;
 
-// Discriminated union for type-safe listing handling
-export interface BuyerListing extends ListingBase {
-	listingType: "buyer";
-	pricePreference: PriceRange;
-	mustHaveFeatures?: string[];
-	niceToHaveFeatures?: string[];
-	radiusKm?: number; // Search radius for street buyers (1, 3, 5, 7 km)
-}
-
-export interface SellerListing extends ListingBase {
-	listingType: "seller";
-	price: PriceRange;
-	features?: string[];
-}
-
-// Main Listing type as discriminated union
-export type Listing = BuyerListing | SellerListing;
-
-// Convex document types that include system fields
-// More flexible type that doesn't rely on discriminated union constraints
-export type ConvexListing = ListingBase & {
-	_id?: string;
-	_creationTime?: number;
-	[key: string]: any; // Allow additional Convex fields
-};
-
-// Type guards for runtime type checking - handles both clean types and Convex data
-export function isBuyerListing(listing: ConvexListing | any): listing is BuyerListing {
+// Type guards for runtime type checking
+export function isBuyerListing(listing: any): listing is Listing & { listingType: "buyer" } {
 	return listing && listing.listingType === "buyer";
 }
 
-export function isSellerListing(listing: ConvexListing | any): listing is SellerListing {
+export function isSellerListing(listing: any): listing is Listing & { listingType: "seller" } {
 	return listing && listing.listingType === "seller";
+}
+
+// Helper functions for clean schema
+export function getListingPrice(listing: Listing): { min: number; max: number } {
+	return { min: listing.priceMin, max: listing.priceMax };
+}
+
+export function getListingAddress(listing: Listing): string {
+	if (listing.address) return listing.address;
+	return `${listing.suburb}, ${listing.state} ${listing.postcode}`;
+}
+
+// Form data interfaces for creating/editing listings
+export interface CreateListingData {
+	listingType: ListingType;
+	suburb: string;
+	state: string;
+	postcode: string;
+	address?: string;
+	latitude: number;
+	longitude: number;
+	geohash: string;
+	buildingType: BuildingType;
+	bedrooms: number;
+	bathrooms: number;
+	parking: number;
+	priceMin: number;
+	priceMax: number;
+	features: Feature[];
+	buyerType?: BuyerType;
+	searchRadius?: number;
+	sellerType?: SellerType;
+	headline: string;
+	description: string;
+	images?: string[];
+	contactEmail?: string;
+	contactPhone?: string;
+	isActive: boolean;
+	isPremium?: boolean;
 }

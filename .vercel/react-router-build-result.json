@@ -30,6 +30,13 @@
       "features/listings/pages/ListingDetailPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "features/listings/pages/MatchesPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "features/listings/pages/MatchDetailPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/listings/create": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "features/listings/pages/EditListingPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "features/listings/pages/MyListingsPage": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/admin/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/admin/listings/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/admin/listings/create": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/admin/listings/edit/$id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/index": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/chat": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
       "routes/dashboard/settings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
@@ -221,6 +228,69 @@
           "runtime": "nodejs"
         }
       },
+      "routes/listings/create": {
+        "id": "routes/listings/create",
+        "parentId": "root",
+        "file": "app/routes/listings/create.tsx",
+        "path": "listings/create",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "features/listings/pages/EditListingPage": {
+        "id": "features/listings/pages/EditListingPage",
+        "parentId": "root",
+        "file": "app/features/listings/pages/EditListingPage.tsx",
+        "path": "listings/edit/:id",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "features/listings/pages/MyListingsPage": {
+        "id": "features/listings/pages/MyListingsPage",
+        "parentId": "root",
+        "file": "app/features/listings/pages/MyListingsPage.tsx",
+        "path": "listings/my-listings",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/admin/index": {
+        "id": "routes/admin/index",
+        "parentId": "root",
+        "file": "app/routes/admin/index.tsx",
+        "path": "admin",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/admin/listings/index": {
+        "id": "routes/admin/listings/index",
+        "parentId": "root",
+        "file": "app/routes/admin/listings/index.tsx",
+        "path": "admin/listings",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/admin/listings/create": {
+        "id": "routes/admin/listings/create",
+        "parentId": "root",
+        "file": "app/routes/admin/listings/create.tsx",
+        "path": "admin/listings/create",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/admin/listings/edit/$id": {
+        "id": "routes/admin/listings/edit/$id",
+        "parentId": "root",
+        "file": "app/routes/admin/listings/edit/$id.tsx",
+        "path": "admin/listings/edit/:id",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
       "routes/dashboard/layout": {
         "id": "routes/dashboard/layout",
         "parentId": "root",
@@ -392,6 +462,48 @@
         "parentId": "root",
         "file": "features/listings/pages/MatchDetailPage.tsx",
         "path": "listings/:state/:type/:suburb/:id/matches/:matchId"
+      },
+      "routes/listings/create": {
+        "id": "routes/listings/create",
+        "parentId": "root",
+        "file": "routes/listings/create.tsx",
+        "path": "listings/create"
+      },
+      "features/listings/pages/EditListingPage": {
+        "id": "features/listings/pages/EditListingPage",
+        "parentId": "root",
+        "file": "features/listings/pages/EditListingPage.tsx",
+        "path": "listings/edit/:id"
+      },
+      "features/listings/pages/MyListingsPage": {
+        "id": "features/listings/pages/MyListingsPage",
+        "parentId": "root",
+        "file": "features/listings/pages/MyListingsPage.tsx",
+        "path": "listings/my-listings"
+      },
+      "routes/admin/index": {
+        "id": "routes/admin/index",
+        "parentId": "root",
+        "file": "routes/admin/index.tsx",
+        "path": "admin"
+      },
+      "routes/admin/listings/index": {
+        "id": "routes/admin/listings/index",
+        "parentId": "root",
+        "file": "routes/admin/listings/index.tsx",
+        "path": "admin/listings"
+      },
+      "routes/admin/listings/create": {
+        "id": "routes/admin/listings/create",
+        "parentId": "root",
+        "file": "routes/admin/listings/create.tsx",
+        "path": "admin/listings/create"
+      },
+      "routes/admin/listings/edit/$id": {
+        "id": "routes/admin/listings/edit/$id",
+        "parentId": "root",
+        "file": "routes/admin/listings/edit/$id.tsx",
+        "path": "admin/listings/edit/:id"
       },
       "routes/dashboard/layout": {
         "id": "routes/dashboard/layout",

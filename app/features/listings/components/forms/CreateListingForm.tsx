@@ -12,7 +12,7 @@ import { Switch } from "../../../../components/ui/switch";
 import { Plus, X, Home, Building2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { api } from "@/convex/_generated/api";
-import type { ListingType, ListingSubtype, PropertyDetails, PriceRange } from "../../types";
+import type { ListingType, Feature } from "../../types";
 import { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } from "../../../../../shared/constants/listingPrices";
 import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
 

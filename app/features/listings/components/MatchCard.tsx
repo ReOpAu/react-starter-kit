@@ -34,9 +34,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 	};
 
 	const formatPrice = (listing: Listing) => {
-		const price = listing.price || listing.pricePreference;
-		if (!price) return "Price not specified";
-		return `$${price.min.toLocaleString()} - $${price.max.toLocaleString()}`;
+		if (!listing.priceMin || !listing.priceMax) return "Price not specified";
+		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
 	};
 
 	return (
@@ -50,9 +49,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 								{matchedListing.listingType}
 							</Badge>
 							<Badge variant="outline">{matchedListing.buildingType}</Badge>
-							{isBuyerListing(matchedListing) && matchedListing.subtype === "street" && matchedListing.radiusKm && (
+							{isBuyerListing(matchedListing) && matchedListing.buyerType === "street" && matchedListing.searchRadius && (
 								<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-									{matchedListing.radiusKm}km
+									{matchedListing.searchRadius}km
 								</Badge>
 							)}
 						</div>
@@ -81,9 +80,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({
 
 					{/* Property Details */}
 					<div className="flex gap-4 text-sm">
-						<span>{matchedListing.propertyDetails.bedrooms} bed</span>
-						<span>{matchedListing.propertyDetails.bathrooms} bath</span>
-						<span>{matchedListing.propertyDetails.parkingSpaces} car</span>
+						<span>{matchedListing.bedrooms} bed</span>
+						<span>{matchedListing.bathrooms} bath</span>
+						<span>{matchedListing.parking} car</span>
 					</div>
 
 					{/* Description */}

@@ -40,10 +40,10 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 		pageSize
 	});
 
-	const formatPrice = (price?: { min: number; max: number }) => {
-		if (!price) return "Not set";
-		if (price.min === price.max) return `$${price.min.toLocaleString()}`;
-		return `$${price.min.toLocaleString()} - $${price.max.toLocaleString()}`;
+	const formatPrice = (listing: ConvexListing) => {
+		if (!listing.priceMin || !listing.priceMax) return "Not set";
+		if (listing.priceMin === listing.priceMax) return `$${listing.priceMin.toLocaleString()}`;
+		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
 	};
 
 	const formatDate = (timestamp: number) => {
@@ -73,7 +73,7 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 
 	// Get unique states for filter dropdown
 	const availableStates = Array.from(
-		new Set(listingsData?.listings?.map(l => l.state) || [])
+		new Set(listingsData?.listings?.map(l => l.state).filter(state => state && state.trim() !== "") || [])
 	).sort();
 
 	return (
@@ -216,9 +216,16 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 											<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
 												{listing.listingType}
 											</Badge>
-											<Badge variant="outline" className="text-xs">
-												{listing.subtype}
-											</Badge>
+											{listing.listingType === "buyer" && listing.buyerType && (
+												<Badge variant="outline" className="text-xs">
+													{listing.buyerType}
+												</Badge>
+											)}
+											{listing.listingType === "seller" && listing.sellerType && (
+												<Badge variant="outline" className="text-xs">
+													{listing.sellerType}
+												</Badge>
+											)}
 										</div>
 									</TableCell>
 
@@ -236,7 +243,7 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 									{/* Property Details */}
 									<TableCell>
 										<div className="text-sm">
-											{listing.propertyDetails.bedrooms}br / {listing.propertyDetails.bathrooms}ba
+											{listing.bedrooms}br / {listing.bathrooms}ba
 										</div>
 										<div className="text-xs text-muted-foreground">
 											{listing.buildingType}
@@ -248,10 +255,7 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 										<div className="flex items-center gap-1 text-sm">
 											<DollarSign className="w-3 h-3" />
 											<span>
-												{listing.listingType === "seller" 
-													? formatPrice(listing.price)
-													: formatPrice(listing.pricePreference)
-												}
+												{formatPrice(listing)}
 											</span>
 										</div>
 									</TableCell>

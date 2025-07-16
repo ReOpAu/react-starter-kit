@@ -1,7 +1,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Listing, BuyerListing, SellerListing } from "../app/features/listings/types";
 import { getSearchGeohashes } from "./geohashUtils";
+import type { Doc } from "./_generated/dataModel";
 
 const MATCHING_CONFIG = {
   weights: {
@@ -25,7 +25,7 @@ const MATCHING_CONFIG = {
 
 type ScoreKey = keyof typeof MATCHING_CONFIG.weights;
 
-function calculateMatchScore(listingA: Listing, listingB: Listing) {
+function calculateMatchScore(listingA: Doc<"listings">, listingB: Doc<"listings">) {
   const buyer = listingA.listingType === 'buyer' ? listingA : listingB;
   const seller = listingA.listingType === 'seller' ? listingA : listingB;
   const breakdown: Record<ScoreKey, number> = {
@@ -52,60 +52,75 @@ function calculateMatchScore(listingA: Listing, listingB: Listing) {
   return { score: finalScore, breakdown };
 }
 
-function scoreBuildingType(buyer: Listing, seller: Listing) {
+function scoreBuildingType(buyer: Doc<"listings">, seller: Doc<"listings">) {
   return buyer.buildingType === seller.buildingType ? 100 : 0;
 }
 
-function scorePrice(buyer: Listing, seller: Listing) {
-  if (!buyer.pricePreference || !seller.price) return 0;
-  const bMin = buyer.pricePreference.min;
-  const bMax = buyer.pricePreference.max;
-  const sMin = seller.price.min;
-  const sMax = seller.price.max;
+function scorePrice(buyer: Doc<"listings">, seller: Doc<"listings">) {
+  // Use clean schema price fields
+  const bMin = buyer.priceMin;
+  const bMax = buyer.priceMax;
+  const sMin = seller.priceMin;
+  const sMax = seller.priceMax;
   if (bMax < sMin || sMax < bMin) return 0;
   return 100;
 }
 
-function scorePropertyDetails(buyer: Listing, seller: Listing) {
+function scorePropertyDetails(buyer: Doc<"listings">, seller: Doc<"listings">) {
   const weights = MATCHING_CONFIG.propertyDetailWeights;
   let score = 0;
   let total = 0;
-  for (const key of Object.keys(weights) as (keyof typeof weights)[]) {
-    const diff = Math.abs(buyer.propertyDetails[key] - seller.propertyDetails[key]);
-    const subScore = Math.max(0, 100 - (diff * MATCHING_CONFIG.propertyDetailMismatchPenalty));
-    score += subScore * weights[key];
-    total += weights[key];
-  }
+  
+  // Score bedrooms
+  const bedroomDiff = Math.abs(buyer.bedrooms - seller.bedrooms);
+  const bedroomScore = Math.max(0, 100 - (bedroomDiff * MATCHING_CONFIG.propertyDetailMismatchPenalty));
+  score += bedroomScore * weights.bedrooms;
+  total += weights.bedrooms;
+  
+  // Score bathrooms
+  const bathroomDiff = Math.abs(buyer.bathrooms - seller.bathrooms);
+  const bathroomScore = Math.max(0, 100 - (bathroomDiff * MATCHING_CONFIG.propertyDetailMismatchPenalty));
+  score += bathroomScore * weights.bathrooms;
+  total += weights.bathrooms;
+  
+  // Score parking
+  const parkingDiff = Math.abs(buyer.parking - seller.parking);
+  const parkingScore = Math.max(0, 100 - (parkingDiff * MATCHING_CONFIG.propertyDetailMismatchPenalty));
+  score += parkingScore * weights.parkingSpaces;
+  total += weights.parkingSpaces;
+  
   return total ? score / total : 100;
 }
 
-function scoreFeatures(buyer: Listing, seller: Listing) {
-  const must = buyer.mustHaveFeatures || [];
-  const nice = buyer.niceToHaveFeatures || [];
+function scoreFeatures(buyer: Doc<"listings">, seller: Doc<"listings">) {
+  // Simplified feature matching using clean schema
+  const buyerFeatures = buyer.features || [];
   const sellerFeatures = seller.features || [];
-  if (must.length && !must.every(f => sellerFeatures.includes(f))) return 0;
-  const mustHaveScore = must.length ? (must.filter(f => sellerFeatures.includes(f)).length / must.length) * 100 : 100;
-  const niceToHaveScore = nice.length ? (nice.filter(f => sellerFeatures.includes(f)).length / nice.length) * 100 : 100;
-  return (mustHaveScore * MATCHING_CONFIG.featureWeights.mustHave + niceToHaveScore * MATCHING_CONFIG.featureWeights.niceToHave) /
-    (MATCHING_CONFIG.featureWeights.mustHave + MATCHING_CONFIG.featureWeights.niceToHave);
+  
+  if (buyerFeatures.length === 0) return 100; // No feature preferences
+  
+  // Calculate overlap percentage
+  const overlappingFeatures = buyerFeatures.filter(f => sellerFeatures.includes(f));
+  const overlapPercentage = (overlappingFeatures.length / buyerFeatures.length) * 100;
+  
+  return Math.round(overlapPercentage);
 }
 
-function scoreLocation(buyer: Listing, seller: Listing) {
+function scoreLocation(buyer: Doc<"listings">, seller: Doc<"listings">) {
   // Perfect score for suburb buyers in the same suburb
-  if (buyer.subtype === "suburb" && buyer.suburb === seller.suburb) return 100;
+  if (buyer.buyerType === "suburb" && buyer.suburb === seller.suburb) return 100;
   
   const dist = haversine(buyer.latitude, buyer.longitude, seller.latitude, seller.longitude);
   
   // For street buyers with radius, use radius-based scoring
-  const buyerRadiusKm = (buyer as any).radiusKm;
-  if (buyer.subtype === "street" && buyerRadiusKm) {
-    if (dist <= buyerRadiusKm) {
+  if (buyer.buyerType === "street" && buyer.searchRadius) {
+    if (dist <= buyer.searchRadius) {
       // Score within radius: 100% at center, decreasing to 60% at radius edge
-      const distanceRatio = dist / buyerRadiusKm;
+      const distanceRatio = dist / buyer.searchRadius;
       return Math.max(60, Math.round(100 - (distanceRatio * 40)));
     } else {
       // Outside radius: very low score based on overage
-      const overageRatio = Math.min(1, (dist - buyerRadiusKm) / buyerRadiusKm);
+      const overageRatio = Math.min(1, (dist - buyer.searchRadius) / buyer.searchRadius);
       return Math.max(0, Math.round(60 - (overageRatio * 60)));
     }
   }
@@ -146,7 +161,7 @@ export const findMatches = query({
     // Get all listings of the counterpart type in the same state
     let candidates = await ctx.db
       .query("listings")
-      .withIndex("by_listingType", q => q.eq("listingType", counterpartType))
+      .withIndex("by_type", q => q.eq("listingType", counterpartType))
       .collect();
     
     // STRICT STATE BOUNDARY ENFORCEMENT
@@ -166,12 +181,12 @@ export const findMatches = query({
         }
         
         // RULE 2: For suburb listings, ONLY allow exact suburb matches (no geohash expansion)
-        if (originalListing.subtype === "suburb" || listing.subtype === "suburb") {
+        if (originalListing.buyerType === "suburb" || listing.buyerType === "suburb") {
           return false; // Already checked exact suburb match above, so exclude
         }
         
         // RULE 3: For street listings, allow geohash neighborhood matching with radius constraints
-        if (originalListing.subtype === "street" && listing.subtype === "street" && listing.geohash) {
+        if (originalListing.buyerType === "street" && listing.buyerType === "street" && listing.geohash) {
           const isInGeohashNeighborhood = searchGeohashes.some(searchHash => 
             listing.geohash.startsWith(searchHash.substring(0, 5))
           );
@@ -179,28 +194,26 @@ export const findMatches = query({
           if (!isInGeohashNeighborhood) return false;
           
           // If original listing is a street buyer with radius, check distance constraint
-          const originalRadiusKm = (originalListing as any).radiusKm;
-          if (originalListing.listingType === "buyer" && originalRadiusKm) {
+          if (originalListing.listingType === "buyer" && originalListing.searchRadius) {
             if (originalListing.latitude && originalListing.longitude && listing.latitude && listing.longitude) {
               const distance = haversine(
                 originalListing.latitude, originalListing.longitude,
                 listing.latitude, listing.longitude
               );
-              return distance <= originalRadiusKm;
+              return distance <= originalListing.searchRadius;
             }
             // If coordinates missing, fall back to geohash neighborhood
             return isInGeohashNeighborhood;
           }
           
           // If candidate is a street buyer with radius, check their constraint
-          const candidateRadiusKm = (listing as any).radiusKm;
-          if (listing.listingType === "buyer" && candidateRadiusKm) {
+          if (listing.listingType === "buyer" && listing.searchRadius) {
             if (listing.latitude && listing.longitude && originalListing.latitude && originalListing.longitude) {
               const distance = haversine(
                 listing.latitude, listing.longitude,
                 originalListing.latitude, originalListing.longitude
               );
-              return distance <= candidateRadiusKm;
+              return distance <= listing.searchRadius;
             }
             // If coordinates missing, fall back to geohash neighborhood
             return isInGeohashNeighborhood;
@@ -219,7 +232,7 @@ export const findMatches = query({
     }
     let scoredMatches = [];
     for (const candidate of candidates) {
-      const { score, breakdown } = calculateMatchScore(originalListing as Listing, candidate as Listing);
+      const { score, breakdown } = calculateMatchScore(originalListing, candidate);
       scoredMatches.push({
         listing: candidate,
         score,
@@ -274,7 +287,7 @@ export const getMatchDetails = query({
     }
 
     // Calculate match score and breakdown
-    const { score, breakdown } = calculateMatchScore(originalListing as any, matchedListing as any);
+    const { score, breakdown } = calculateMatchScore(originalListing, matchedListing);
     
     return {
       originalListing,

@@ -32,8 +32,10 @@ import type * as subscriptions from "../subscriptions.js";
 import type * as testing_runValidationTests from "../testing/runValidationTests.js";
 import type * as testing_transcriptionSimulator from "../testing/transcriptionSimulator.js";
 import type * as testing_validationTestCases from "../testing/validationTestCases.js";
+import type * as types_listings from "../types/listings.js";
 import type * as users from "../users.js";
 import type * as utils_auth from "../utils/auth.js";
+import type * as utils_listingMigration from "../utils/listingMigration.js";
 import type * as utils_logger from "../utils/logger.js";
 
 import type {
@@ -75,8 +77,10 @@ declare const fullApi: ApiFromModules<{
   "testing/runValidationTests": typeof testing_runValidationTests;
   "testing/transcriptionSimulator": typeof testing_transcriptionSimulator;
   "testing/validationTestCases": typeof testing_validationTestCases;
+  "types/listings": typeof types_listings;
   users: typeof users;
   "utils/auth": typeof utils_auth;
+  "utils/listingMigration": typeof utils_listingMigration;
   "utils/logger": typeof utils_logger;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

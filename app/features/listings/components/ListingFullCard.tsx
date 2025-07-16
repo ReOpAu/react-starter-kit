@@ -86,10 +86,15 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 								<Badge variant={listing.listingType === "buyer" ? "default" : "secondary"}>
 									{listing.listingType}
 								</Badge>
-								<Badge variant="outline">{listing.subtype}</Badge>
-								{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+								{listing.listingType === "buyer" && listing.buyerType && (
+									<Badge variant="outline">{listing.buyerType}</Badge>
+								)}
+								{listing.listingType === "seller" && listing.sellerType && (
+									<Badge variant="outline">{listing.sellerType}</Badge>
+								)}
+								{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
 									<Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-										{listing.radiusKm}km radius
+										{listing.searchRadius}km radius
 									</Badge>
 								)}
 								{listing.isPremium && <Badge variant="destructive">Premium</Badge>}
@@ -99,14 +104,9 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 							</p>
 						</div>
 						<div className="text-right">
-							{listing.price && (
+							{listing.priceMin && listing.priceMax && (
 								<div className="text-2xl font-bold text-primary">
-									${listing.price.min.toLocaleString()} - ${listing.price.max.toLocaleString()}
-								</div>
-							)}
-							{listing.pricePreference && (
-								<div className="text-2xl font-bold text-primary">
-									${listing.pricePreference.min.toLocaleString()} - ${listing.pricePreference.max.toLocaleString()}
+									${listing.priceMin.toLocaleString()} - ${listing.priceMax.toLocaleString()}
 								</div>
 							)}
 						</div>
@@ -123,36 +123,24 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 							<TableBody>
 								<TableRow>
 									<TableCell className="font-medium">Bedrooms</TableCell>
-									<TableCell>{listing.propertyDetails.bedrooms}</TableCell>
+									<TableCell>{listing.bedrooms}</TableCell>
 								</TableRow>
 								<TableRow>
 									<TableCell className="font-medium">Bathrooms</TableCell>
-									<TableCell>{listing.propertyDetails.bathrooms}</TableCell>
+									<TableCell>{listing.bathrooms}</TableCell>
 								</TableRow>
 								<TableRow>
 									<TableCell className="font-medium">Parking Spaces</TableCell>
-									<TableCell>{listing.propertyDetails.parkingSpaces}</TableCell>
+									<TableCell>{listing.parking}</TableCell>
 								</TableRow>
-								{listing.propertyDetails.landArea && (
-									<TableRow>
-										<TableCell className="font-medium">Land Area</TableCell>
-										<TableCell>{listing.propertyDetails.landArea} sqm</TableCell>
-									</TableRow>
-								)}
-								{listing.propertyDetails.floorArea && (
-									<TableRow>
-										<TableCell className="font-medium">Floor Area</TableCell>
-										<TableCell>{listing.propertyDetails.floorArea} sqm</TableCell>
-									</TableRow>
-								)}
 								<TableRow>
 									<TableCell className="font-medium">Building Type</TableCell>
 									<TableCell>{listing.buildingType}</TableCell>
 								</TableRow>
-								{isBuyerListing(listing) && listing.subtype === "street" && listing.radiusKm && (
+								{isBuyerListing(listing) && listing.buyerType === "street" && listing.searchRadius && (
 									<TableRow>
 										<TableCell className="font-medium">Search Radius</TableCell>
-										<TableCell>{listing.radiusKm}km</TableCell>
+										<TableCell>{listing.searchRadius}km</TableCell>
 									</TableRow>
 								)}
 							</TableBody>
@@ -167,29 +155,6 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({ listing }) => 
 						</>
 					)}
 
-					{/* Buyer-specific features */}
-					{listing.listingType === "buyer" && (
-						<>
-							{listing.mustHaveFeatures && listing.mustHaveFeatures.length > 0 && (
-								<>
-									<Separator className="my-4" />
-									<div className="space-y-2">
-										<h3 className="text-lg font-semibold">Must Have Features</h3>
-										<PropertyFeatures features={listing.mustHaveFeatures} />
-									</div>
-								</>
-							)}
-							{listing.niceToHaveFeatures && listing.niceToHaveFeatures.length > 0 && (
-								<>
-									<Separator className="my-4" />
-									<div className="space-y-2">
-										<h3 className="text-lg font-semibold">Nice to Have Features</h3>
-										<PropertyFeatures features={listing.niceToHaveFeatures} />
-									</div>
-								</>
-							)}
-						</>
-					)}
 
 					{/* Listing Metadata */}
 					<Separator className="my-4" />

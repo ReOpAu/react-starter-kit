@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { checkAuth } from "./utils/auth";
+// Clean schema - no migration utilities needed
 
 export const clearAllListings = mutation({
   args: {},
@@ -17,34 +18,53 @@ export const createListing = mutation({
   args: {
     listing: v.object({
       listingType: v.union(v.literal("buyer"), v.literal("seller")),
-      subtype: v.union(v.literal("street"), v.literal("suburb")),
       userId: v.id("users"),
-      geohash: v.string(),
-      buildingType: v.string(),
-      price: v.optional(v.object({ min: v.number(), max: v.number() })),
-      pricePreference: v.optional(v.object({ min: v.number(), max: v.number() })),
-      propertyDetails: v.object({
-        bedrooms: v.number(),
-        bathrooms: v.number(),
-        parkingSpaces: v.number(),
-        landArea: v.optional(v.number()),
-        floorArea: v.optional(v.number()),
-      }),
-      mustHaveFeatures: v.optional(v.array(v.string())),
-      niceToHaveFeatures: v.optional(v.array(v.string())),
-      features: v.optional(v.array(v.string())),
-      headline: v.string(),
-      description: v.string(),
-      images: v.optional(v.array(v.string())),
       suburb: v.string(),
       state: v.string(),
       postcode: v.string(),
-      street: v.optional(v.string()),
+      address: v.optional(v.string()),
       latitude: v.number(),
       longitude: v.number(),
+      geohash: v.string(),
+      buildingType: v.union(
+        v.literal("House"),
+        v.literal("Apartment"),
+        v.literal("Townhouse"),
+        v.literal("Villa"),
+        v.literal("Unit")
+      ),
+      bedrooms: v.number(),
+      bathrooms: v.number(),
+      parking: v.number(),
+      priceMin: v.number(),
+      priceMax: v.number(),
+      features: v.array(v.union(
+        v.literal("Pool"),
+        v.literal("Garden"),
+        v.literal("Garage"),
+        v.literal("AirConditioning"),
+        v.literal("SolarPanels"),
+        v.literal("StudyRoom"),
+        v.literal("WalkInWardrobe"),
+        v.literal("Ensuite"),
+        v.literal("Balcony"),
+        v.literal("Fireplace"),
+        v.literal("SecuritySystem"),
+        v.literal("Gym"),
+        v.literal("Tennis"),
+        v.literal("Sauna")
+      )),
+      buyerType: v.optional(v.union(v.literal("street"), v.literal("suburb"))),
+      searchRadius: v.optional(v.number()),
+      sellerType: v.optional(v.union(v.literal("sale"), v.literal("offmarket"))),
+      headline: v.string(),
+      description: v.string(),
+      images: v.optional(v.array(v.string())),
+      contactEmail: v.optional(v.string()),
+      contactPhone: v.optional(v.string()),
+      isActive: v.boolean(),
       isPremium: v.optional(v.boolean()),
       sample: v.optional(v.boolean()),
-      expiresAt: v.optional(v.number()),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -70,35 +90,51 @@ export const updateListing = mutation({
   args: {
     id: v.id("listings"),
     updates: v.object({
-      listingType: v.optional(v.union(v.literal("buyer"), v.literal("seller"))),
-      subtype: v.optional(v.union(v.literal("street"), v.literal("suburb"))),
-      geohash: v.optional(v.string()),
-      buildingType: v.optional(v.string()),
-      price: v.optional(v.object({ min: v.number(), max: v.number() })),
-      pricePreference: v.optional(v.object({ min: v.number(), max: v.number() })),
-      propertyDetails: v.optional(v.object({
-        bedrooms: v.number(),
-        bathrooms: v.number(),
-        parkingSpaces: v.number(),
-        landArea: v.optional(v.number()),
-        floorArea: v.optional(v.number()),
-      })),
-      mustHaveFeatures: v.optional(v.array(v.string())),
-      niceToHaveFeatures: v.optional(v.array(v.string())),
-      features: v.optional(v.array(v.string())),
-      radiusKm: v.optional(v.number()),
-      headline: v.optional(v.string()),
-      description: v.optional(v.string()),
-      images: v.optional(v.array(v.string())),
       suburb: v.optional(v.string()),
       state: v.optional(v.string()),
       postcode: v.optional(v.string()),
-      street: v.optional(v.string()),
+      address: v.optional(v.string()),
       latitude: v.optional(v.number()),
       longitude: v.optional(v.number()),
+      geohash: v.optional(v.string()),
+      buildingType: v.optional(v.union(
+        v.literal("House"),
+        v.literal("Apartment"),
+        v.literal("Townhouse"),
+        v.literal("Villa"),
+        v.literal("Unit")
+      )),
+      bedrooms: v.optional(v.number()),
+      bathrooms: v.optional(v.number()),
+      parking: v.optional(v.number()),
+      priceMin: v.optional(v.number()),
+      priceMax: v.optional(v.number()),
+      features: v.optional(v.array(v.union(
+        v.literal("Pool"),
+        v.literal("Garden"),
+        v.literal("Garage"),
+        v.literal("AirConditioning"),
+        v.literal("SolarPanels"),
+        v.literal("StudyRoom"),
+        v.literal("WalkInWardrobe"),
+        v.literal("Ensuite"),
+        v.literal("Balcony"),
+        v.literal("Fireplace"),
+        v.literal("SecuritySystem"),
+        v.literal("Gym"),
+        v.literal("Tennis"),
+        v.literal("Sauna")
+      ))),
+      buyerType: v.optional(v.union(v.literal("street"), v.literal("suburb"))),
+      searchRadius: v.optional(v.number()),
+      sellerType: v.optional(v.union(v.literal("sale"), v.literal("offmarket"))),
+      headline: v.optional(v.string()),
+      description: v.optional(v.string()),
+      images: v.optional(v.array(v.string())),
+      contactEmail: v.optional(v.string()),
+      contactPhone: v.optional(v.string()),
+      isActive: v.optional(v.boolean()),
       isPremium: v.optional(v.boolean()),
-      sample: v.optional(v.boolean()),
-      expiresAt: v.optional(v.number()),
       updatedAt: v.optional(v.number()),
     })
   },
@@ -135,7 +171,7 @@ export const listListings = query({
     if (listingType) {
       results = await ctx.db
         .query("listings")
-        .withIndex("by_listingType", q2 => q2.eq("listingType", listingType))
+        .withIndex("by_type", q2 => q2.eq("listingType", listingType))
         .collect();
     } else {
       results = await ctx.db.query("listings").collect();
@@ -145,7 +181,7 @@ export const listListings = query({
     console.log("Filter inputs:", { listingType, state, suburb, page, pageSize, totalListings: results.length });
     
     if (state) {
-      // Case insensitive state matching
+      // Case insensitive state matching - direct field access
       const beforeStateFilter = results.length;
       results = results.filter(l => l.state.toLowerCase() === state.toLowerCase());
       console.log(`State filter: ${beforeStateFilter} -> ${results.length}`);
@@ -158,7 +194,7 @@ export const listListings = query({
       const beforeSuburbFilter = results.length;
       console.log(`Suburb normalization: ${suburb} -> ${normalizedSuburb}`);
       console.log("Available suburbs:", [...new Set(results.map(l => l.suburb))]);
-      // Case insensitive suburb matching
+      // Case insensitive suburb matching - direct field access
       results = results.filter(l => l.suburb.toLowerCase() === normalizedSuburb.toLowerCase());
       console.log(`Suburb filter: ${beforeSuburbFilter} -> ${results.length}`);
     }
