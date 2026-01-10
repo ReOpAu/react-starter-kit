@@ -29,7 +29,7 @@ const TypeListingsPage: React.FC = () => {
 								href: `/listings/${state?.toLowerCase()}`,
 							},
 							{
-								label: `${type?.charAt(0).toUpperCase() + type?.slice(1)} Listings`,
+								label: `${type ? type.charAt(0).toUpperCase() + type.slice(1) : ""} Listings`,
 								href: `/listings/${state?.toLowerCase()}/${type?.toLowerCase()}`,
 							},
 						]}

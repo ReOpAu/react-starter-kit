@@ -71,7 +71,7 @@ const ListingDetailPage: React.FC = () => {
 								href: `/listings/${state?.toLowerCase()}`,
 							},
 							{
-								label: `${type?.charAt(0).toUpperCase() + type?.slice(1)}`,
+								label: `${type ? type.charAt(0).toUpperCase() + type.slice(1) : ""}`,
 								href: `/listings/${state?.toLowerCase()}/${type?.toLowerCase()}`,
 							},
 							{
@@ -96,10 +96,10 @@ const ListingDetailPage: React.FC = () => {
 					{/* Main listing content */}
 					<div className="lg:col-span-2">
 						{/* Campaign countdown if applicable */}
-						{listing.expiresAt && (
+						{(listing as any).expiresAt && (
 							<div className="mb-6">
 								<CampaignCountdown
-									targetDate={new Date(listing.expiresAt)}
+									targetDate={new Date((listing as any).expiresAt)}
 									title="Listing Expires In"
 								/>
 							</div>

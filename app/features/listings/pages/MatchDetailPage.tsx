@@ -69,9 +69,10 @@ const MatchDetailPage: React.FC = () => {
 	const listingTypeInfo = getListingTypeInfo(originalListing, matchedListing);
 	const colorClasses = getColorClasses(listingTypeInfo);
 	const priceComparison = calculatePriceComparison(originalListing, matchedListing);
-	const distance = originalListing && matchedListing
+	const distanceRaw = originalListing && matchedListing
 		? calculateListingDistance(originalListing, matchedListing)
 		: undefined;
+	const distance = distanceRaw ?? undefined;
 	const locationInfo = calculateLocationInfo(originalListing, matchedListing, distance);
 
 	return (

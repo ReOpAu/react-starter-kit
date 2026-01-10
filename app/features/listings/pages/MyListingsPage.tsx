@@ -24,7 +24,7 @@ import {
 } from "../../../components/ui/card";
 import { Skeleton } from "../../../components/ui/skeleton";
 import { DeleteListingButton } from "../components/forms";
-import type { ConvexListing } from "../types";
+import { type ConvexListing, formatListingPrice } from "../types";
 
 const MyListingsPage: React.FC = () => {
 	const { user } = useUser();
@@ -49,10 +49,11 @@ const MyListingsPage: React.FC = () => {
 		sellers: userListings.filter((l) => l.listingType === "seller").length,
 	};
 
-	const formatPrice = (price?: { min: number; max: number }) => {
-		if (!price) return "Not specified";
-		if (price.min === price.max) return `$${price.min.toLocaleString()}`;
-		return `$${price.min.toLocaleString()} - $${price.max.toLocaleString()}`;
+	const formatPrice = (listing: ConvexListing) => {
+		if (listing.priceMin === listing.priceMax) {
+			return `$${listing.priceMin.toLocaleString()}`;
+		}
+		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
 	};
 
 	const formatDate = (timestamp: number) => {
@@ -226,7 +227,12 @@ const MyListingsPage: React.FC = () => {
 												>
 													{listing.listingType}
 												</Badge>
-												<Badge variant="outline">{listing.subtype}</Badge>
+												{listing.buyerType && (
+												<Badge variant="outline">{listing.buyerType}</Badge>
+											)}
+											{listing.sellerType && (
+												<Badge variant="outline">{listing.sellerType}</Badge>
+											)}
 												{listing.isPremium && (
 													<Badge variant="destructive">Premium</Badge>
 												)}
@@ -255,27 +261,26 @@ const MyListingsPage: React.FC = () => {
 									<div className="space-y-3">
 										{/* Property Details */}
 										<div className="flex items-center gap-4 text-sm">
-											<span>{listing.propertyDetails.bedrooms} bed</span>
-											<span>{listing.propertyDetails.bathrooms} bath</span>
-											<span>{listing.propertyDetails.parkingSpaces} car</span>
-											<span>{listing.buildingType}</span>
+											<span>{listing.bedrooms} bed</span>
+											<span>{listing.bathrooms} bath</span>
+											<span>{listing.parking} car</span>
+											{listing.buildingType && (
+												<span>{listing.buildingType}</span>
+											)}
 										</div>
 
 										{/* Price */}
 										<div className="flex items-center gap-1 text-sm font-medium">
 											<DollarSign className="w-3 h-3" />
-											{listing.listingType === "seller"
-												? formatPrice(listing.price)
-												: formatPrice(listing.pricePreference)}
+											{formatPrice(listing)}
 										</div>
 
 										{/* Features */}
-										{(listing.features?.length ||
-											listing.mustHaveFeatures?.length) && (
+										{listing.features?.length > 0 && (
 											<div className="flex flex-wrap gap-1">
-												{(listing.features || listing.mustHaveFeatures || [])
+												{listing.features
 													.slice(0, 3)
-													.map((feature, index) => (
+													.map((feature: string, index: number) => (
 														<Badge
 															key={index}
 															variant="outline"
@@ -284,15 +289,9 @@ const MyListingsPage: React.FC = () => {
 															{feature}
 														</Badge>
 													))}
-												{(listing.features?.length ||
-													listing.mustHaveFeatures?.length ||
-													0) > 3 && (
+												{listing.features.length > 3 && (
 													<Badge variant="outline" className="text-xs">
-														+
-														{(listing.features?.length ||
-															listing.mustHaveFeatures?.length ||
-															0) - 3}{" "}
-														more
+														+{listing.features.length - 3} more
 													</Badge>
 												)}
 											</div>
