@@ -330,12 +330,12 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 
 			{/* Property Details - Shared Component */}
 			<PropertyDetailsFields
-				buildingType={formData.buildingType}
+				buildingType={(formData.buildingType || "") as any}
 				bedrooms={formData.bedrooms}
 				bathrooms={formData.bathrooms}
 				parking={formData.parking}
 				title="Property Specifications"
-				onPropertyChange={(property) => setFormData(prev => ({ ...prev, ...property }))}
+				onPropertyChange={(property) => setFormData(prev => ({ ...prev, ...property } as any))}
 			/>
 
 			{/* Asking Price - Shared Component */}

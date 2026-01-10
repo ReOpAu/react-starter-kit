@@ -187,7 +187,7 @@ export function CreateListingFormComponent() {
 					: { pricePreference: values.pricePreference, price: undefined }),
 			};
 
-			const listingId = await createListing({ listing: listingData });
+			const listingId = await createListing({ listing: listingData as any });
 			navigate(`/listings/my-listings?created=${listingId}`);
 		} catch (error) {
 			console.error("Failed to create listing:", error);
