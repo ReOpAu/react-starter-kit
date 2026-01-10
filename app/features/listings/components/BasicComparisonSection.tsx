@@ -104,7 +104,7 @@ export const BasicComparisonSection: React.FC<BasicComparisonSectionProps> = ({
 								<div>
 									<span className="text-gray-500 text-sm">Features:</span>
 									<div className="flex flex-wrap gap-1 mt-1">
-										{originalListing.features.slice(0, 3).map((feature) => (
+										{originalListing.features.slice(0, 3).map((feature: string) => (
 											<Badge
 												key={feature}
 												variant="secondary"
@@ -182,7 +182,7 @@ export const BasicComparisonSection: React.FC<BasicComparisonSectionProps> = ({
 							<div>
 								<span className="text-gray-500 text-sm">Features:</span>
 								<div className="flex flex-wrap gap-1 mt-1">
-									{matchedListing.features.slice(0, 3).map((feature) => (
+									{matchedListing.features.slice(0, 3).map((feature: string) => (
 										<Badge
 											key={feature}
 											variant="secondary"

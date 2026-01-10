@@ -142,18 +142,15 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 									{originalListing.suburb}, {originalListing.state}
 								</div>
 								<div className="text-sm">
-									{originalListing.propertyDetails.bedrooms} bed •{" "}
-									{originalListing.propertyDetails.bathrooms} bath •{" "}
-									{originalListing.propertyDetails.parkingSpaces} car
+									{originalListing.bedrooms} bed •{" "}
+									{originalListing.bathrooms} bath •{" "}
+									{originalListing.parking} car
 								</div>
-								{(originalListing.price || originalListing.pricePreference) && (
+								{(originalListing.priceMin || originalListing.priceMax) && (
 									<div className="flex items-center gap-1 text-sm">
 										<DollarSign className="w-4 h-4" />$
-										{(originalListing.price ||
-											originalListing.pricePreference)!.min.toLocaleString()}{" "}
-										- $
-										{(originalListing.price ||
-											originalListing.pricePreference)!.max.toLocaleString()}
+										{originalListing.priceMin.toLocaleString()} - $
+										{originalListing.priceMax.toLocaleString()}
 									</div>
 								)}
 							</CardContent>
@@ -183,18 +180,15 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 									{matchedListing.suburb}, {matchedListing.state}
 								</div>
 								<div className="text-sm">
-									{matchedListing.propertyDetails.bedrooms} bed •{" "}
-									{matchedListing.propertyDetails.bathrooms} bath •{" "}
-									{matchedListing.propertyDetails.parkingSpaces} car
+									{matchedListing.bedrooms} bed •{" "}
+									{matchedListing.bathrooms} bath •{" "}
+									{matchedListing.parking} car
 								</div>
-								{(matchedListing.price || matchedListing.pricePreference) && (
+								{(matchedListing.priceMin || matchedListing.priceMax) && (
 									<div className="flex items-center gap-1 text-sm">
 										<DollarSign className="w-4 h-4" />$
-										{(matchedListing.price ||
-											matchedListing.pricePreference)!.min.toLocaleString()}{" "}
-										- $
-										{(matchedListing.price ||
-											matchedListing.pricePreference)!.max.toLocaleString()}
+										{matchedListing.priceMin.toLocaleString()} - $
+										{matchedListing.priceMax.toLocaleString()}
 									</div>
 								)}
 							</CardContent>

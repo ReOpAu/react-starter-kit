@@ -25,10 +25,8 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 }) => {
 	// Helper function to format price
 	const formatPrice = (listing: Listing): string => {
-		const price = listing.price || listing.pricePreference;
-		if (!price) return "Price not specified";
-
-		return `$${price.min.toLocaleString()} - $${price.max.toLocaleString()}`;
+		if (!listing.priceMin && !listing.priceMax) return "Price not specified";
+		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
 	};
 
 	// Determine if suburbs match
@@ -69,7 +67,7 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 								</CardTitle>
 								<div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
 									<MapPin className="w-4 h-4" />
-									{originalListing.street && `${originalListing.street}, `}
+									{originalListing.address && `${originalListing.address}, `}
 									{originalListing.suburb}, {originalListing.state}
 								</div>
 							</div>
@@ -87,12 +85,10 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 						{/* Map */}
 						<div className="h-48 relative">
 							<Map
-								location={
-									originalListing.location || {
-										latitude: originalListing.latitude,
-										longitude: originalListing.longitude,
-									}
-								}
+								location={{
+									latitude: originalListing.latitude,
+									longitude: originalListing.longitude,
+								}}
 								zoom={15}
 								interactive={false}
 								listings={[originalListing]}
@@ -107,21 +103,21 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 									<Bed className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Bedrooms:</span>
 									<span className="font-medium">
-										{originalListing.propertyDetails.bedrooms}
+										{originalListing.bedrooms}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Bath className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Bathrooms:</span>
 									<span className="font-medium">
-										{originalListing.propertyDetails.bathrooms}
+										{originalListing.bathrooms}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Car className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Parking:</span>
 									<span className="font-medium">
-										{originalListing.propertyDetails.parkingSpaces}
+										{originalListing.parking}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">
@@ -158,7 +154,7 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 								</CardTitle>
 								<div className="flex items-center gap-1 text-sm text-gray-600 mt-1">
 									<MapPin className="w-4 h-4" />
-									{matchedListing.street && `${matchedListing.street}, `}
+									{matchedListing.address && `${matchedListing.address}, `}
 									{matchedListing.suburb}, {matchedListing.state}
 								</div>
 							</div>
@@ -176,12 +172,10 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 						{/* Map */}
 						<div className="h-48 relative">
 							<Map
-								location={
-									matchedListing.location || {
-										latitude: matchedListing.latitude,
-										longitude: matchedListing.longitude,
-									}
-								}
+								location={{
+									latitude: matchedListing.latitude,
+									longitude: matchedListing.longitude,
+								}}
 								zoom={15}
 								interactive={false}
 								listings={[matchedListing]}
@@ -196,21 +190,21 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 									<Bed className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Bedrooms:</span>
 									<span className="font-medium">
-										{matchedListing.propertyDetails.bedrooms}
+										{matchedListing.bedrooms}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Bath className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Bathrooms:</span>
 									<span className="font-medium">
-										{matchedListing.propertyDetails.bathrooms}
+										{matchedListing.bathrooms}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Car className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Parking:</span>
 									<span className="font-medium">
-										{matchedListing.propertyDetails.parkingSpaces}
+										{matchedListing.parking}
 									</span>
 								</div>
 								<div className="flex items-center gap-2">

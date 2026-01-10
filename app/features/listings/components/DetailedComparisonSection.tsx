@@ -88,9 +88,9 @@ export const DetailedComparisonSection: React.FC<DetailedComparisonSectionProps>
 		}
 
 		const commonFeatures = originalListing.features && matchedListing.features
-			? features.filter(feature => 
-				originalListing.features?.includes(feature) && 
-				matchedListing.features?.includes(feature)
+			? features.filter((feature: string) =>
+				originalListing.features?.includes(feature as any) &&
+				matchedListing.features?.includes(feature as any)
 			)
 			: [];
 
@@ -100,7 +100,7 @@ export const DetailedComparisonSection: React.FC<DetailedComparisonSectionProps>
 					<div className="text-sm font-medium">{features.length} features</div>
 					{commonFeatures.length > 0 && (
 						<div className="flex flex-wrap gap-1 justify-center">
-							{commonFeatures.slice(0, 3).map(feature => (
+							{commonFeatures.slice(0, 3).map((feature: string) => (
 								<Badge key={feature} className="bg-green-100 text-green-800 text-xs">
 									{feature}
 								</Badge>
@@ -358,7 +358,7 @@ export const DetailedComparisonSection: React.FC<DetailedComparisonSectionProps>
 									</div>
 									{commonFeatures.length > 0 ? (
 										<div className="flex flex-wrap gap-2">
-											{commonFeatures.map(feature => (
+											{commonFeatures.map((feature: string) => (
 												<Badge key={feature} className="bg-green-100 text-green-800">
 													{feature}
 												</Badge>
