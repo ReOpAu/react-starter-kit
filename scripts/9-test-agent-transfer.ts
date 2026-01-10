@@ -49,7 +49,7 @@ const testSpecializations = [
 ];
 
 testSpecializations.forEach((spec) => {
-	const recommended = recommendTransferAgent(spec);
+	const recommended = recommendTransferAgent(spec as "address_search" | "place_validation" | "location_services" | "nearby_services" | "enhanced_location" | "general_conversation" | "basic_address_search");
 	if (recommended) {
 		console.log(`✅ For "${spec}": Recommend ${recommended.name}`);
 	} else {
