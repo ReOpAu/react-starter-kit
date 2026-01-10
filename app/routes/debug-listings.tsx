@@ -2,16 +2,19 @@ import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 
 export default function DebugListings() {
-	const allListings = useQuery(api.listings.getAllListingsDebug);
-	const filteredListings = useQuery(api.listings.listListings, {
+	const allListingsData = useQuery(api.listings.getAllListingsDebug, {});
+	const filteredListingsData = useQuery(api.listings.listListings, {
 		listingType: "seller",
 		state: "vic",
 		suburb: "Toorak",
 	});
 
-	if (allListings === undefined || filteredListings === undefined) {
+	if (allListingsData === undefined || filteredListingsData === undefined) {
 		return <div className="p-8">Loading...</div>;
 	}
+
+	const allListings = allListingsData.listings;
+	const filteredListings = filteredListingsData.listings;
 
 	return (
 		<div className="p-8">

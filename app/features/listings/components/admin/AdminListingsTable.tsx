@@ -89,7 +89,7 @@ export const AdminListingsTable: React.FC<AdminListingsTableProps> = ({
 				listing.description.toLowerCase().includes(searchLower) ||
 				listing.suburb.toLowerCase().includes(searchLower) ||
 				listing.state.toLowerCase().includes(searchLower) ||
-				listing.buildingType.toLowerCase().includes(searchLower)
+				(listing.buildingType || "").toLowerCase().includes(searchLower)
 			);
 		}) || [];
 
