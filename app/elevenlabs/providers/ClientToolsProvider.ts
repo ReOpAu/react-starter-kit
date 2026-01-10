@@ -44,8 +44,8 @@ export function useUniversalClientTools(
 		const filtered: FilteredClientTools = {};
 
 		for (const toolName of assignedTools) {
-			if (allClientTools[toolName]) {
-				filtered[toolName] = allClientTools[toolName];
+			if (toolName in allClientTools) {
+				(filtered as any)[toolName] = (allClientTools as any)[toolName];
 			} else if (process.env.NODE_ENV === "development") {
 				// Development-only debugging for tool mismatches
 				console.warn(

@@ -28,7 +28,7 @@ interface AgentConversationConfig {
 		agent?: {
 			language?: string;
 		};
-	};
+	} | undefined;
 }
 
 /**
@@ -77,7 +77,7 @@ export function useAgentConversation(config: AgentConversationConfig) {
 				overrides: {
 					...overrides,
 					...sessionConfig?.overrides,
-				},
+				} as any,
 			});
 		},
 		[conversation, agentConfig.id, textOnly, overrides],
