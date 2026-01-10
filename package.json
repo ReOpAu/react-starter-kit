@@ -17,7 +17,7 @@
 		"@ai-sdk/react": "^1.2.12",
 		"@clerk/react-router": "^1.4.8",
 		"@convex-dev/polar": "^0.4.5",
-		"@elevenlabs/react": "^0.1.7",
+		"@elevenlabs/react": "^0.12.3",
 		"@hookform/resolvers": "^5.1.1",
 		"@polar-sh/sdk": "^0.32.16",
 		"@radix-ui/react-accordion": "^1.2.11",

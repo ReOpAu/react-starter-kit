@@ -73,6 +73,7 @@ export function useAgentConversation(config: AgentConversationConfig) {
 		}) => {
 			return conversation.startSession({
 				agentId: agentConfig.id,
+				connectionType: "websocket",
 				textOnly: sessionConfig?.textOnly ?? textOnly,
 				overrides: {
 					...overrides,

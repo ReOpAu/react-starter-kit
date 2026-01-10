@@ -63,7 +63,7 @@ export function useConversationManager(clientTools: Record<string, any>) {
 				addHistory({ type: "agent", text: message.message });
 			}
 		},
-		onStatusChange: (status: string) => {
+		onStatusChange: ({ status }) => {
 			log("🔄 Conversation status changed:", status);
 		},
 		onError: (error) => {

@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
-import type { Suggestion } from "~/stores/types";
+import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
 import { getIntentColor } from "~/utils/addressFinderUtils";
 
 interface AddressFinderUIProps {
@@ -36,11 +36,11 @@ interface AddressFinderUIProps {
 		isLoading: boolean;
 		searchQuery: string;
 		selectedResult: Suggestion | null;
-		currentIntent: string | null;
+		currentIntent: LocationIntent;
 		isRecording: boolean;
 		isVoiceActive: boolean;
 		agentRequestedManual: boolean;
-		history: Array<{ id: string; action: string; timestamp: number; details?: Record<string, unknown> }>;
+		history: HistoryItem[];
 		searchHistory: SearchHistoryEntry[];
 		addressSelections: AddressSelectionEntry[];
 	};
