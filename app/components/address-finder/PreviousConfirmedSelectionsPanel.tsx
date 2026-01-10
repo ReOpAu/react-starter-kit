@@ -1,17 +1,17 @@
 import type React from "react";
-import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import { Button } from "../ui/button";
 
 interface PreviousConfirmedSelectionsPanelProps {
+	addressSelections: AddressSelectionEntry[];
 	onRecall: (entry: AddressSelectionEntry) => void;
 	onClose?: () => void;
 }
 
 export const PreviousConfirmedSelectionsPanel: React.FC<
 	PreviousConfirmedSelectionsPanelProps
-> = ({ onRecall, onClose }) => {
-	const selections = useAddressSelectionStore((s) => s.addressSelections);
+> = ({ addressSelections, onRecall, onClose }) => {
+	const selections = addressSelections;
 
 	if (selections.length === 0) {
 		return (

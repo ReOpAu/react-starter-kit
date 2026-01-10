@@ -42,6 +42,22 @@ export interface AddressFinderBrainHandlers {
 	handleRecallConfirmedSelection: (entry: AddressSelectionEntry) => void;
 	handleRequestAgentState: () => void;
 	handleManualTyping: (query: string) => void;
+	handleHideOptions: () => void;
+
+	// State from stores (exposed to UI so UI doesn't import stores directly)
+	state: {
+		suggestions: Suggestion[];
+		isLoading: boolean;
+		searchQuery: string;
+		selectedResult: Suggestion | null;
+		currentIntent: string | null;
+		isRecording: boolean;
+		isVoiceActive: boolean;
+		agentRequestedManual: boolean;
+		history: Array<{ id: string; action: string; timestamp: number; details?: Record<string, unknown> }>;
+		searchHistory: SearchHistoryEntry[];
+		addressSelections: AddressSelectionEntry[];
+	};
 
 	// Computed state
 	shouldShowSuggestions: boolean;
@@ -74,10 +90,12 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	// State from stores
 	const {
 		isRecording,
+		isVoiceActive,
 		agentRequestedManual,
 		showingOptionsAfterConfirmation,
 		setAgentRequestedManual,
 		setSelectionAcknowledged,
+		setShowingOptionsAfterConfirmation,
 	} = useUIStore();
 
 	const {
@@ -93,9 +111,10 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	} = useIntentStore();
 
 	const { setApiResults } = useApiStore();
-	const { addHistory } = useHistoryStore();
+	const { history, addHistory } = useHistoryStore();
 	const { clearSelectionAndSearch } = useAddressFinderActions();
-	const { addSearchToHistory } = useSearchHistoryStore();
+	const { searchHistory, addSearchToHistory } = useSearchHistoryStore();
+	const { addressSelections } = useAddressSelectionStore();
 	const addAddressSelection = useAddressSelectionStore(
 		(s) => s.addAddressSelection,
 	);
@@ -380,6 +399,11 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		},
 	};
 
+	// Handler for hiding options (used by UI to close "show options again" panel)
+	const handleHideOptions = useCallback(() => {
+		setShowingOptionsAfterConfirmation(false);
+	}, [setShowingOptionsAfterConfirmation]);
+
 	const handlers: AddressFinderBrainHandlers = {
 		// Core handlers
 		handleSelectResult,
@@ -391,6 +415,22 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		handleRecallConfirmedSelection,
 		handleRequestAgentState,
 		handleManualTyping,
+		handleHideOptions,
+
+		// State from stores (exposed to UI so UI doesn't import stores directly)
+		state: {
+			suggestions,
+			isLoading,
+			searchQuery,
+			selectedResult,
+			currentIntent,
+			isRecording,
+			isVoiceActive,
+			agentRequestedManual,
+			history,
+			searchHistory,
+			addressSelections,
+		},
 
 		// Computed state
 		shouldShowSuggestions,
