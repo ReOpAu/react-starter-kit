@@ -1,6 +1,6 @@
 // Clean Schema Types - aligned with Convex schema
 
-import type { Doc } from "~/convex/_generated/dataModel";
+import type { Doc } from "convex/_generated/dataModel";
 
 export type ListingType = "buyer" | "seller";
 export type BuildingType =
@@ -8,7 +8,11 @@ export type BuildingType =
 	| "Apartment"
 	| "Townhouse"
 	| "Villa"
-	| "Unit";
+	| "Unit"
+	| "Duplex"
+	| "Studio"
+	| "Land"
+	| "Other";
 export type BuyerType = "street" | "suburb";
 export type SellerType = "sale" | "offmarket";
 
@@ -53,18 +57,18 @@ export type Listing = ConvexListing;
 
 // Type guards for runtime type checking
 export function isBuyerListing(
-	listing: any,
+	listing: Listing,
 ): listing is Listing & { listingType: "buyer" } {
 	return listing && listing.listingType === "buyer";
 }
 
 export function isSellerListing(
-	listing: any,
+	listing: Listing,
 ): listing is Listing & { listingType: "seller" } {
 	return listing && listing.listingType === "seller";
 }
 
-// Helper functions for clean schema
+// Helper functions for clean schema access
 export function getListingPrice(listing: Listing): {
 	min: number;
 	max: number;
@@ -77,6 +81,27 @@ export function getListingAddress(listing: Listing): string {
 	return `${listing.suburb}, ${listing.state} ${listing.postcode}`;
 }
 
+export function getListingLocation(listing: Listing): {
+	lat: number;
+	lng: number;
+} {
+	return { lat: listing.latitude, lng: listing.longitude };
+}
+
+export function formatListingPrice(listing: Listing): string {
+	const { min, max } = getListingPrice(listing);
+	const formatPrice = (price: number) => {
+		if (price >= 1000000) {
+			return `$${(price / 1000000).toFixed(1)}M`;
+		}
+		return `$${(price / 1000).toFixed(0)}K`;
+	};
+	if (min === max) {
+		return formatPrice(min);
+	}
+	return `${formatPrice(min)} - ${formatPrice(max)}`;
+}
+
 // Form data interfaces for creating/editing listings
 export interface CreateListingData {
 	listingType: ListingType;
@@ -87,7 +112,7 @@ export interface CreateListingData {
 	latitude: number;
 	longitude: number;
 	geohash: string;
-	buildingType: BuildingType;
+	buildingType?: BuildingType;
 	bedrooms: number;
 	bathrooms: number;
 	parking: number;

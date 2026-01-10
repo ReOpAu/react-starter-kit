@@ -76,7 +76,7 @@ export function useMatchesForListing(listingId: string, options = {}) {
 	// Fallback for old structure (backward compatibility)
 	return {
 		matches: result,
-		totalCount: Array.isArray(result) ? result.length : 0,
+		totalCount: Array.isArray(result) ? (result as any[]).length : 0,
 		hasMore: false,
 		isLoading: false,
 	};

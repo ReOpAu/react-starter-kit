@@ -46,18 +46,18 @@ export function useMatchComparison(
 	const result = useMemo(() => {
 		// Calculate price comparison using centralized service
 		const calculatePriceComparison = (): PriceComparison | null => {
-			const originalPrice =
-				originalListing.price || originalListing.pricePreference;
-			const matchPrice = matchedListing.price || matchedListing.pricePreference;
+			const originalPrice = { min: originalListing.priceMin, max: originalListing.priceMax };
+			const matchPrice = { min: matchedListing.priceMin, max: matchedListing.priceMax };
 
-			if (!originalPrice || !matchPrice) return null;
+			if (!originalPrice.min && !originalPrice.max) return null;
+			if (!matchPrice.min && !matchPrice.max) return null;
 
 			// Use centralized scoring for consistency
 			const priceScore = calculatePriceScore(originalListing, matchedListing);
-			
+
 			// Derive overlap from centralized score (score >= 70 indicates good price compatibility)
 			const overlap = priceScore >= 70;
-			
+
 			const avgOriginal = (originalPrice.min + originalPrice.max) / 2;
 			const avgMatch = (matchPrice.min + matchPrice.max) / 2;
 			const difference = Math.abs(avgOriginal - avgMatch);
@@ -74,25 +74,19 @@ export function useMatchComparison(
 		const calculatePropertyComparison = (): PropertyComparison => {
 			return {
 				bedrooms: {
-					original: originalListing.propertyDetails.bedrooms,
-					match: matchedListing.propertyDetails.bedrooms,
-					matches:
-						originalListing.propertyDetails.bedrooms ===
-						matchedListing.propertyDetails.bedrooms,
+					original: originalListing.bedrooms,
+					match: matchedListing.bedrooms,
+					matches: originalListing.bedrooms === matchedListing.bedrooms,
 				},
 				bathrooms: {
-					original: originalListing.propertyDetails.bathrooms,
-					match: matchedListing.propertyDetails.bathrooms,
-					matches:
-						originalListing.propertyDetails.bathrooms ===
-						matchedListing.propertyDetails.bathrooms,
+					original: originalListing.bathrooms,
+					match: matchedListing.bathrooms,
+					matches: originalListing.bathrooms === matchedListing.bathrooms,
 				},
 				parkingSpaces: {
-					original: originalListing.propertyDetails.parkingSpaces,
-					match: matchedListing.propertyDetails.parkingSpaces,
-					matches:
-						originalListing.propertyDetails.parkingSpaces ===
-						matchedListing.propertyDetails.parkingSpaces,
+					original: originalListing.parking,
+					match: matchedListing.parking,
+					matches: originalListing.parking === matchedListing.parking,
 				},
 			};
 		};

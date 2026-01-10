@@ -340,8 +340,8 @@ export function calculateFeatureScore(
 		return 50; // One has features, other doesn't
 	}
 
-	const commonFeatures = originalFeatures.filter((feature) =>
-		matchedFeatures.includes(feature),
+	const commonFeatures = originalFeatures.filter((feature: string) =>
+		matchedFeatures.includes(feature as any),
 	);
 
 	const totalUniqueFeatures = new Set([...originalFeatures, ...matchedFeatures])
