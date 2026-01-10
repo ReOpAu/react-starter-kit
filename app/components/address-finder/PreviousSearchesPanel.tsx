@@ -1,23 +1,21 @@
 import type React from "react";
-import { useIntentStore } from "~/stores/intentStore";
-import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import { Button } from "../ui/button";
 
 // Previous Searches memory now stores any search with >1 result (not just confirmed). See: docs/ADDRESS_FINDER_V3_DOCUMENTATION.md, docs/UNIFIED_ADDRESS_SYSTEM.md
 
 interface PreviousSearchesPanelProps {
+	searchHistory: SearchHistoryEntry[];
 	onRecall: (entry: SearchHistoryEntry) => void;
 	onClose?: () => void;
 }
 
 export const PreviousSearchesPanel: React.FC<PreviousSearchesPanelProps> = ({
+	searchHistory,
 	onRecall,
 	onClose,
 }) => {
-	const searchHistory = useSearchHistoryStore((s) => s.searchHistory);
 	const previousSearches = searchHistory; // Show all searches with multiple results
-	const { searchQuery } = useIntentStore();
 
 	if (previousSearches.length === 0) {
 		return (

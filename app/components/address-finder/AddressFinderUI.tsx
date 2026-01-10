@@ -13,13 +13,9 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
-import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
-import { useApiStore } from "~/stores/apiStore";
-import { useHistoryStore } from "~/stores/historyStore";
-import { useIntentStore } from "~/stores/intentStore";
-import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
+import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
+import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { Suggestion } from "~/stores/types";
-import { useUIStore } from "~/stores/uiStore";
 import { getIntentColor } from "~/utils/addressFinderUtils";
 
 interface AddressFinderUIProps {
@@ -29,9 +25,25 @@ interface AddressFinderUIProps {
 	handleStopRecording: () => void;
 	handleClear: (source: "user" | "agent") => void;
 	handleAcceptRuralAddress: () => void;
-	handleRecallPreviousSearch: (entry: any) => void;
-	handleRecallConfirmedSelection: (entry: any) => void;
+	handleRecallPreviousSearch: (entry: SearchHistoryEntry) => void;
+	handleRecallConfirmedSelection: (entry: AddressSelectionEntry) => void;
 	handleManualTyping: (query: string) => void;
+	handleHideOptions: () => void;
+
+	// State from brain (no direct store imports)
+	state: {
+		suggestions: Suggestion[];
+		isLoading: boolean;
+		searchQuery: string;
+		selectedResult: Suggestion | null;
+		currentIntent: string | null;
+		isRecording: boolean;
+		isVoiceActive: boolean;
+		agentRequestedManual: boolean;
+		history: Array<{ id: string; action: string; timestamp: number; details?: Record<string, unknown> }>;
+		searchHistory: SearchHistoryEntry[];
+		addressSelections: AddressSelectionEntry[];
+	};
 
 	// Computed state
 	shouldShowSuggestions: boolean;
@@ -57,6 +69,8 @@ export function AddressFinderUI({
 	handleRecallPreviousSearch,
 	handleRecallConfirmedSelection,
 	handleManualTyping,
+	handleHideOptions,
+	state,
 	shouldShowSuggestions,
 	shouldShowManualForm,
 	shouldShowSelectedResult,
@@ -68,11 +82,20 @@ export function AddressFinderUI({
 	validationError,
 	pendingRuralConfirmation,
 }: AddressFinderUIProps) {
-	// Get state directly from stores instead of prop drilling
-	const { apiResults } = useApiStore();
-	const { suggestions, isLoading, error } = apiResults;
-	const isError = Boolean(error);
-	const { searchQuery, selectedResult, currentIntent } = useIntentStore();
+	// Destructure state from props (no direct store imports)
+	const {
+		suggestions,
+		isLoading,
+		searchQuery,
+		selectedResult,
+		currentIntent,
+		isRecording,
+		isVoiceActive,
+		agentRequestedManual,
+		history,
+		searchHistory,
+		addressSelections,
+	} = state;
 
 	// Debug: Log when currentIntent changes in UI
 	const prevIntentRef = useRef(currentIntent);
@@ -85,10 +108,6 @@ export function AddressFinderUI({
 		);
 		prevIntentRef.current = currentIntent;
 	}
-	const { isRecording, isVoiceActive, agentRequestedManual } = useUIStore();
-	const { history } = useHistoryStore();
-	const { searchHistory } = useSearchHistoryStore();
-	const { addressSelections } = useAddressSelectionStore();
 
 	const [showPreviousSearches, setShowPreviousSearches] = useState(false);
 	const [showConfirmedSelections, setShowConfirmedSelections] = useState(false);
@@ -103,6 +122,7 @@ export function AddressFinderUI({
 			{showConfirmedSelections && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 					<PreviousConfirmedSelectionsPanel
+						addressSelections={addressSelections}
 						onRecall={(entry) => {
 							handleRecallConfirmedSelection(entry);
 							setShowConfirmedSelections(false);
@@ -114,6 +134,7 @@ export function AddressFinderUI({
 			{showPreviousSearches && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
 					<PreviousSearchesPanel
+						searchHistory={searchHistory}
 						onRecall={(entry) => {
 							handleRecallPreviousSearch(entry);
 							setShowPreviousSearches(false);
@@ -338,11 +359,7 @@ export function AddressFinderUI({
 								<Button
 									size="sm"
 									variant="outline"
-									onClick={() =>
-										useUIStore
-											.getState()
-											.setShowingOptionsAfterConfirmation(false)
-									}
+									onClick={handleHideOptions}
 									className="mt-2"
 								>
 									Hide Options
@@ -354,8 +371,8 @@ export function AddressFinderUI({
 								suggestions={suggestions}
 								onSelect={handleSelectResult}
 								isLoading={isLoading}
-								isError={isError}
-								error={error ? new Error(error) : null}
+								isError={false}
+								error={null}
 							/>
 						</CardContent>
 					</Card>
