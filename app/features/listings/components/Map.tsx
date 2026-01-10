@@ -66,21 +66,21 @@ const createListingPoints = (listings: Listing[]) => {
 		type: "FeatureCollection" as const,
 		features: listings
 			.filter(
-				(listing) => listing.location?.latitude && listing.location?.longitude,
+				(listing) => listing.latitude && listing.longitude,
 			)
 			.map((listing) => ({
 				type: "Feature" as const,
 				properties: {
 					id: listing._id,
-					address: `${listing.street || ""}, ${listing.suburb}`,
+					address: `${listing.address || ""}, ${listing.suburb}`,
 					buildingType: listing.buildingType,
 					headline: listing.headline,
 				},
 				geometry: {
 					type: "Point" as const,
 					coordinates: [
-						listing.location!.longitude,
-						listing.location!.latitude,
+						listing.longitude,
+						listing.latitude,
 					],
 				},
 			})),

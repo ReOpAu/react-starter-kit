@@ -27,18 +27,18 @@ export const ViewOnDomainButton: React.FC<ViewOnDomainButtonProps> = ({
 			Apartment: "apartment",
 		};
 
-		const buildingType =
-			buildingTypeMap[listing.buildingType] ||
-			listing.buildingType.toLowerCase().replace(/\s+/g, "-");
+		const buildingType = listing.buildingType
+			? (buildingTypeMap[listing.buildingType] ||
+			   listing.buildingType.toLowerCase().replace(/\s+/g, "-"))
+			: "house";
 
 		// Calculate reasonable bedroom range based on property details
-		const minBedrooms = Math.max(1, listing.propertyDetails.bedrooms - 1);
-		const maxBedrooms = listing.propertyDetails.bedrooms + 1;
+		const minBedrooms = Math.max(1, listing.bedrooms - 1);
+		const maxBedrooms = listing.bedrooms + 1;
 
-		// Use price or pricePreference for price range
-		const priceRange = listing.price || listing.pricePreference;
-		const minPrice = priceRange?.min || 0;
-		const maxPrice = priceRange?.max || 1000000;
+		// Use priceMin/priceMax for price range
+		const minPrice = listing.priceMin || 0;
+		const maxPrice = listing.priceMax || 1000000;
 
 		const params = new URLSearchParams({
 			bedrooms: `${minBedrooms}-${maxBedrooms}`,

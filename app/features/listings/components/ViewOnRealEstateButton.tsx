@@ -27,9 +27,10 @@ export const ViewOnRealEstateButton: React.FC<ViewOnRealEstateButtonProps> = ({
 			Apartment: "apartment",
 		};
 
-		const buildingType =
-			buildingTypeMap[listing.buildingType] ||
-			listing.buildingType.toLowerCase().replace(/\s+/g, "-");
+		const buildingType = listing.buildingType
+			? (buildingTypeMap[listing.buildingType] ||
+			   listing.buildingType.toLowerCase().replace(/\s+/g, "-"))
+			: "house";
 
 		// Function to round price to RealEstate.com.au increments
 		const roundToIncrement = (price: number): number => {
@@ -57,10 +58,9 @@ export const ViewOnRealEstateButton: React.FC<ViewOnRealEstateButtonProps> = ({
 			}
 		};
 
-		// Get price range from price or pricePreference with reasonable defaults
-		const priceRange = listing.price || listing.pricePreference;
-		const rawMinPrice = priceRange?.min || 0;
-		const rawMaxPrice = priceRange?.max || 2000000;
+		// Get price range from priceMin/priceMax with reasonable defaults
+		const rawMinPrice = listing.priceMin || 0;
+		const rawMaxPrice = listing.priceMax || 2000000;
 
 		// Round prices to RealEstate.com.au increments
 		const formattedMinPrice = roundToIncrement(rawMinPrice).toString();
@@ -69,7 +69,7 @@ export const ViewOnRealEstateButton: React.FC<ViewOnRealEstateButtonProps> = ({
 		// Format the location with plus signs
 		const location = `${suburb},+${state}+${postcode}`;
 
-		return `https://www.realestate.com.au/buy/property-${buildingType}-with-${listing.propertyDetails.bedrooms}-bedrooms-between-${formattedMinPrice}-${formattedMaxPrice}-in-${location}/list-1?source=refinement`;
+		return `https://www.realestate.com.au/buy/property-${buildingType}-with-${listing.bedrooms}-bedrooms-between-${formattedMinPrice}-${formattedMaxPrice}-in-${location}/list-1?source=refinement`;
 	};
 
 	const handleClick = () => {

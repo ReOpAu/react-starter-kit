@@ -121,7 +121,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 
 					{/* Property Icons */}
 					<PropertyIcons
-						buildingType={listing.buildingType}
+						buildingType={listing.buildingType || "House"}
 						bedrooms={listing.bedrooms}
 						bathrooms={listing.bathrooms}
 						parkingSpaces={listing.parking}

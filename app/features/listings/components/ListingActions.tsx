@@ -84,8 +84,8 @@ export const ListingActions: React.FC<ListingActionsProps> = ({ listing }) => {
 
 				{/* Street View Button */}
 				<StreetViewButton
-					lat={listing.location?.latitude || listing.latitude}
-					lng={listing.location?.longitude || listing.longitude}
+					lat={listing.latitude}
+					lng={listing.longitude}
 					variant="outline"
 					size="default"
 					className="w-full"
@@ -95,8 +95,8 @@ export const ListingActions: React.FC<ListingActionsProps> = ({ listing }) => {
 
 				{/* Nearby Places Button */}
 				<NearbyPlacesButton
-					latitude={listing.location?.latitude || listing.latitude}
-					longitude={listing.location?.longitude || listing.longitude}
+					latitude={listing.latitude}
+					longitude={listing.longitude}
 					radius={5000}
 					variant="outline"
 					size="default"
@@ -118,9 +118,6 @@ export const ListingActions: React.FC<ListingActionsProps> = ({ listing }) => {
 				{/* Additional Info */}
 				<div className="text-xs text-gray-500 space-y-1">
 					<p>Listed: {new Date(listing.createdAt).toLocaleDateString()}</p>
-					{listing.expiresAt && (
-						<p>Expires: {new Date(listing.expiresAt).toLocaleDateString()}</p>
-					)}
 					{listing.isPremium && (
 						<p className="text-orange-600 font-medium">Premium Listing</p>
 					)}

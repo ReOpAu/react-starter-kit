@@ -74,7 +74,7 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({
 						{/* Map */}
 						<Map
 							location={
-								listing.location || {
+								{
 									latitude: listing.latitude,
 									longitude: listing.longitude,
 								}
@@ -89,8 +89,8 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({
 						{/* Street View Button */}
 						<div className="flex justify-center">
 							<StreetViewButton
-								lat={listing.location?.latitude || listing.latitude}
-								lng={listing.location?.longitude || listing.longitude}
+								lat={listing.latitude}
+								lng={listing.longitude}
 								variant="outline"
 								size="sm"
 							/>
@@ -201,9 +201,6 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({
 					<div className="text-sm text-gray-500">
 						<p>Created: {new Date(listing.createdAt).toLocaleDateString()}</p>
 						<p>Updated: {new Date(listing.updatedAt).toLocaleDateString()}</p>
-						{listing.expiresAt && (
-							<p>Expires: {new Date(listing.expiresAt).toLocaleDateString()}</p>
-						)}
 					</div>
 				</CardContent>
 			</Card>
