@@ -53,11 +53,6 @@ export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
 		"clearSelection",
 		"getNearbyServices",
 		"transferToAgent",
-		// Legacy tool names for backward compatibility
-		"AddressSearch",
-		"ConfirmPlace",
-		"GetUIState",
-		"ClearResults",
 	],
 } as const;
 

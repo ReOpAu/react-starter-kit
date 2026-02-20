@@ -1,0 +1,40 @@
+export {
+	AddressSearchService,
+	type ServiceConfig,
+	type TelemetryEvent,
+	type PerformanceMetrics,
+	type AlertType,
+	type AlertSeverity,
+	type AlertEvent,
+	type AlertConfig,
+} from "./AddressSearchService";
+export { AddressCache, type CacheMetrics } from "./AddressCache";
+export {
+	AddressSearchError,
+	createCacheError,
+	createOptionsError,
+	createSearchError,
+	createSelectionError,
+	createStateError,
+	createValidationError,
+	type AddressSearchErrorCode,
+} from "./errors";
+export type {
+	AddressSearchErrorType,
+	AddressSelectionEntry,
+	CacheKey,
+	CacheOptions,
+	CacheResult,
+	EnrichmentCacheKey,
+	SearchContext,
+	SearchHistoryEntry,
+	SearchResult,
+	SearchState,
+	SelectionContext,
+	SelectionResult,
+	SelectionState,
+	ServiceStateSnapshot,
+	ShowOptionsConfig,
+	ShowOptionsResult,
+	ValidationResult,
+} from "./types";

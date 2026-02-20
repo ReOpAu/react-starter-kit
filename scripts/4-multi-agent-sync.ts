@@ -3,6 +3,7 @@ import path from "path";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { type ToolName, toolDefinitions } from "../ai/tools.config.js";
 import {
+	AGENT_TOOL_MATRIX,
 	type AgentKey,
 	ELEVENLABS_AGENTS,
 } from "../shared/constants/agentConfig.js";
@@ -10,52 +11,8 @@ import { getElevenLabsConfig } from "./env-loader.js";
 
 /**
  * Multi-agent configuration sync with tool-specific assignments
- * Allows different agents to have different sets of tools
+ * Uses AGENT_TOOL_MATRIX from agentConfig.ts as single source of truth
  */
-
-// Define which tools each agent should have
-const AGENT_TOOL_ASSIGNMENTS: Record<AgentKey, ToolName[]> = {
-	ADDRESS_FINDER: [
-		"searchAddress",
-		"selectSuggestion",
-		"selectByOrdinal",
-		"getSuggestions",
-		"getCurrentState",
-		"getConfirmedSelection",
-		"clearSelection",
-		"confirmUserSelection",
-		"requestManualInput",
-		"getHistory",
-		"getPreviousSearches",
-		"setSelectionAcknowledged",
-		"transferToAgent", // ✅ Transfer capability for orchestration
-	],
-	ADDRESS_FINDER_TEST: [
-		"searchAddress",
-		"selectSuggestion",
-		"selectByOrdinal",
-		"getSuggestions",
-		"getCurrentState",
-		"getConfirmedSelection",
-		"clearSelection",
-		"confirmUserSelection",
-		"requestManualInput",
-		"getHistory",
-		"getPreviousSearches",
-		"setSelectionAcknowledged",
-		"getNearbyServices", // ✅ Enhanced services capability
-		"transferToAgent", // ✅ Transfer capability for orchestration
-	],
-	CONVERSATION_ASSISTANT: [
-		"searchAddress",
-		"selectSuggestion",
-		"getCurrentState",
-		"getConfirmedSelection",
-		"clearSelection",
-		"getNearbyServices",
-		"transferToAgent",
-	],
-};
 
 async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 	try {
@@ -69,7 +26,7 @@ async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 		console.log(`\\n🔧 Syncing agent: ${agentConfig.name} (${agentConfig.id})`);
 
 		const { apiKey } = getElevenLabsConfig();
-		const assignedTools = AGENT_TOOL_ASSIGNMENTS[agentKey];
+		const assignedTools = AGENT_TOOL_MATRIX[agentKey];
 
 		console.log(`📋 Tools for this agent: ${assignedTools.length} tools`);
 		console.log(`   ${assignedTools.join(", ")}`);
@@ -105,6 +62,7 @@ async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 		const basePromptPath = path.resolve(
 			process.cwd(),
 			"ai",
+			"address-finder",
 			"master_prompt_base.txt",
 		);
 
@@ -176,7 +134,7 @@ If user asks "Are there any restaurants near this address?", use:
 			console.log(
 				"- Agent-specific tools:",
 				assignedTools.filter(
-					(t) => !AGENT_TOOL_ASSIGNMENTS.ADDRESS_FINDER.includes(t),
+					(t) => !AGENT_TOOL_MATRIX.ADDRESS_FINDER.includes(t),
 				),
 			);
 			console.log("\n📄 Tool list for this agent:");
@@ -244,7 +202,7 @@ async function syncAllAgents(dryRun = false) {
 		console.log("📋 Summary:");
 		agentKeys.forEach((key) => {
 			const config = ELEVENLABS_AGENTS[key];
-			const toolCount = AGENT_TOOL_ASSIGNMENTS[key].length;
+			const toolCount = AGENT_TOOL_MATRIX[key].length;
 			console.log(`   - ${config.name}: ${toolCount} tools`);
 		});
 	}

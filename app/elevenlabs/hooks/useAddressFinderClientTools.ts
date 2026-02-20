@@ -29,6 +29,7 @@ import {
 	validateTransferRequest,
 } from "@shared/constants/agentConfig";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
+import { AddressSearchService } from "~/services/address-search";
 import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
 import { useIntentStore } from "~/stores/intentStore";
@@ -811,59 +812,45 @@ export function useAddressFinderClientTools(
 			},
 
 			showOptionsAgain: async () => {
-				log("🔧 Tool Call: showOptionsAgain");
+				log("Tool Call: showOptionsAgain");
 
-				// Get current state
-				const { selectedResult } = useIntentStore.getState();
-				const { agentLastSearchQuery } = useIntentStore.getState();
+				// Use atomic getOrInitialize to prevent race conditions
+				const service = AddressSearchService.getOrInitialize(queryClient, {
+					intentStore: useIntentStore,
+					uiStore: useUIStore,
+					apiStore: useApiStore,
+					searchHistoryStore:
+						require("~/stores/searchHistoryStore").useSearchHistoryStore,
+					addressSelectionStore:
+						require("~/stores/addressSelectionStore").useAddressSelectionStore,
+				});
+				const result = service.showOptionsAgain();
 
-				if (!selectedResult) {
-					log("❌ No confirmed selection found - cannot show options again");
+				if (!result.success) {
+					const errorMessage =
+						result.error?.toUserMessage() ?? "Could not show options";
+					log(`showOptionsAgain failed: ${errorMessage}`);
 					return JSON.stringify({
 						status: "error",
-						error:
-							"No confirmed selection found. Must have a confirmed address to show options again.",
+						error: errorMessage,
 					});
 				}
 
-				if (!agentLastSearchQuery) {
-					log("❌ No previous search query found");
-					return JSON.stringify({
-						status: "error",
-						error:
-							"No previous search context found. Cannot show options again.",
-					});
-				}
+				const optionsCount = result.options?.length ?? 0;
+				const currentSelection = service.getCurrentSelection();
 
-				// Check if suggestions exist in cache
-				const suggestions =
-					queryClient.getQueryData<Suggestion[]>([
-						"addressSearch",
-						agentLastSearchQuery,
-					]) || [];
-
-				if (suggestions.length === 0) {
-					log("❌ No previous suggestions found in cache");
-					return JSON.stringify({
-						status: "error",
-						error: "No previous address options found to display.",
-					});
-				}
-
-				// Toggle UI to show options again
-				useUIStore.getState().setShowingOptionsAfterConfirmation(true);
-
-				log(`✅ Showing ${suggestions.length} previous options again`);
+				log(`Showing ${optionsCount} previous options again`);
 				addHistory({
 					type: "agent",
-					text: `📋 Showing ${suggestions.length} previous address options again`,
+					text: `Showing ${optionsCount} previous address options again`,
 				});
 
 				return JSON.stringify({
 					status: "options_displayed",
-					message: `Showing ${suggestions.length} previous address options on screen again. You can select a different option or confirm the current selection.`,
-					optionsCount: suggestions.length,
-					currentSelection: selectedResult.description,
+					message: `Showing ${optionsCount} previous address options on screen again. You can select a different option or confirm the current selection.`,
+					optionsCount,
+					currentSelection:
+						currentSelection?.selectedSuggestion.description ?? null,
 				});
 			},
 
@@ -1119,31 +1106,8 @@ export function useAddressFinderClientTools(
 		],
 	);
 
-	// Add legacy tool name aliases for backward compatibility
-	const clientToolsWithAliases = useMemo(
-		() => ({
-			...clientTools,
-			// Legacy aliases
-			AddressSearch: async (params: { address: string }) => {
-				return clientTools.searchAddress({ query: params.address });
-			},
-			ConfirmPlace: async (params: { address: string }) => {
-				// For ConfirmPlace, we need to find the placeId from recent search results
-				// This is a simplified implementation - in practice may need more logic
-				return JSON.stringify({ status: "confirmed", address: params.address });
-			},
-			GetUIState: async () => {
-				return clientTools.getCurrentState();
-			},
-			ClearResults: async () => {
-				return clientTools.clearSelection();
-			},
-		}),
-		[clientTools],
-	);
-
 	// Ensure type safety - this will cause TypeScript errors if tools are missing
-	const typeSafeClientTools: ClientToolsImplementation = clientToolsWithAliases;
+	const typeSafeClientTools: ClientToolsImplementation = clientTools;
 
 	return typeSafeClientTools;
 }

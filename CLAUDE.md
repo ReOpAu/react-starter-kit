@@ -63,6 +63,9 @@ app/
 │   └── dashboard/      # Dashboard-specific components
 ├── hooks/              # Custom React hooks
 ├── routes/             # React Router route components
+├── services/           # Centralized service layer
+│   ├── address-search/ # Address search service (SLIP)
+│   └── hooks/          # React hook wrappers for services
 ├── stores/             # Zustand stores for UI state
 └── utils/              # Utility functions
 
@@ -79,6 +82,67 @@ convex/
 ├── testing/            # Comprehensive test utilities (762 test cases)
 └── agentTools.ts       # Agent-facing mutation registry
 ```
+
+#### Service Layer Pattern (SLIP)
+The codebase uses a centralized service layer for complex business logic, transforming scattered code (45+ lines across 6 files) into single-line operations with architectural enforcement.
+
+**Location**: `app/services/address-search/`
+
+**Key Files**:
+- `AddressSearchService.ts` - Singleton service with business rule enforcement
+- `AddressCache.ts` - Centralized cache management (single source of truth for cache keys)
+- `types.ts` - Domain types (SearchState, SelectionState, etc.)
+- `errors.ts` - Domain errors with user-friendly messages
+- `useAddressSearchService.ts` - React hook wrapper
+
+**Usage**:
+```typescript
+// From client tools (singleton pattern)
+const service = AddressSearchService.getOrInitialize(queryClient, stores);
+const result = service.showOptionsAgain();
+
+// From React components (hook pattern)
+const { showOptionsAgain, canShowOptionsAgain } = useAddressSearchService();
+```
+
+**Business Rules Enforced**:
+1. **Cache Preservation**: Selection never destroys original search results
+2. **Complete Options**: "Show options again" returns ALL original suggestions
+3. **Cache Consistency**: Cache keys normalized via single source of truth
+4. **State Integrity**: Detects and recovers from state drift
+5. **Error Clarity**: All errors provide user-friendly messages
+
+**Performance Monitoring**:
+```typescript
+// Get comprehensive performance metrics
+const metrics = service.getPerformanceMetrics();
+// Returns: { avgOperationMs, operationCount, cache: { hitRate, hits, misses }, timing: {...} }
+```
+
+**Alert System** (threshold-based with severity levels):
+```typescript
+AddressSearchService.initialize(queryClient, stores, {
+  enableStateValidation: true,
+  enableLogging: true,
+  maxOperationsBeforeReset: 10000,  // Memory management
+  alerts: {
+    slowOperationThresholdMs: 100,
+    lowCacheHitRateThreshold: 0.5,
+    highErrorRateThreshold: 0.1,
+    alertCooldownMs: 30000,  // Prevents alert spam
+    onAlert: (event) => {
+      // event.severity: "info" | "warning" | "critical" (auto-calculated)
+      if (event.severity === "critical") pagerduty.alert(event);
+      analytics.track(event);
+    }
+  },
+  onTelemetry: (event) => analytics.track(event),
+});
+```
+
+**Alert Types**: `slow_operation`, `low_cache_hit_rate`, `high_error_rate`, `metrics_reset`
+
+**Severity Calculation**: Automatic based on threshold deviation (1-2x = info, 2-5x = warning, >5x = critical)
 
 ## Development Guidelines
 
@@ -222,93 +286,72 @@ FRONTEND_URL=http://localhost:5173
 **Reference**: AFOP major cleanup completed. Address finder now has clean, maintainable architecture.
 
 ### Service Layer Implementation Project (SLIP)
-**Status**: 📋 **PLANNED** - Ready for implementation when architectural refactoring is needed
-**Priority**: Medium (architectural improvement, not critical functionality)
+**Status**: ✅ **COMPLETED** - Centralized service layer implemented and integrated
 **Goal**: Replace scattered business logic with centralized, testable service layer to make features "trivial to implement and impossible to break"
 
-#### 🎯 **Business Case**:
-Current "show options again" feature required:
-- **45+ lines** of logic scattered across **6 files**
-- **Multiple iterations** to fix cache key mismatches
-- **Manual coordination** between stores, cache, and UI state
-- **Error-prone** - easy to break business rules accidentally
+#### ✅ **Completed Implementation**:
 
-Service layer would reduce this to:
-- **5 lines** of code in **1 file**: `addressService.getOptionsForCurrentSelection()`
-- **Impossible to break** - business rules enforced by architecture
-- **100% testable** - clear contracts and single responsibility
+**Files Created** (`app/services/address-search/`):
+- `AddressSearchService.ts` - Singleton service with business rule enforcement, telemetry, configurable validation
+- `AddressCache.ts` - Centralized cache management (single source of truth for cache keys)
+- `types.ts` - Domain types (SearchState, SelectionState, CacheKey, etc.)
+- `errors.ts` - Domain errors with user-friendly messages and error context
+- `index.ts` - Public exports
 
-#### 🛠 **Implementation Scope**:
+**Hook Created** (`app/services/hooks/`):
+- `useAddressSearchService.ts` - React hook wrapper for component usage
 
-**Core Service Interface**:
+**Integration Completed**:
+- `showOptionsAgain` tool updated to use service (`useAddressFinderClientTools.ts`)
+- Reduced from 45+ lines scattered across 6 files to ~15 lines using service
+
+#### 🎯 **Business Rules Enforced**:
+1. **Cache Preservation Rule**: Selection never destroys original search results
+2. **Complete Options Rule**: "Show options again" always returns ALL original suggestions
+3. **Cache Consistency Rule**: Cache keys normalized via `AddressCache.generateSearchCacheKey()`
+4. **State Integrity Rule**: `validateStateIntegrity()` detects drift, `resyncFromStores()` recovers
+5. **Error Clarity Rule**: All errors provide user-friendly messages via `toUserMessage()`
+
+#### 🔧 **Configuration & Telemetry**:
 ```typescript
-interface IAddressSearchService {
-  // Core operations
-  search(query: string, context?: SearchContext): Promise<SearchResult>;
-  selectSuggestion(suggestion: Suggestion, context?: SelectionContext): Promise<SelectionResult>;
-  
-  // Business capabilities  
-  getOptionsForCurrentSelection(): Suggestion[];
-  canShowOptionsAgain(): boolean;
-  clearCurrentSearch(): void;
-  
-  // State access
-  getCurrentSelection(): SelectionState | null;
-  getCurrentSearch(): SearchState | null;
-  getSearchHistory(): SearchHistoryEntry[];
-}
+AddressSearchService.initialize(queryClient, stores, {
+  enableStateValidation: true,  // Expensive, enable in dev only
+  enableLogging: true,
+  onTelemetry: (event) => {
+    // Track: search_recorded, selection_recorded, show_options, state_resync, error
+    analytics.track(event.type, event.details);
+  },
+});
+
+// Get telemetry counters
+const counters = service.getTelemetryCounters();
+// { searches, selections, showOptions, resyncs, validationFailures, errors }
 ```
 
-**Business Rules to Enforce**:
-1. **Cache Preservation Rule**: "Selection never destroys original search results"
-2. **Complete Options Rule**: "Show options again always returns ALL original suggestions"  
-3. **Cache Consistency Rule**: "Cache keys are normalized and always consistent"
-4. **State Integrity Rule**: "Service maintains consistent internal state"
-5. **Error Clarity Rule**: "All errors provide clear business context"
+#### 📊 **Key Methods**:
+```typescript
+// Core operations
+service.recordSearchResults(query, suggestions, context);
+service.recordSelection(suggestion, context);
 
-**Key Components**:
-- `AddressSearchService` - Main service class with business logic
-- `AddressCache` - Centralized cache management with consistent key generation
-- `SearchState & SelectionState` - Immutable domain models
-- `AddressSearchError` - Business-specific error types
+// Business capabilities
+service.showOptionsAgain();           // Activate "show options" mode
+service.getOptionsForCurrentSelection(); // Get all original suggestions
+service.canShowOptionsAgain();        // Check if feature available
+service.hideOptions();                // Return to confirmed selection
 
-**File Structure**:
-```
-app/services/
-├── address-search/
-│   ├── AddressSearchService.ts        # Main service class
-│   ├── AddressCache.ts               # Cache management
-│   ├── types.ts                      # Domain types
-│   ├── errors.ts                     # Domain errors
-│   └── __tests__/
-│       ├── AddressSearchService.test.ts
-│       ├── business-rules.test.ts
-│       └── integration.test.ts
-├── hooks/
-│   └── useAddressSearchService.ts    # React hook wrapper
-└── index.ts                          # Public exports
+// State management
+service.getCurrentSearch();           // Get current search state
+service.getCurrentSelection();        // Get current selection state
+service.validateStateIntegrity();     // Check store/service sync
+service.resyncFromStores();           // Recover from state drift
+
+// Telemetry
+service.getTelemetryCounters();       // Get operation counts
+service.updateConfig({ ... });        // Update config at runtime
 ```
 
-**Migration Strategy**:
-1. **Phase 1**: Create service layer (new code, no existing changes)
-2. **Phase 2**: Update agent tools to use service calls
-3. **Phase 3**: Simplify UI components with service integration
-4. **Phase 4**: Remove scattered business logic from old files
-
-**Success Criteria**:
-- "Show options again" becomes 5 lines: `addressService.getOptionsForCurrentSelection()`
-- Business rules impossible to break (enforced by architecture)
-- 100% test coverage for all business rules and edge cases
-- Clear error messages with business context
-- New features require changes in only one place
-
-**When to Implement**: 
-- When adding complex address search features that would benefit from centralized business logic
-- During architectural refactoring phases
-- When the current scattered approach becomes too difficult to maintain
-- As a foundation for advanced features like search analytics or personalized recommendations
-
-**Reference**: Complete implementation prompt available in conversation history. This architectural improvement would significantly reduce the complexity of address search feature development.
+**Reference**: See "Service Layer Pattern (SLIP)" section in Architecture Overview for usage examples.
 
 ## Common Pitfalls to Avoid
 1. **Don't** import global stores in widget components
