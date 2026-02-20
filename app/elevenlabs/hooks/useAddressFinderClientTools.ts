@@ -30,10 +30,11 @@ import {
 } from "@shared/constants/agentConfig";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { AddressSearchService } from "~/services/address-search";
+import { useAddressSelectionStore } from "~/stores/addressSelectionStore";
 import { useApiStore } from "~/stores/apiStore";
 import { useHistoryStore } from "~/stores/historyStore";
 import { useIntentStore } from "~/stores/intentStore";
-// New Pillar-Aligned Store Imports
+import { useSearchHistoryStore } from "~/stores/searchHistoryStore";
 import type { Suggestion } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
 import type { ClientToolsImplementation } from "../../../ai/tools.config";
@@ -819,10 +820,8 @@ export function useAddressFinderClientTools(
 					intentStore: useIntentStore,
 					uiStore: useUIStore,
 					apiStore: useApiStore,
-					searchHistoryStore: require("~/stores/searchHistoryStore")
-						.useSearchHistoryStore,
-					addressSelectionStore: require("~/stores/addressSelectionStore")
-						.useAddressSelectionStore,
+					searchHistoryStore: useSearchHistoryStore,
+					addressSelectionStore: useAddressSelectionStore,
 				});
 				const result = service.showOptionsAgain();
 
@@ -852,145 +851,6 @@ export function useAddressFinderClientTools(
 					currentSelection:
 						currentSelection?.selectedSuggestion.description ?? null,
 				});
-			},
-
-			getNearbyServices: async (params: {
-				address: string;
-				serviceType?: string;
-				radius?: number;
-			}) => {
-				log("🔧 Tool Call: getNearbyServices with params:", params);
-
-				const { address, serviceType, radius = 1000 } = params;
-				if (typeof address !== "string" || !address.trim()) {
-					const errorMessage =
-						"Invalid or missing 'address' parameter for getNearbyServices tool.";
-					log(`Tool getNearbyServices failed: ${errorMessage}`, { params });
-					return JSON.stringify({
-						status: "error",
-						error: errorMessage,
-					});
-				}
-
-				try {
-					// First, get place details for the address to get coordinates
-					log(`🔍 Looking up coordinates for address: "${address}"`);
-
-					// Search for the address first to get placeId
-					const searchResult = await withRetry(
-						() =>
-							getPlaceSuggestionsAction({
-								query: address,
-								intent: "address",
-								maxResults: 1,
-								isAutocomplete: false,
-							}),
-						API_RETRY_CONFIG,
-						`address search for nearby services: "${address}"`,
-					);
-
-					if (
-						!searchResult.success ||
-						!searchResult.result?.success ||
-						!searchResult.result.suggestions?.length
-					) {
-						log(`❌ Could not find address for nearby services: ${address}`);
-						return JSON.stringify({
-							status: "address_not_found",
-							error: `Could not find the address "${address}" to search for nearby services.`,
-						});
-					}
-
-					const addressSuggestion = searchResult.result.suggestions[0];
-
-					// Get place details to get coordinates - use cache-first approach
-					const detailsResult = await getCachedOrFetchPlaceDetails(
-						addressSuggestion.placeId,
-					);
-
-					if (
-						!detailsResult.success ||
-						!detailsResult.result?.success ||
-						!detailsResult.result.details
-					) {
-						log(`❌ Could not get coordinates for address: ${address}`);
-						return JSON.stringify({
-							status: "coordinates_not_found",
-							error: `Could not get coordinates for "${address}" to search for nearby services.`,
-						});
-					}
-
-					const { lat, lng } = detailsResult.result.details;
-					if (!lat || !lng) {
-						log(`❌ Invalid coordinates for address: ${address}`);
-						return JSON.stringify({
-							status: "invalid_coordinates",
-							error: `Could not get valid coordinates for "${address}".`,
-						});
-					}
-
-					log(`✅ Found coordinates for "${address}": ${lat}, ${lng}`);
-
-					// For now, return a mock response since we don't have a nearby places API implementation
-					// In a real implementation, you would call Google Places API's nearbySearch
-					const mockServices = [
-						{
-							name: "Example Restaurant",
-							type: "restaurant",
-							address: "123 Example St",
-							distance: "0.2 km",
-							rating: 4.5,
-							placeId: "example_place_id_1",
-						},
-						{
-							name: "Local Pharmacy",
-							type: "pharmacy",
-							address: "456 Health Ave",
-							distance: "0.5 km",
-							rating: 4.2,
-							placeId: "example_place_id_2",
-						},
-					];
-
-					// Filter by service type if specified
-					const filteredServices = serviceType
-						? mockServices.filter(
-								(service) =>
-									service.type
-										.toLowerCase()
-										.includes(serviceType.toLowerCase()) ||
-									service.name
-										.toLowerCase()
-										.includes(serviceType.toLowerCase()),
-							)
-						: mockServices;
-
-					log(
-						`🎯 Found ${filteredServices.length} nearby services for "${address}"`,
-					);
-
-					return JSON.stringify({
-						status: "success",
-						services: filteredServices,
-						searchParams: {
-							address,
-							coordinates: { lat, lng },
-							serviceType: serviceType || "all",
-							radius,
-						},
-						message: `Found ${filteredServices.length} nearby ${serviceType || "services"} within ${radius}m of "${address}".`,
-						note: "This is a mock implementation. In production, this would call Google Places API nearbySearch.",
-					});
-				} catch (error) {
-					log("Tool getNearbyServices failed:", error);
-					return JSON.stringify({
-						status: "error",
-						error:
-							error instanceof Error
-								? error.message
-								: "Failed to search for nearby services",
-					});
-				}
 			},
 
 			transferToAgent: async (params: {

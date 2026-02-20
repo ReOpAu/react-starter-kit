@@ -28,10 +28,6 @@ export interface ClientToolsRegistry {
 	setSelectionAcknowledged: (params: {
 		acknowledged: boolean;
 	}) => Promise<string>;
-	getNearbyServices: (params: {
-		address: string;
-		radius?: number;
-	}) => Promise<string>;
 	transferToAgent: (params: {
 		agent_number: number;
 		reason?: string;

@@ -48,15 +48,6 @@ export const useAddressSelectionStore = create<AddressSelectionStore>(
 				timestamp: Date.now(),
 			};
 
-			if (typeof window !== "undefined") {
-				console.log("[AddressSelection] Adding selection:", {
-					originalQuery: newEntry.originalQuery,
-					selectedAddress: newEntry.selectedAddress.description,
-					mode: newEntry.context.mode,
-					intent: newEntry.context.intent,
-				});
-			}
-
 			// Add to front, keep max 15 entries
 			const newSelections = [newEntry, ...updated].slice(0, 15);
 			set({ addressSelections: newSelections });

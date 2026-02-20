@@ -139,7 +139,7 @@ export function useAgentInfo(agentKey: AgentKey) {
 			agentKey,
 			hasTransferCapability: agentConfig.tools.includes("transferToAgent"),
 			hasAddressSearch: agentConfig.tools.includes("searchAddress"),
-			hasNearbyServices: agentConfig.tools.includes("getNearbyServices"),
+			hasTransferToAgent: agentConfig.tools.includes("transferToAgent"),
 			toolCategories: {
 				address: agentConfig.tools.filter((tool) =>
 					["searchAddress", "selectSuggestion", "getSuggestions"].includes(
@@ -159,7 +159,7 @@ export function useAgentInfo(agentKey: AgentKey) {
 					),
 				).length,
 				services: agentConfig.tools.filter((tool) =>
-					["getNearbyServices", "transferToAgent"].includes(tool),
+					["transferToAgent"].includes(tool),
 				).length,
 			},
 		}),

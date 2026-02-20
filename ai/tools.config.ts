@@ -60,20 +60,6 @@ export const setSelectionAcknowledgedSchema = z.object({
 
 export const showOptionsAgainSchema = z.object({});
 
-export const getNearbyServicesSchema = z.object({
-	address: z.string().describe("The address or location to search around."),
-	serviceType: z
-		.string()
-		.optional()
-		.describe(
-			"Type of service to search for (e.g., 'restaurant', 'pharmacy', 'gas_station'). Leave empty for all services.",
-		),
-	radius: z
-		.number()
-		.optional()
-		.describe("Search radius in meters (default: 1000m)."),
-});
-
 export const transferToAgentSchema = z.object({
 	agent_number: z
 		.number()
@@ -153,11 +139,6 @@ export const toolDefinitions = {
 		description:
 			"Show the previous address options again after a selection has been confirmed. Toggles visibility between confirmed result and suggestion list.",
 		parametersSchema: showOptionsAgainSchema,
-	},
-	getNearbyServices: {
-		description:
-			"Find nearby services and points of interest around a specific address or location.",
-		parametersSchema: getNearbyServicesSchema,
 	},
 	transferToAgent: {
 		description:

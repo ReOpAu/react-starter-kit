@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
 	HistoryPanel,
 	ManualSearchForm,
@@ -13,6 +13,8 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
+import type { RuralConfirmationState } from "~/hooks/actions/types";
+import type { AutoCorrectionData } from "~/hooks/useAddressAutoSelection";
 import type { AddressSelectionEntry } from "~/stores/addressSelectionStore";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
@@ -52,12 +54,12 @@ interface AddressFinderUIProps {
 	shouldShowValidationStatus: boolean;
 	showLowConfidence: boolean;
 	showingOptionsAfterConfirmation: boolean;
-	autoCorrection: any;
+	autoCorrection: AutoCorrectionData | null;
 
 	// Validation state
 	isValidating: boolean;
 	validationError: string | null;
-	pendingRuralConfirmation: any;
+	pendingRuralConfirmation: RuralConfirmationState["pendingRuralConfirmation"];
 }
 
 export function AddressFinderUI({
@@ -96,18 +98,6 @@ export function AddressFinderUI({
 		searchHistory,
 		addressSelections,
 	} = state;
-
-	// Debug: Log when currentIntent changes in UI
-	const prevIntentRef = useRef(currentIntent);
-	if (prevIntentRef.current !== currentIntent) {
-		console.log(
-			"🎯 UI Badge Update: currentIntent changed from",
-			prevIntentRef.current,
-			"to",
-			currentIntent,
-		);
-		prevIntentRef.current = currentIntent;
-	}
 
 	const [showPreviousSearches, setShowPreviousSearches] = useState(false);
 	const [showConfirmedSelections, setShowConfirmedSelections] = useState(false);

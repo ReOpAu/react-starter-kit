@@ -1,10 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
-import { useAddressFinderStore } from "~/stores/addressFinderStore";
+import { useCallback } from "react";
+import { useApiStore } from "~/stores/apiStore";
+import { useIntentStore } from "~/stores/intentStore";
+import { useUIStore } from "~/stores/uiStore";
 
 export function useAgentSync() {
-	const queryClient = useQueryClient();
-
 	const syncToAgent = useCallback(() => {
 		try {
 			const windowWithElevenLabs = window as typeof window & {
@@ -12,23 +11,24 @@ export function useAgentSync() {
 			};
 
 			if (typeof windowWithElevenLabs.setVariable === "function") {
-				// Get current state from stores (no dependencies to avoid loops)
-				const store = useAddressFinderStore.getState();
+				// Get current state from individual stores (no dependencies to avoid loops)
+				const ui = useUIStore.getState();
+				const intent = useIntentStore.getState();
+				const api = useApiStore.getState();
 
-				// The store is now the single source of truth for API state
-				const { suggestions, isLoading, error } = store.apiResults;
+				const { suggestions, isLoading, error } = api.apiResults;
 
 				// Create comprehensive agent state - use stable timestamp (rounded to nearest second)
 				const timestamp = Math.floor(Date.now() / 1000) * 1000;
 				const agentState = {
 					// UI State
 					ui: {
-						isRecording: store.isRecording,
-						isVoiceActive: store.isVoiceActive,
-						agentRequestedManual: store.agentRequestedManual,
-						currentIntent: store.currentIntent,
-						searchQuery: store.searchQuery,
-						hasQuery: !!store.searchQuery,
+						isRecording: ui.isRecording,
+						isVoiceActive: ui.isVoiceActive,
+						agentRequestedManual: ui.agentRequestedManual,
+						currentIntent: intent.currentIntent,
+						searchQuery: intent.searchQuery,
+						hasQuery: !!intent.searchQuery,
 					},
 
 					// API State (from Zustand - single source of truth)
@@ -39,24 +39,24 @@ export function useAgentSync() {
 						hasResults: suggestions.length > 0,
 						hasMultipleResults: suggestions.length > 1,
 						resultCount: suggestions.length,
-						source: store.isRecording ? "voice" : "manual",
+						source: ui.isRecording ? "voice" : "manual",
 					},
 
 					// Selection State
 					selection: {
-						selectedResult: store.selectedResult,
-						hasSelection: !!store.selectedResult,
-						selectedAddress: store.selectedResult?.description || null,
-						selectedPlaceId: store.selectedResult?.placeId || null,
+						selectedResult: intent.selectedResult,
+						hasSelection: !!intent.selectedResult,
+						selectedAddress: intent.selectedResult?.description || null,
+						selectedPlaceId: intent.selectedResult?.placeId || null,
 					},
 
 					// Meta
 					meta: {
 						lastUpdate: timestamp,
-						sessionActive: store.isRecording,
-						agentRequestedManual: store.agentRequestedManual,
+						sessionActive: ui.isRecording,
+						agentRequestedManual: ui.agentRequestedManual,
 						dataFlow:
-							"API → React Query → Zustand → ElevenLabs → Agent (Corrected)",
+							"API → React Query → Pillar Stores → ElevenLabs → Agent",
 					},
 				};
 
@@ -81,7 +81,7 @@ export function useAgentSync() {
 					agentState.api.suggestions,
 				);
 
-				if (store.isLoggingEnabled) {
+				if (ui.isLoggingEnabled) {
 					console.log("[AgentSync] State synchronized:", agentState);
 				}
 			}

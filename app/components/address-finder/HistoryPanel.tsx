@@ -1,14 +1,10 @@
 import type React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
-import type { useAddressFinderStore } from "~/stores/addressFinderStore";
-
-type HistoryEntry = ReturnType<
-	typeof useAddressFinderStore.getState
->["history"][number];
+import type { HistoryItem } from "~/stores/types";
 
 interface HistoryPanelProps {
-	history: HistoryEntry[];
+	history: HistoryItem[];
 }
 
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history }) => {

@@ -42,7 +42,6 @@ export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
 		"getPreviousSearches",
 		"selectByOrdinal",
 		"setSelectionAcknowledged",
-		"getNearbyServices", // Additional tool for test agent
 		"transferToAgent",
 	],
 	CONVERSATION_ASSISTANT: [
@@ -51,7 +50,6 @@ export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
 		"getCurrentState",
 		"getConfirmedSelection",
 		"clearSelection",
-		"getNearbyServices",
 		"transferToAgent",
 	],
 } as const;
@@ -76,13 +74,12 @@ export const ELEVENLABS_AGENTS = {
 	ADDRESS_FINDER_TEST: {
 		id: "agent_01jzvft1wjfr49ghzgswxcrhwr",
 		name: "AddressFinder-Test",
-		description: "Test agent with additional getNearbyServices tool",
+		description: "Test agent for development",
 		envVar: "VITE_ELEVENLABS_ADDRESS_AGENT_TEST_ID",
 		transferIndex: 1, // For agent-to-agent transfers
 		specializations: [
 			"address_search",
 			"place_validation",
-			"nearby_services",
 			"enhanced_location",
 		] as string[],
 		tools: AGENT_TOOL_MATRIX.ADDRESS_FINDER_TEST,

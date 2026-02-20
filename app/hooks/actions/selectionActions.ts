@@ -18,7 +18,7 @@ export function createSelectionActions(
 	 */
 	const notifyAgentOfSelection = (
 		description: string,
-		intent: string,
+		intent: string | null,
 		isRural = false,
 	): void => {
 		if (

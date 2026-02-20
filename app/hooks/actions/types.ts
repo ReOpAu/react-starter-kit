@@ -107,6 +107,7 @@ export interface RuralConfirmationState {
 		validation: {
 			formattedAddress?: string;
 			placeId?: string;
+			validationGranularity?: string;
 			error?: string;
 		};
 	} | null;
@@ -116,6 +117,7 @@ export interface RuralConfirmationState {
 			validation: {
 				formattedAddress?: string;
 				placeId?: string;
+				validationGranularity?: string;
 				error?: string;
 			};
 		} | null,

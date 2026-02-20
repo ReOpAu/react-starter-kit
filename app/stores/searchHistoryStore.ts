@@ -48,15 +48,6 @@ export const useSearchHistoryStore = create<SearchHistoryStore>((set, get) => ({
 			timestamp: Date.now(),
 		};
 
-		if (typeof window !== "undefined") {
-			console.log("[SearchHistory] Adding search:", {
-				query: newEntry.query,
-				resultCount: newEntry.resultCount,
-				mode: newEntry.context.mode,
-				intent: newEntry.context.intent,
-			});
-		}
-
 		// Add to front, keep max 10 entries
 		const newHistory = [newEntry, ...updated].slice(0, 10);
 		set({ searchHistory: newHistory });

@@ -4,7 +4,11 @@ import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
 import { useActionHandler } from "~/hooks/useActionHandler";
-import { useAddressAutoSelection } from "~/hooks/useAddressAutoSelection";
+import {
+	useAddressAutoSelection,
+	type AutoCorrectionData,
+} from "~/hooks/useAddressAutoSelection";
+import type { RuralConfirmationState } from "~/hooks/actions/types";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressRecall } from "~/hooks/useAddressRecall";
 import { useAddressSession } from "~/hooks/useAddressSession";
@@ -40,7 +44,6 @@ export interface AddressFinderBrainHandlers {
 	handleAcceptRuralAddress: () => void;
 	handleRecallPreviousSearch: (entry: SearchHistoryEntry) => void;
 	handleRecallConfirmedSelection: (entry: AddressSelectionEntry) => void;
-	handleRequestAgentState: () => void;
 	handleManualTyping: (query: string) => void;
 	handleHideOptions: () => void;
 
@@ -68,19 +71,16 @@ export interface AddressFinderBrainHandlers {
 	showingOptionsAfterConfirmation: boolean;
 
 	// Auto-correction state
-	autoCorrection: any;
+	autoCorrection: AutoCorrectionData | null;
 
 	// Validation state
 	isValidating: boolean;
 	validationError: string | null;
-	pendingRuralConfirmation: any;
+	pendingRuralConfirmation: RuralConfirmationState["pendingRuralConfirmation"];
 
 	// Session management
 	sessionToken: string | null;
 	conversationStatus: string;
-
-	// Debug state
-	agentStateForDebug: any;
 }
 
 export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
@@ -322,20 +322,7 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 				log(
 					`🚀 Velocity-based classification: "${searchQuery}" → "${velocityDetectedIntent}" (was: "${storeIntent}")`,
 				);
-				console.log(
-					"🏪 Before setCurrentIntent - store intent:",
-					storeIntent,
-					"new intent:",
-					velocityDetectedIntent,
-				);
 				setCurrentIntent(velocityDetectedIntent);
-				// Force a delay to check if the store actually updated
-				setTimeout(() => {
-					console.log(
-						"🏪 After setCurrentIntent (delayed) - store intent:",
-						useIntentStore.getState().currentIntent,
-					);
-				}, 50);
 			}
 		}
 	}, [shouldClassifyByVelocity, velocityDetectedIntent, searchQuery, log]);
@@ -360,45 +347,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 	);
 	const shouldShowValidationStatus = Boolean(isValidating || validationError);
 
-	// Debug state
-	const agentStateForDebug = {
-		ui: {
-			isRecording,
-			isVoiceActive: false, // Will be provided by the store
-			currentIntent: currentIntent || "general",
-			searchQuery,
-			hasQuery: !!searchQuery,
-			velocityClassification: {
-				enabled: !isRecording && !isRecallMode && !selectedResult,
-				typingState,
-				shouldClassify: shouldClassifyByVelocity,
-				detectedIntent: velocityDetectedIntent,
-			},
-		},
-		api: {
-			suggestions,
-			isLoading,
-			error: error ? (error as Error).message : null,
-			hasResults: suggestions.length > 0,
-			hasMultipleResults: suggestions.length > 1,
-			resultCount: suggestions.length,
-			source: isRecording ? "voice" : "manual",
-		},
-		selection: {
-			selectedResult,
-			hasSelection: !!selectedResult,
-			selectedAddress: selectedResult?.description || null,
-			selectedPlaceId: selectedResult?.placeId || null,
-			selectionAcknowledged: false, // Will be provided by the store
-		},
-		meta: {
-			lastUpdate: Date.now(),
-			sessionActive: isRecording,
-			agentRequestedManual,
-			dataFlow: "API → React Query → Pillar Stores → Agent",
-		},
-	};
-
 	// Handler for hiding options (used by UI to close "show options again" panel)
 	const handleHideOptions = useCallback(() => {
 		setShowingOptionsAfterConfirmation(false);
@@ -413,7 +361,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		handleAcceptRuralAddress,
 		handleRecallPreviousSearch,
 		handleRecallConfirmedSelection,
-		handleRequestAgentState,
 		handleManualTyping,
 		handleHideOptions,
 
@@ -451,9 +398,6 @@ export function AddressFinderBrain({ children }: AddressFinderBrainProps) {
 		// Session management
 		sessionToken: getCurrentSessionToken(),
 		conversationStatus: conversation.status,
-
-		// Debug state
-		agentStateForDebug,
 	};
 
 	return <>{children(handlers)}</>;

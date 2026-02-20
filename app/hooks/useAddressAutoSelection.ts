@@ -3,7 +3,7 @@ import { useIntentStore } from "~/stores/intentStore";
 import type { Suggestion } from "~/stores/types";
 import { useUIStore } from "~/stores/uiStore";
 
-interface AutoCorrectionData {
+export interface AutoCorrectionData {
 	hasCorrection: boolean;
 	suburbChanged: boolean;
 	postcodeChanged: boolean;
