@@ -1,8 +1,19 @@
-import React from "react";
+import { getAuth } from "@clerk/react-router/ssr.server";
 import { useNavigate } from "react-router";
-import { CreateListingForm } from "../../features/listings/components/forms/CreateListingForm";
+import { PublicLayout } from "~/components/layout/PublicLayout";
+import { CreateListingForm } from "~/features/listings/components/forms/CreateListingForm";
+import type { Route } from "./+types/create";
 
-export default function CreateListingPage() {
+export async function loader(args: Route.LoaderArgs) {
+	const { userId } = await getAuth(args);
+	return {
+		isSignedIn: !!userId,
+	};
+}
+
+export default function CreateListingRoute({
+	loaderData,
+}: Route.ComponentProps) {
 	const navigate = useNavigate();
 
 	const handleSuccess = (listingId: string) => {
@@ -14,10 +25,10 @@ export default function CreateListingPage() {
 	};
 
 	return (
-		<main className="flex-1 bg-gradient-to-b from-gray-50 to-white">
+		<PublicLayout loaderData={loaderData}>
 			<div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
 				<CreateListingForm onSuccess={handleSuccess} onCancel={handleCancel} />
 			</div>
-		</main>
+		</PublicLayout>
 	);
 }

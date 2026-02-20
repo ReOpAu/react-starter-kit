@@ -10,7 +10,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../../../components/ui/card";
-import { CampaignCountdown } from "../components/CampaignCountdown";
 import { ListingActions } from "../components/ListingActions";
 import { ListingFullCard } from "../components/ListingFullCard";
 import { MatchCard } from "../components/MatchCard";
@@ -95,16 +94,6 @@ const ListingDetailPage: React.FC = () => {
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 					{/* Main listing content */}
 					<div className="lg:col-span-2">
-						{/* Campaign countdown if applicable */}
-						{(listing as any).expiresAt && (
-							<div className="mb-6">
-								<CampaignCountdown
-									targetDate={new Date((listing as any).expiresAt)}
-									title="Listing Expires In"
-								/>
-							</div>
-						)}
-
 						{/* Full listing card */}
 						<ListingFullCard listing={listing} />
 					</div>

@@ -148,10 +148,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
 
 					{/* Footer info */}
 					<div className="pt-4 border-t border-gray-100">
-						<div className="text-xs text-gray-500 space-y-1">
-							<p>Listed: {formatDate()}</p>
-							{listing._id && <p>ID: {listing._id}</p>}
-						</div>
+						<p className="text-xs text-gray-500">Listed: {formatDate()}</p>
 					</div>
 				</CardContent>
 			</Link>

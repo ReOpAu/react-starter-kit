@@ -23,7 +23,6 @@ export default [
 	route("listings", "routes/listings/index.tsx"),
 	route("listings/my-listings", "routes/listings/my-listings.tsx"),
 	route("listings/create", "routes/listings/create.tsx"),
-	route("listings/type/:type", "routes/listings/type/$type.tsx"),
 	route("listings/:state", "routes/listings/$state.tsx"),
 	route("listings/:state/:type", "routes/listings/$state.$type.tsx"),
 	route(
