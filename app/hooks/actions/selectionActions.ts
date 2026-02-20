@@ -57,20 +57,36 @@ export function createSelectionActions(
 
 	/**
 	 * Store selection in history and sync to agent.
+	 * Uses API-verified resultType when available, falls back to client prediction.
 	 */
 	const storeSelectionAndSync = (
 		result: Suggestion,
 		searchQuery: string,
 	): void => {
+		// Priority 1: Use API-verified resultType from Google Places API
+		// Priority 2: Fall back to client-predicted intent
+		const verifiedIntent = result.resultType;
+		const predictedIntent = ctx.currentIntent ?? "general";
+
+		if (verifiedIntent) {
+			ctx.log(`✅ Using verified intent from API: "${verifiedIntent}"`);
+		} else {
+			ctx.log(
+				`⚠️ Using predicted intent (no API resultType): "${predictedIntent}"`,
+			);
+		}
+
+		const finalIntent = verifiedIntent ?? predictedIntent;
+
 		ctx.log(
-			`🔧 Storing selection - originalQuery: "${searchQuery}", selectedAddress.description: "${result.description}"`,
+			`🔧 Storing selection - originalQuery: "${searchQuery}", selectedAddress.description: "${result.description}", intent: "${finalIntent}" (verified: ${!!verifiedIntent})`,
 		);
 		ctx.addAddressSelection({
 			originalQuery: searchQuery,
 			selectedAddress: result,
 			context: {
 				mode: ctx.isRecording ? "voice" : "manual",
-				intent: ctx.currentIntent ?? "general",
+				intent: finalIntent,
 			},
 		});
 		ctx.setAgentLastSearchQuery(searchQuery);
