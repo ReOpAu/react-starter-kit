@@ -27,7 +27,7 @@ export function createSelectionActions(
 		) {
 			const messagePrefix = isRural
 				? "I have confirmed the rural address"
-				: `I have selected`;
+				: "I have selected";
 			const messageSuffix =
 				intent === "address"
 					? "from the available options. Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed."
