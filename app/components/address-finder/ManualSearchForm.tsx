@@ -3,12 +3,11 @@ import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Badge } from "~/components/ui/badge";
 import type { Suggestion } from "~/stores/types";
 import { classifyIntent } from "~/utils/addressFinderUtils";
 import { AddressInput } from "./AddressInput";
 
-// Google Maps best practice: Highlight matching text in suggestions
+// Highlight matching text in suggestions
 const renderHighlightedText = (
 	text: string,
 	searchTerm: string,
@@ -23,7 +22,7 @@ const renderHighlightedText = (
 
 	return parts.map((part) =>
 		regex.test(part) ? (
-			<mark key={part} className="bg-yellow-200 text-gray-900 px-0.5 rounded">
+			<mark key={part} className="bg-yellow-100/60 text-gray-900 rounded-sm">
 				{part}
 			</mark>
 		) : (
@@ -289,14 +288,14 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 
 				{/* Helpful hint when user hasn't typed enough characters */}
 				{inputValue.trim().length > 0 && !hasMinimumChars && !isLoading && (
-					<div className="absolute z-10 w-full mt-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-500">
+					<div className="absolute z-10 w-full mt-1 px-3 py-2 bg-white border border-gray-100 rounded-md text-sm text-muted-foreground shadow-sm">
 						Type at least {MIN_SEARCH_CHARS} characters to see suggestions
 					</div>
 				)}
 
 				{/* Error state */}
 				{isError && (
-					<div className="absolute z-10 w-full mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-600">
+					<div className="absolute z-10 w-full mt-1 px-3 py-2 bg-white border border-red-100 rounded-md text-sm text-red-600 shadow-sm">
 						{error instanceof Error
 							? error.message
 							: "Failed to load suggestions"}
@@ -311,15 +310,15 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 								initial={{ opacity: 0 }}
 								animate={{ opacity: 1 }}
 								exit={{ opacity: 0 }}
-								transition={{ duration: 0.15 }}
-								className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+								transition={{ duration: 0.1 }}
+								className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
 								aria-label="Address suggestions"
 							>
 								<AnimatePresence mode="wait">
 									<motion.div
 										key={autocompleteSuggestions
 											.map((s: Suggestion) => s.placeId)
-											.join(",")} // Re-render when suggestions change
+											.join(",")}
 										initial={{ opacity: 0 }}
 										animate={{ opacity: 1 }}
 										exit={{ opacity: 0 }}
@@ -329,11 +328,11 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 											{autocompleteSuggestions.map((suggestion, index) => (
 												<li
 													key={suggestion.placeId}
-													className={`px-3 py-2 cursor-pointer hover:bg-gray-100 transition-colors duration-75 ${
+													className={`px-3 py-2.5 cursor-pointer transition-colors duration-75 border-b border-gray-50 last:border-b-0 ${
 														index === selectedIndex
-															? "bg-blue-50 border-l-2 border-blue-500"
-															: ""
-													} ${index === 0 ? "rounded-t-md" : ""} ${index === autocompleteSuggestions.length - 1 ? "rounded-b-md" : ""}`}
+															? "bg-accent"
+															: "hover:bg-accent/50"
+													} ${index === 0 ? "rounded-t-lg" : ""} ${index === autocompleteSuggestions.length - 1 ? "rounded-b-lg" : ""}`}
 													onClick={() => handleSelect(suggestion)}
 													onKeyDown={(e) => {
 														if (e.key === "Enter" || e.key === " ")
@@ -345,14 +344,14 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 												>
 													<div className="flex items-center justify-between">
 														<div className="flex-1">
-															<div className="font-medium text-sm text-gray-900">
+															<div className="text-sm text-gray-900">
 																{renderHighlightedText(
 																	suggestion.description,
 																	inputValue.trim(),
 																)}
 															</div>
 															{suggestion.suburb && (
-																<div className="text-xs text-gray-500">
+																<div className="text-xs text-muted-foreground mt-0.5">
 																	{renderHighlightedText(
 																		suggestion.suburb,
 																		inputValue.trim(),
@@ -361,12 +360,9 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 															)}
 														</div>
 														{suggestion.resultType && (
-															<Badge
-																variant="outline"
-																className="text-xs ml-2 flex-shrink-0"
-															>
+															<span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
 																{suggestion.resultType}
-															</Badge>
+															</span>
 														)}
 													</div>
 												</li>

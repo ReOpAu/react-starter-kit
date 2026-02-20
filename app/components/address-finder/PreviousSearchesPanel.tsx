@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import type React from "react";
 import type { SearchHistoryEntry } from "~/stores/searchHistoryStore";
 import { Button } from "../ui/button";
@@ -19,38 +20,46 @@ export const PreviousSearchesPanel: React.FC<PreviousSearchesPanelProps> = ({
 
 	if (previousSearches.length === 0) {
 		return (
-			<div className="p-4 text-center text-gray-500">
+			<div className="p-6 text-center text-muted-foreground text-sm">
 				No previous searches this session.
 			</div>
 		);
 	}
 
 	return (
-		<div className="bg-white border rounded-lg shadow p-4 max-w-md mx-auto">
-			<div className="flex justify-between items-center mb-2">
-				<h2 className="text-lg font-semibold">Previous Searches</h2>
+		<div className="p-5">
+			<div className="flex justify-between items-center mb-4">
+				<h2 className="text-base font-medium">Previous Searches</h2>
 				{onClose && (
-					<Button size="sm" variant="ghost" onClick={onClose}>
-						Close
+					<Button
+						size="sm"
+						variant="ghost"
+						onClick={onClose}
+						className="text-muted-foreground h-8 w-8 p-0"
+					>
+						<X className="w-4 h-4" />
 					</Button>
 				)}
 			</div>
-			<ul className="space-y-2">
+			<ul className="space-y-1">
 				{previousSearches.map((entry, idx) => (
 					<li
 						key={entry.id}
-						className="flex items-center justify-between border-b pb-2 last:border-b-0"
+						className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-b-0"
 					>
 						<div>
-							<div className="font-medium">
-								{idx + 1}. {entry.query}
-							</div>
-							<div className="text-xs text-gray-500">
+							<div className="text-sm text-gray-900">{entry.query}</div>
+							<div className="text-xs text-muted-foreground mt-0.5">
 								{new Date(entry.timestamp).toLocaleTimeString()} &middot;{" "}
 								{entry.resultCount} result{entry.resultCount !== 1 ? "s" : ""}
 							</div>
 						</div>
-						<Button size="sm" onClick={() => onRecall(entry)}>
+						<Button
+							size="sm"
+							variant="ghost"
+							className="text-xs h-7"
+							onClick={() => onRecall(entry)}
+						>
 							Recall
 						</Button>
 					</li>

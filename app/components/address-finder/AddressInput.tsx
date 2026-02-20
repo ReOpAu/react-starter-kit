@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import React from "react";
 import { Input } from "~/components/ui/input";
 
@@ -44,7 +45,7 @@ export const AddressInput = React.forwardRef<
 			<div className="relative w-full">
 				<Input
 					ref={ref}
-					placeholder="Or type an address..."
+					placeholder="Type an address..."
 					value={value}
 					onChange={onChange}
 					onKeyDown={onKeyDown}
@@ -71,23 +72,10 @@ export const AddressInput = React.forwardRef<
 					<button
 						type="button"
 						onClick={onClear}
-						className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+						className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
 						aria-label="Clear search"
 					>
-						<svg
-							className="w-4 h-4"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<title>Clear input</title>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
+						<X className="w-4 h-4" />
 					</button>
 				)}
 			</div>

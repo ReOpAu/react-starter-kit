@@ -1,7 +1,6 @@
+import { Mic, Square } from "lucide-react";
 import type React from "react";
 import { VoiceIndicator } from "~/components/conversation/VoiceIndicator";
-import { RainbowButton } from "~/components/ui/magicui/rainbow-button";
-import { ShinyButton } from "~/components/ui/magicui/shiny-button";
 
 interface VoiceInputControllerProps {
 	isRecording: boolean;
@@ -17,16 +16,37 @@ const VoiceInputController: React.FC<VoiceInputControllerProps> = ({
 	stopRecording,
 }) => {
 	return (
-		<div className="flex items-center justify-center gap-4">
-			{!isRecording ? (
-				<ShinyButton onClick={startRecording} className="px-6 py-3">
-					🎤 Start Voice Input
-				</ShinyButton>
-			) : (
-				<RainbowButton onClick={stopRecording} className="px-6 py-3">
-					🛑 Stop Recording
-				</RainbowButton>
-			)}
+		<div className="flex flex-col items-center justify-center gap-3 py-4">
+			<div className="relative">
+				{/* Pulse ring when recording */}
+				{isRecording && (
+					<span className="absolute inset-0 rounded-full animate-ping bg-red-400/30" />
+				)}
+				{/* Subtle outer ring when recording */}
+				{isRecording && (
+					<span className="absolute -inset-1 rounded-full bg-red-100 animate-pulse" />
+				)}
+				<button
+					type="button"
+					onClick={isRecording ? stopRecording : startRecording}
+					className={`relative z-10 flex items-center justify-center w-16 h-16 rounded-full border transition-all duration-200 ${
+						isRecording
+							? "bg-white border-red-200 shadow-md text-red-500 hover:bg-red-50"
+							: "bg-white border-gray-200 shadow-sm text-gray-600 hover:text-gray-900 hover:shadow-md hover:scale-105"
+					}`}
+					aria-label={isRecording ? "Stop recording" : "Start voice input"}
+				>
+					{isRecording ? (
+						<Square className="w-5 h-5 fill-current" />
+					) : (
+						<Mic className="w-6 h-6" />
+					)}
+				</button>
+			</div>
+
+			<span className="text-xs text-muted-foreground">
+				{isRecording ? "Listening..." : "Tap to speak"}
+			</span>
 
 			{isRecording && <VoiceIndicator isVoiceActive={isVoiceActive} />}
 		</div>
