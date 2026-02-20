@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import type { ListingType } from "../../../../../shared/constants/listingConstants";
 import { Button } from "../../../../components/ui/button";
 import {
 	Card,
@@ -8,7 +9,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../../../../components/ui/card";
-import type { ListingType } from "../../../../../shared/constants/listingConstants";
 import { CreateBuyerListingForm } from "./CreateBuyerListingForm";
 import { CreateSellerListingForm } from "./CreateSellerListingForm";
 import { ListingTypeSelector } from "./shared/ListingTypeSelector";
@@ -42,7 +42,7 @@ export const CreateListingForm: React.FC<CreateListingFormProps> = ({
 					<p className="text-muted-foreground">
 						Choose the type of listing you want to create:
 					</p>
-					
+
 					<ListingTypeSelector
 						value={listingType || "buyer"}
 						onChange={setListingType}
@@ -54,7 +54,7 @@ export const CreateListingForm: React.FC<CreateListingFormProps> = ({
 								Cancel
 							</Button>
 						)}
-						<Button 
+						<Button
 							onClick={() => listingType && setListingType(listingType)}
 							disabled={!listingType}
 						>

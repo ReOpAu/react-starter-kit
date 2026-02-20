@@ -1,6 +1,10 @@
 import { Building2 } from "lucide-react";
 import type React from "react";
 import {
+	BUILDING_TYPES,
+	type BuildingType,
+} from "../../../../../../shared/constants/listingConstants";
+import {
 	Card,
 	CardContent,
 	CardHeader,
@@ -15,7 +19,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../../../../components/ui/select";
-import { BUILDING_TYPES, type BuildingType } from "../../../../../../shared/constants/listingConstants";
 
 interface PropertyDetailsFieldsProps {
 	buildingType: BuildingType | "";
@@ -59,7 +62,9 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 					<Select
 						key={`buildingType-${buildingType}`}
 						value={buildingType || ""}
-						onValueChange={(value) => onPropertyChange({ buildingType: value as BuildingType })}
+						onValueChange={(value) =>
+							onPropertyChange({ buildingType: value as BuildingType })
+						}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder="Select property type" />
@@ -83,7 +88,9 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 							min="0"
 							value={bedrooms}
 							onChange={(e) =>
-								onPropertyChange({ bedrooms: Number.parseInt(e.target.value) || 0 })
+								onPropertyChange({
+									bedrooms: Number.parseInt(e.target.value) || 0,
+								})
 							}
 						/>
 					</div>
@@ -96,7 +103,9 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 							min="0"
 							value={bathrooms}
 							onChange={(e) =>
-								onPropertyChange({ bathrooms: Number.parseInt(e.target.value) || 0 })
+								onPropertyChange({
+									bathrooms: Number.parseInt(e.target.value) || 0,
+								})
 							}
 						/>
 					</div>
@@ -109,7 +118,9 @@ export const PropertyDetailsFields: React.FC<PropertyDetailsFieldsProps> = ({
 							min="0"
 							value={parking}
 							onChange={(e) =>
-								onPropertyChange({ parking: Number.parseInt(e.target.value) || 0 })
+								onPropertyChange({
+									parking: Number.parseInt(e.target.value) || 0,
+								})
 							}
 						/>
 					</div>

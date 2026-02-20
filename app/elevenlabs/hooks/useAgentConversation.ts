@@ -24,11 +24,13 @@ interface AgentConversationConfig {
 	onTranscription?: (text: string) => void;
 	onError?: (error: any) => void;
 	textOnly?: boolean;
-	overrides?: {
-		agent?: {
-			language?: string;
-		};
-	} | undefined;
+	overrides?:
+		| {
+				agent?: {
+					language?: string;
+				};
+		  }
+		| undefined;
 }
 
 /**

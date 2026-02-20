@@ -68,12 +68,20 @@ const MatchDetailPage: React.FC = () => {
 	// Calculate all derived data once
 	const listingTypeInfo = getListingTypeInfo(originalListing, matchedListing);
 	const colorClasses = getColorClasses(listingTypeInfo);
-	const priceComparison = calculatePriceComparison(originalListing, matchedListing);
-	const distanceRaw = originalListing && matchedListing
-		? calculateListingDistance(originalListing, matchedListing)
-		: undefined;
+	const priceComparison = calculatePriceComparison(
+		originalListing,
+		matchedListing,
+	);
+	const distanceRaw =
+		originalListing && matchedListing
+			? calculateListingDistance(originalListing, matchedListing)
+			: undefined;
 	const distance = distanceRaw ?? undefined;
-	const locationInfo = calculateLocationInfo(originalListing, matchedListing, distance);
+	const locationInfo = calculateLocationInfo(
+		originalListing,
+		matchedListing,
+		distance,
+	);
 
 	return (
 		<div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
@@ -132,10 +140,10 @@ const MatchDetailPage: React.FC = () => {
 								<CardContent className="pt-6">
 									<div className="flex items-center gap-2 text-sm">
 										<MapPin className="w-4 h-4 text-gray-500" />
-										<span className="font-medium">Distance between properties:</span>
-										<Badge variant="outline">
-											{locationInfo.distanceText}
-										</Badge>
+										<span className="font-medium">
+											Distance between properties:
+										</span>
+										<Badge variant="outline">{locationInfo.distanceText}</Badge>
 									</div>
 								</CardContent>
 							</Card>

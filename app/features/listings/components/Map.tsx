@@ -31,6 +31,8 @@ interface MapProps {
 	className?: string;
 }
 
+const EMPTY_LISTINGS: Listing[] = [];
+
 // Helper function to convert our location format to MapBox format
 const toMapboxCoords = (location: { latitude: number; longitude: number }): [
 	number,
@@ -65,9 +67,7 @@ const createListingPoints = (listings: Listing[]) => {
 	return {
 		type: "FeatureCollection" as const,
 		features: listings
-			.filter(
-				(listing) => listing.latitude && listing.longitude,
-			)
+			.filter((listing) => listing.latitude && listing.longitude)
 			.map((listing) => ({
 				type: "Feature" as const,
 				properties: {
@@ -78,10 +78,7 @@ const createListingPoints = (listings: Listing[]) => {
 				},
 				geometry: {
 					type: "Point" as const,
-					coordinates: [
-						listing.longitude,
-						listing.latitude,
-					],
+					coordinates: [listing.longitude, listing.latitude],
 				},
 			})),
 	};
@@ -93,7 +90,7 @@ export const Map: React.FC<MapProps> = ({
 	interactive = false,
 	highlightStreet = true,
 	geohash,
-	listings = [],
+	listings = EMPTY_LISTINGS,
 	className = "w-full h-full rounded-lg shadow-md",
 }) => {
 	const mapContainer = useRef<HTMLDivElement>(null);

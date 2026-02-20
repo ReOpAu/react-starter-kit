@@ -5,9 +5,13 @@ import { useMutation, useQuery } from "convex/react";
 import { AlertCircle, Search } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import type {
+	BuildingType,
+	BuyerType,
+	Feature,
+} from "../../../../../shared/constants/listingConstants";
 import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
 import { Alert, AlertDescription } from "../../../../components/ui/alert";
-import { Button } from "../../../../components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -23,14 +27,15 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../../../components/ui/select";
-import { Skeleton } from "../../../../components/ui/skeleton";
 import { Switch } from "../../../../components/ui/switch";
 import { Textarea } from "../../../../components/ui/textarea";
-import type { BuildingType, BuyerType, Feature } from "../../../../../shared/constants/listingConstants";
 import { FeaturesFields } from "./shared/FeaturesFields";
+import { FormActions } from "./shared/FormActions";
+import { FormSkeleton } from "./shared/FormSkeleton";
 import { LocationFields } from "./shared/LocationFields";
 import { PriceFields } from "./shared/PriceFields";
 import { PropertyDetailsFields } from "./shared/PropertyDetailsFields";
+import { useFormStatus } from "./shared/useFormStatus";
 
 interface BuyerListingFormProps {
 	listingId: Id<"listings">;
@@ -38,7 +43,6 @@ interface BuyerListingFormProps {
 	onCancel?: () => void;
 }
 
-// Clean schema form data interface
 interface BuyerFormData {
 	buyerType: BuyerType;
 	buildingType: BuildingType | "";
@@ -59,6 +63,13 @@ interface BuyerFormData {
 	searchRadius?: number;
 	isPremium: boolean;
 }
+
+const findClosestPrice = (price: number): number => {
+	const validPrices = PRICE_OPTIONS.map((opt) => opt.value);
+	return validPrices.reduce((closest, current) =>
+		Math.abs(current - price) < Math.abs(closest - price) ? current : closest,
+	);
+};
 
 export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 	listingId,
@@ -90,33 +101,11 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 		isPremium: false,
 	});
 
-	const [isLoading, setIsLoading] = useState(false);
-	const [isInitialized, setIsInitialized] = useState(false);
-	const [priceError, setPriceError] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [status, dispatch] = useFormStatus();
 
-	// Initialize form with listing data
 	useEffect(() => {
-		if (listing && !isInitialized && listing.listingType === "buyer") {
-			console.log("🔍 BuyerListingForm: Initializing with listing data:", {
-				buildingType: listing.buildingType,
-				state: listing.state,
-				priceMin: listing.priceMin,
-				priceMax: listing.priceMax,
-				buyerType: listing.buyerType,
-			});
-
-			// Helper function to find closest valid price option
-			const findClosestPrice = (price: number): number => {
-				const validPrices = PRICE_OPTIONS.map((opt) => opt.value);
-				return validPrices.reduce((closest, current) =>
-					Math.abs(current - price) < Math.abs(closest - price)
-						? current
-						: closest,
-				);
-			};
-
-			const newFormData: BuyerFormData = {
+		if (listing && !status.isInitialized && listing.listingType === "buyer") {
+			setFormData({
 				buyerType: listing.buyerType || "suburb",
 				buildingType: listing.buildingType || "",
 				headline: listing.headline,
@@ -135,41 +124,15 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				features: listing.features || [],
 				searchRadius: listing.searchRadius || 5,
 				isPremium: listing.isPremium || false,
-			};
-
-			console.log("🔍 BuyerListingForm: Setting form data:", {
-				buildingType: newFormData.buildingType,
-				state: newFormData.state,
-				priceMin: newFormData.priceMin,
-				priceMax: newFormData.priceMax,
-				buyerType: newFormData.buyerType,
 			});
-
-			setFormData(newFormData);
-			setIsInitialized(true);
+			dispatch({ type: "INITIALIZED" });
 		}
-	}, [listing, isInitialized]);
+	}, [listing, status.isInitialized, dispatch]);
 
-	// Loading state
 	if (listing === undefined) {
-		return (
-			<div className="space-y-8">
-				{Array.from({ length: 5 }).map((_, i) => (
-					<Card key={i}>
-						<CardHeader>
-							<Skeleton className="h-6 w-48" />
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<Skeleton className="h-10 w-full" />
-							<Skeleton className="h-10 w-full" />
-						</CardContent>
-					</Card>
-				))}
-			</div>
-		);
+		return <FormSkeleton />;
 	}
 
-	// Error state - listing not found or wrong type
 	if (listing === null || listing.listingType !== "buyer") {
 		return (
 			<Alert variant="destructive">
@@ -181,85 +144,78 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 		);
 	}
 
-	const validatePrice = () => {
-		if (formData.priceMin >= formData.priceMax) {
-			setPriceError("Maximum budget must be greater than minimum budget.");
-			return false;
-		}
-		setPriceError(null);
-		return true;
-	};
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!validatePrice()) {
+		if (formData.priceMin >= formData.priceMax) {
+			dispatch({
+				type: "SET_PRICE_ERROR",
+				payload: "Maximum budget must be greater than minimum budget.",
+			});
 			return;
 		}
-
-		setIsLoading(true);
-		setError(null);
+		dispatch({ type: "SET_PRICE_ERROR", payload: null });
+		dispatch({ type: "SUBMIT_START" });
 
 		try {
-			const updates = {
-				buyerType: formData.buyerType,
-				...(formData.buildingType && { buildingType: formData.buildingType }),
-				headline: formData.headline,
-				description: formData.description,
-				suburb: formData.suburb,
-				state: formData.state,
-				postcode: formData.postcode,
-				address: formData.address,
-				latitude: formData.latitude,
-				longitude: formData.longitude,
-				bedrooms: formData.bedrooms,
-				bathrooms: formData.bathrooms,
-				parking: formData.parking,
-				priceMin: formData.priceMin,
-				priceMax: formData.priceMax,
-				features: formData.features,
-				searchRadius: formData.searchRadius,
-				isPremium: formData.isPremium,
-				updatedAt: Date.now(),
-			};
-
-			const result = await updateListing({ id: listingId, updates });
-			console.log("Update result:", result);
+			await updateListing({
+				id: listingId,
+				updates: {
+					buyerType: formData.buyerType,
+					...(formData.buildingType && {
+						buildingType: formData.buildingType,
+					}),
+					headline: formData.headline,
+					description: formData.description,
+					suburb: formData.suburb,
+					state: formData.state,
+					postcode: formData.postcode,
+					address: formData.address,
+					latitude: formData.latitude,
+					longitude: formData.longitude,
+					bedrooms: formData.bedrooms,
+					bathrooms: formData.bathrooms,
+					parking: formData.parking,
+					priceMin: formData.priceMin,
+					priceMax: formData.priceMax,
+					features: formData.features,
+					searchRadius: formData.searchRadius,
+					isPremium: formData.isPremium,
+					updatedAt: Date.now(),
+				},
+			});
+			dispatch({ type: "SUBMIT_SUCCESS" });
 			onSuccess?.(listingId);
-		} catch (error) {
-			console.error("Failed to update buyer listing:", error);
-			setError("Failed to update listing. Please try again.");
-		} finally {
-			setIsLoading(false);
+		} catch (err) {
+			dispatch({
+				type: "SUBMIT_ERROR",
+				payload: "Failed to update listing. Please try again.",
+			});
 		}
 	};
 
-	// Field update handlers
 	const handleFieldChange = (field: string, value: string | number) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const handlePriceChange = (price: { priceMin?: number; priceMax?: number }) => {
+	const handlePriceChange = (price: {
+		priceMin?: number;
+		priceMax?: number;
+	}) => {
 		setFormData((prev) => ({ ...prev, ...price }));
-
-		// Validate price range
 		const newMin = price.priceMin ?? formData.priceMin;
 		const newMax = price.priceMax ?? formData.priceMax;
-
-		if (newMin >= newMax) {
-			setPriceError("Maximum budget must be greater than minimum budget.");
-		} else {
-			setPriceError(null);
-		}
-	};
-
-	const handleFeaturesChange = (features: Feature[]) => {
-		setFormData((prev) => ({ ...prev, features }));
+		dispatch({
+			type: "SET_PRICE_ERROR",
+			payload:
+				newMin >= newMax
+					? "Maximum budget must be greater than minimum budget."
+					: null,
+		});
 	};
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-8">
-			{/* Basic Info */}
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
@@ -335,7 +291,6 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				</CardContent>
 			</Card>
 
-			{/* Location - Shared Component */}
 			<LocationFields
 				suburb={formData.suburb}
 				state={formData.state}
@@ -344,10 +299,11 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				showStreetField={formData.buyerType === "street"}
 				addressLabel="Street Address"
 				addressPlaceholder="e.g., 123 Main Street"
-				onLocationChange={(location) => setFormData(prev => ({ ...prev, ...location }))}
+				onLocationChange={(location) =>
+					setFormData((prev) => ({ ...prev, ...location }))
+				}
 			/>
 
-			{/* Property Details - Shared Component */}
 			<PropertyDetailsFields
 				buildingType={formData.buildingType}
 				bedrooms={formData.bedrooms}
@@ -357,29 +313,30 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				bedroomsLabel="Minimum Bedrooms"
 				bathroomsLabel="Minimum Bathrooms"
 				parkingLabel="Minimum Parking"
-				onPropertyChange={(property) => setFormData(prev => ({ ...prev, ...property }))}
+				onPropertyChange={(property) =>
+					setFormData((prev) => ({ ...prev, ...property }))
+				}
 			/>
 
-			{/* Budget - Shared Component */}
 			<PriceFields
 				priceMin={formData.priceMin}
 				priceMax={formData.priceMax}
 				title="Budget"
 				minLabel="Minimum Budget"
 				maxLabel="Maximum Budget"
-				error={priceError}
+				error={status.priceError}
 				onPriceChange={handlePriceChange}
 			/>
 
-			{/* Features - Shared Component */}
 			<FeaturesFields
 				features={formData.features}
 				title="Desired Features"
 				description="What features would you like the property to have?"
-				onFeaturesChange={handleFeaturesChange}
+				onFeaturesChange={(features) =>
+					setFormData((prev) => ({ ...prev, features }))
+				}
 			/>
 
-			{/* Additional Options */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Additional Options</CardTitle>
@@ -400,23 +357,12 @@ export const BuyerListingForm: React.FC<BuyerListingFormProps> = ({
 				</CardContent>
 			</Card>
 
-			{/* Actions */}
-			{error && (
-				<Alert variant="destructive">
-					<AlertCircle className="h-4 w-4" />
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-			)}
-			<div className="flex gap-4 justify-end">
-				{onCancel && (
-					<Button type="button" variant="outline" onClick={onCancel}>
-						Cancel
-					</Button>
-				)}
-				<Button type="submit" disabled={isLoading}>
-					{isLoading ? "Updating..." : "Update Buyer Listing"}
-				</Button>
-			</div>
+			<FormActions
+				error={status.error}
+				isLoading={status.isLoading}
+				submitLabel="Update Buyer Listing"
+				onCancel={onCancel}
+			/>
 		</form>
 	);
 };

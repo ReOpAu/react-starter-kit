@@ -13,7 +13,7 @@ import {
  */
 export const listingValidator = {
 	// Core Identity
-	listingType: v.union(...LISTING_TYPES.map(t => v.literal(t))),
+	listingType: v.union(...LISTING_TYPES.map((t) => v.literal(t))),
 	userId: v.id("users"),
 
 	// Location (simple & clean)
@@ -26,7 +26,7 @@ export const listingValidator = {
 	geohash: v.string(),
 
 	// Property Basics
-	buildingType: v.optional(v.union(...BUILDING_TYPES.map(t => v.literal(t)))),
+	buildingType: v.optional(v.union(...BUILDING_TYPES.map((t) => v.literal(t)))),
 	bedrooms: v.number(),
 	bathrooms: v.number(),
 	parking: v.number(), // Simple: number of spaces
@@ -36,14 +36,14 @@ export const listingValidator = {
 	priceMax: v.number(),
 
 	// Features (comprehensive enum)
-	features: v.array(v.union(...FEATURES.map(f => v.literal(f)))),
+	features: v.array(v.union(...FEATURES.map((f) => v.literal(f)))),
 
 	// Buyer-specific
-	buyerType: v.optional(v.union(...BUYER_TYPES.map(t => v.literal(t)))),
+	buyerType: v.optional(v.union(...BUYER_TYPES.map((t) => v.literal(t)))),
 	searchRadius: v.optional(v.number()), // km for street buyers
 
 	// Seller-specific
-	sellerType: v.optional(v.union(...SELLER_TYPES.map(t => v.literal(t)))),
+	sellerType: v.optional(v.union(...SELLER_TYPES.map((t) => v.literal(t)))),
 
 	// Content
 	headline: v.string(),

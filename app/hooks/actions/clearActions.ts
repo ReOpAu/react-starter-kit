@@ -26,7 +26,10 @@ export function createClearActions(ctx: ActionContext) {
 		ctx.log("✅ ALL STATE CLEARED");
 
 		// Explicitly notify the agent if a conversation is active
-		if (ctx.isRecording && ctx.conversationRef.current?.status === "connected") {
+		if (
+			ctx.isRecording &&
+			ctx.conversationRef.current?.status === "connected"
+		) {
 			const clearMessage =
 				"I have cleared my previous selection and am ready to continue.";
 			ctx.log("🗨️ SENDING CLEAR MESSAGE TO AGENT:", clearMessage);

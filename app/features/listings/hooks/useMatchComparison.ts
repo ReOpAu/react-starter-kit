@@ -1,7 +1,7 @@
 import { useMemo } from "react";
+import { calculatePriceScore } from "../services/matchingService";
 import type { ConvexListing } from "../types";
 import { calculateListingDistance, formatDistance } from "../utils";
-import { calculatePriceScore } from "../services/matchingService";
 
 interface PriceComparison {
 	original: { min: number; max: number };
@@ -46,8 +46,14 @@ export function useMatchComparison(
 	const result = useMemo(() => {
 		// Calculate price comparison using centralized service
 		const calculatePriceComparison = (): PriceComparison | null => {
-			const originalPrice = { min: originalListing.priceMin, max: originalListing.priceMax };
-			const matchPrice = { min: matchedListing.priceMin, max: matchedListing.priceMax };
+			const originalPrice = {
+				min: originalListing.priceMin,
+				max: originalListing.priceMax,
+			};
+			const matchPrice = {
+				min: matchedListing.priceMin,
+				max: matchedListing.priceMax,
+			};
 
 			if (!originalPrice.min && !originalPrice.max) return null;
 			if (!matchPrice.min && !matchPrice.max) return null;

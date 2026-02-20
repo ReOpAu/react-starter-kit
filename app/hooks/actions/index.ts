@@ -22,7 +22,11 @@ export type {
 export { ENRICHMENT_CACHE_KEY } from "./types";
 
 // Enrichment utilities
-export { enrichSuggestion, isResultEnriched, logEnrichment } from "./enrichmentUtils";
+export {
+	enrichSuggestion,
+	isResultEnriched,
+	logEnrichment,
+} from "./enrichmentUtils";
 
 // Action factories
 export { createClearActions } from "./clearActions";

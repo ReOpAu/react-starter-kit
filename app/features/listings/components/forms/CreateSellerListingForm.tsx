@@ -5,6 +5,18 @@ import { useMutation } from "convex/react";
 import { AlertCircle, Building2, Home } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import {
+	type BuildingType,
+	DEFAULT_BATHROOMS,
+	DEFAULT_BEDROOMS,
+	DEFAULT_PARKING,
+	type Feature,
+	type SellerType,
+} from "../../../../../shared/constants/listingConstants";
+import {
+	DEFAULT_MAX_PRICE,
+	DEFAULT_MIN_PRICE,
+} from "../../../../../shared/constants/listingPrices";
 import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
 import {
@@ -24,15 +36,6 @@ import {
 } from "../../../../components/ui/select";
 import { Switch } from "../../../../components/ui/switch";
 import { Textarea } from "../../../../components/ui/textarea";
-import {
-	type BuildingType,
-	type Feature,
-	type SellerType,
-	DEFAULT_BEDROOMS,
-	DEFAULT_BATHROOMS,
-	DEFAULT_PARKING,
-} from "../../../../../shared/constants/listingConstants";
-import { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } from "../../../../../shared/constants/listingPrices";
 import { FeaturesFields } from "./shared/FeaturesFields";
 import { LocationFields } from "./shared/LocationFields";
 import { PriceFields } from "./shared/PriceFields";
@@ -65,10 +68,9 @@ interface SellerFormData {
 	contactPhone: string;
 }
 
-export const CreateSellerListingForm: React.FC<CreateSellerListingFormProps> = ({
-	onSuccess,
-	onCancel,
-}) => {
+export const CreateSellerListingForm: React.FC<
+	CreateSellerListingFormProps
+> = ({ onSuccess, onCancel }) => {
 	const { user } = useUser();
 	const createListing = useMutation(api.listings.createListing);
 
@@ -153,7 +155,7 @@ export const CreateSellerListingForm: React.FC<CreateSellerListingFormProps> = (
 	};
 
 	const updateFormData = (updates: Partial<SellerFormData>) => {
-		setFormData(prev => ({ ...prev, ...updates }));
+		setFormData((prev) => ({ ...prev, ...updates }));
 	};
 
 	return (
@@ -178,7 +180,9 @@ export const CreateSellerListingForm: React.FC<CreateSellerListingFormProps> = (
 						<Label htmlFor="sellerType">Listing Type</Label>
 						<Select
 							value={formData.sellerType}
-							onValueChange={(value: SellerType) => updateFormData({ sellerType: value })}
+							onValueChange={(value: SellerType) =>
+								updateFormData({ sellerType: value })
+							}
 						>
 							<SelectTrigger>
 								<SelectValue />
@@ -302,7 +306,9 @@ export const CreateSellerListingForm: React.FC<CreateSellerListingFormProps> = (
 						<Switch
 							id="isPremium"
 							checked={formData.isPremium}
-							onCheckedChange={(checked) => updateFormData({ isPremium: checked })}
+							onCheckedChange={(checked) =>
+								updateFormData({ isPremium: checked })
+							}
 						/>
 						<Label htmlFor="isPremium">
 							Premium Listing (Featured placement)

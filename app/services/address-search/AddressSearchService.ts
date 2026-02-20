@@ -24,10 +24,8 @@ import type {
 type IntentStore = typeof import("~/stores/intentStore").useIntentStore;
 type UIStore = typeof import("~/stores/uiStore").useUIStore;
 type ApiStore = typeof import("~/stores/apiStore").useApiStore;
-type SearchHistoryStore =
-	typeof import("~/stores/searchHistoryStore").useSearchHistoryStore;
-type AddressSelectionStore =
-	typeof import("~/stores/addressSelectionStore").useAddressSelectionStore;
+type SearchHistoryStore = typeof import("~/stores/searchHistoryStore").useSearchHistoryStore;
+type AddressSelectionStore = typeof import("~/stores/addressSelectionStore").useAddressSelectionStore;
 
 interface StoreRefs {
 	intentStore: IntentStore;
@@ -571,7 +569,9 @@ export class AddressSearchService {
 			previousMetrics,
 		});
 
-		this.log("Metrics reset", { previousOperationCount: previousMetrics.operationCount });
+		this.log("Metrics reset", {
+			previousOperationCount: previousMetrics.operationCount,
+		});
 	}
 
 	/**
@@ -1044,7 +1044,10 @@ export class AddressSearchService {
 		if (!config.optionsCacheKey) {
 			const durationMs = endTiming();
 			this.trackTiming("showOptions", durationMs);
-			this.emitTelemetry("error", { type: "show_options_no_cache", durationMs });
+			this.emitTelemetry("error", {
+				type: "show_options_no_cache",
+				durationMs,
+			});
 			return {
 				success: false,
 				error: createOptionsError(
@@ -1084,7 +1087,10 @@ export class AddressSearchService {
 			durationMs,
 		});
 
-		this.log("Showing options again", { optionsCount: options.length, durationMs });
+		this.log("Showing options again", {
+			optionsCount: options.length,
+			durationMs,
+		});
 
 		return {
 			success: true,
@@ -1143,8 +1149,8 @@ export class AddressSearchService {
 			currentSearch: this.getCurrentSearch(),
 			currentSelection: this.getCurrentSelection(),
 			showOptionsConfig: this.getShowOptionsConfig(),
-			isShowingOptions: this.stores.uiStore.getState()
-				.showingOptionsAfterConfirmation,
+			isShowingOptions:
+				this.stores.uiStore.getState().showingOptionsAfterConfirmation,
 			timestamp: Date.now(),
 		};
 	}

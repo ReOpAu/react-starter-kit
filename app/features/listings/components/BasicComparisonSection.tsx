@@ -104,15 +104,17 @@ export const BasicComparisonSection: React.FC<BasicComparisonSectionProps> = ({
 								<div>
 									<span className="text-gray-500 text-sm">Features:</span>
 									<div className="flex flex-wrap gap-1 mt-1">
-										{originalListing.features.slice(0, 3).map((feature: string) => (
-											<Badge
-												key={feature}
-												variant="secondary"
-												className="text-xs"
-											>
-												{feature}
-											</Badge>
-										))}
+										{originalListing.features
+											.slice(0, 3)
+											.map((feature: string) => (
+												<Badge
+													key={feature}
+													variant="secondary"
+													className="text-xs"
+												>
+													{feature}
+												</Badge>
+											))}
 										{originalListing.features.length > 3 && (
 											<Badge variant="outline" className="text-xs">
 												+{originalListing.features.length - 3} more
@@ -182,15 +184,17 @@ export const BasicComparisonSection: React.FC<BasicComparisonSectionProps> = ({
 							<div>
 								<span className="text-gray-500 text-sm">Features:</span>
 								<div className="flex flex-wrap gap-1 mt-1">
-									{matchedListing.features.slice(0, 3).map((feature: string) => (
-										<Badge
-											key={feature}
-											variant="secondary"
-											className="text-xs"
-										>
-											{feature}
-										</Badge>
-									))}
+									{matchedListing.features
+										.slice(0, 3)
+										.map((feature: string) => (
+											<Badge
+												key={feature}
+												variant="secondary"
+												className="text-xs"
+											>
+												{feature}
+											</Badge>
+										))}
 									{matchedListing.features.length > 3 && (
 										<Badge variant="outline" className="text-xs">
 											+{matchedListing.features.length - 3} more

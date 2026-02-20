@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { createListingValidator, listingValidator, updateListingValidator } from "./schemas/listings/validator";
+import {
+	createListingValidator,
+	listingValidator,
+	updateListingValidator,
+} from "./schemas/listings/validator";
 import { checkAuth } from "./utils/auth";
 // Clean schema - no migration utilities needed
 
@@ -22,7 +26,7 @@ export const createListing = mutation({
 	handler: async (ctx, { listing }) => {
 		// Temporarily disable auth check for development
 		// await checkAuth(ctx);
-		
+
 		// Add server-generated timestamps
 		const now = Date.now();
 		const listingWithTimestamps = {
@@ -30,7 +34,7 @@ export const createListing = mutation({
 			createdAt: listing.createdAt || now,
 			updatedAt: now,
 		};
-		
+
 		console.log("Creating listing:", listingWithTimestamps);
 		const id = await ctx.db.insert("listings", listingWithTimestamps);
 		console.log("Created listing with ID:", id);

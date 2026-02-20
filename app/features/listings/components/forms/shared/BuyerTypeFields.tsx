@@ -1,5 +1,9 @@
 import { MapPin, Navigation } from "lucide-react";
 import type React from "react";
+import {
+	type BuyerType,
+	SEARCH_RADIUS_OPTIONS,
+} from "../../../../../../shared/constants/listingConstants";
 import { Label } from "../../../../../components/ui/label";
 import {
 	Select,
@@ -8,10 +12,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../../../../components/ui/select";
-import { 
-	type BuyerType, 
-	SEARCH_RADIUS_OPTIONS,
-} from "../../../../../../shared/constants/listingConstants";
 
 interface BuyerTypeFieldsProps {
 	buyerType: BuyerType;
@@ -62,7 +62,9 @@ export const BuyerTypeFields: React.FC<BuyerTypeFieldsProps> = ({
 					<Label htmlFor="searchRadius">Search Radius</Label>
 					<Select
 						value={searchRadius.toString()}
-						onValueChange={(value) => onSearchRadiusChange(Number.parseInt(value))}
+						onValueChange={(value) =>
+							onSearchRadiusChange(Number.parseInt(value))
+						}
 						disabled={disabled}
 					>
 						<SelectTrigger>

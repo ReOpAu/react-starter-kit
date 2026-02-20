@@ -60,7 +60,10 @@ function calculateMatchScore(
 		parkingScore * weights.parking +
 		featureScore * weights.features;
 
-	const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+	const totalWeight = Object.values(weights).reduce(
+		(sum, weight) => sum + weight,
+		0,
+	);
 	const overall = Math.round(totalScore / totalWeight);
 
 	return {
@@ -86,7 +89,9 @@ function calculateDistanceScore(
 	matchedListing: Doc<"listings">,
 ): number {
 	// Handle same suburb case
-	if (originalListing.suburb.toLowerCase() === matchedListing.suburb.toLowerCase()) {
+	if (
+		originalListing.suburb.toLowerCase() === matchedListing.suburb.toLowerCase()
+	) {
 		return 100;
 	}
 
@@ -141,7 +146,8 @@ function calculatePriceScore(
 			Math.abs(originalMin - matchedMax),
 			Math.abs(matchedMin - originalMax),
 		);
-		const averagePrice = (originalMin + originalMax + matchedMin + matchedMax) / 4;
+		const averagePrice =
+			(originalMin + originalMax + matchedMin + matchedMax) / 4;
 		const gapRatio = gap / averagePrice;
 
 		// Score decreases as gap increases (max gap ratio of 0.5 = 0 score)
@@ -179,7 +185,7 @@ function calculateBedroomScore(
 	matchedListing: Doc<"listings">,
 ): number {
 	const diff = Math.abs(originalListing.bedrooms - matchedListing.bedrooms);
-	
+
 	// Perfect match = 100, each bedroom difference reduces score by 25
 	return Math.max(0, 100 - diff * 25);
 }
@@ -192,7 +198,7 @@ function calculateParkingScore(
 	matchedListing: Doc<"listings">,
 ): number {
 	const diff = Math.abs(originalListing.parking - matchedListing.parking);
-	
+
 	// Perfect match = 100, each parking space difference reduces score by 20
 	return Math.max(0, 100 - diff * 20);
 }
@@ -218,14 +224,12 @@ function calculateFeatureScore(
 	}
 
 	// Calculate overlap
-	const commonFeatures = originalFeatures.filter(feature =>
-		matchedFeatures.includes(feature)
+	const commonFeatures = originalFeatures.filter((feature) =>
+		matchedFeatures.includes(feature),
 	);
 
-	const totalUniqueFeatures = new Set([
-		...originalFeatures,
-		...matchedFeatures
-	]).size;
+	const totalUniqueFeatures = new Set([...originalFeatures, ...matchedFeatures])
+		.size;
 
 	// Score based on common features vs total unique features
 	const overlapRatio = commonFeatures.length / totalUniqueFeatures;
@@ -368,10 +372,7 @@ export const findMatches = query({
 		}
 		let scoredMatches = [];
 		for (const candidate of candidates) {
-			const matchResult = calculateMatchScore(
-				originalListing,
-				candidate,
-			);
+			const matchResult = calculateMatchScore(originalListing, candidate);
 			scoredMatches.push({
 				listing: candidate,
 				score: matchResult.overall,
@@ -431,10 +432,7 @@ export const getMatchDetails = query({
 		}
 
 		// Calculate match score and breakdown
-		const matchResult = calculateMatchScore(
-			originalListing,
-			matchedListing,
-		);
+		const matchResult = calculateMatchScore(originalListing, matchedListing);
 
 		return {
 			originalListing,

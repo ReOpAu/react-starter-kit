@@ -41,12 +41,12 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({
 					<CardContent className="p-0">
 						<Carousel className="w-full">
 							<CarouselContent>
-								{listing.images.map((image, index) => (
-									<CarouselItem key={index}>
+								{listing.images.map((image) => (
+									<CarouselItem key={image}>
 										<div className="aspect-video relative">
 											<img
 												src={image}
-												alt={`${listing.headline} - Image ${index + 1}`}
+												alt={listing.headline}
 												className="w-full h-full object-cover rounded-t-lg"
 											/>
 										</div>
@@ -73,12 +73,10 @@ export const ListingFullCard: React.FC<ListingFullCardProps> = ({
 					<div className="space-y-4">
 						{/* Map */}
 						<Map
-							location={
-								{
-									latitude: listing.latitude,
-									longitude: listing.longitude,
-								}
-							}
+							location={{
+								latitude: listing.latitude,
+								longitude: listing.longitude,
+							}}
 							zoom={15}
 							interactive={true}
 							geohash={listing.geohash}

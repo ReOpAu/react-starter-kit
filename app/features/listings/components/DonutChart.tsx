@@ -25,7 +25,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
 }) => {
 	const normalizedValue = Math.min(Math.max(value, 0), max);
 	const percentage = (normalizedValue / max) * 100;
-	
+
 	const radius = (size - strokeWidth) / 2;
 	const circumference = radius * 2 * Math.PI;
 	const strokeDasharray = circumference;
@@ -40,16 +40,13 @@ export const DonutChart: React.FC<DonutChartProps> = ({
 		return "#dc2626"; // red-600
 	};
 
-	const scoreColor = color === "#3b82f6" ? getScoreColor(normalizedValue) : color;
+	const scoreColor =
+		color === "#3b82f6" ? getScoreColor(normalizedValue) : color;
 
 	return (
 		<div className={`flex flex-col items-center ${className}`}>
 			<div className="relative" style={{ width: size, height: size }}>
-				<svg
-					width={size}
-					height={size}
-					className="transform -rotate-90"
-				>
+				<svg width={size} height={size} className="transform -rotate-90">
 					{/* Background circle */}
 					<circle
 						cx={size / 2}

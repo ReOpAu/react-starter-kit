@@ -1,8 +1,6 @@
 import { DollarSign, Eye, Home, MapPin, Star, Users, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
@@ -18,13 +16,119 @@ import {
 	DialogTitle,
 } from "../../../components/ui/dialog";
 import { Progress } from "../../../components/ui/progress";
-import { Separator } from "../../../components/ui/separator";
 import { useMatchComparison } from "../hooks/useMatchComparison";
 import type { ConvexListing } from "../types";
 import {
 	generateListingUrl,
 	generateMatchDetailUrl,
 } from "../utils/urlHelpers";
+
+const getScoreColor = (score: number) => {
+	if (score >= 80) return "text-green-600";
+	if (score >= 60) return "text-yellow-600";
+	return "text-red-600";
+};
+
+const getScoreBgColor = (score: number) => {
+	if (score >= 80) return "bg-green-100";
+	if (score >= 60) return "bg-yellow-100";
+	return "bg-red-100";
+};
+
+const ListingSummaryCard: React.FC<{
+	listing: ConvexListing;
+	label: string;
+}> = ({ listing, label }) => (
+	<Card>
+		<CardHeader>
+			<CardTitle className="flex items-center gap-2">
+				<Home className="w-4 h-4" />
+				{label}
+				<Badge
+					variant={
+						listing.listingType === "buyer" ? "default" : "secondary"
+					}
+				>
+					{listing.listingType}
+				</Badge>
+			</CardTitle>
+		</CardHeader>
+		<CardContent className="space-y-3">
+			<h4 className="font-semibold">{listing.headline}</h4>
+			<div className="flex items-center gap-1 text-sm text-gray-600">
+				<MapPin className="w-4 h-4" />
+				{listing.suburb}, {listing.state}
+			</div>
+			<div className="text-sm">
+				{listing.bedrooms} bed • {listing.bathrooms} bath •{" "}
+				{listing.parking} car
+			</div>
+			{(listing.priceMin || listing.priceMax) && (
+				<div className="flex items-center gap-1 text-sm">
+					<DollarSign className="w-4 h-4" />$
+					{listing.priceMin.toLocaleString()} - $
+					{listing.priceMax.toLocaleString()}
+				</div>
+			)}
+		</CardContent>
+	</Card>
+);
+
+const PropertyComparisonGrid: React.FC<{
+	propertyComparison: {
+		bedrooms: { original: number; match: number; matches: boolean };
+		bathrooms: { original: number; match: number; matches: boolean };
+		parkingSpaces: { original: number; match: number; matches: boolean };
+	};
+}> = ({ propertyComparison }) => {
+	const fields = [
+		{ label: "Bedrooms", data: propertyComparison.bedrooms },
+		{ label: "Bathrooms", data: propertyComparison.bathrooms },
+		{ label: "Parking", data: propertyComparison.parkingSpaces },
+	] as const;
+
+	return (
+		<div className="grid grid-cols-3 gap-4 text-sm">
+			{fields.map((field) => (
+				<div key={field.label} className="text-center">
+					<div className="font-medium">{field.label}</div>
+					<div className="text-lg font-bold">
+						{field.data.original} | {field.data.match}
+					</div>
+					<Badge
+						variant={field.data.matches ? "default" : "destructive"}
+						className="text-xs"
+					>
+						{field.data.matches ? "Match" : "Different"}
+					</Badge>
+				</div>
+			))}
+		</div>
+	);
+};
+
+const FeatureList: React.FC<{
+	features: string[];
+	label: string;
+	colorClass: string;
+	variant: "default" | "outline" | "secondary";
+}> = ({ features, label, colorClass, variant }) => {
+	if (features.length === 0) return null;
+	return (
+		<div>
+			<h5 className={`font-medium ${colorClass} mb-2`}>
+				{label} ({features.length})
+			</h5>
+			<div className="flex flex-wrap gap-1">
+				{features.map((feature) => (
+					<Badge key={feature} variant={variant} className="text-xs">
+						{feature}
+					</Badge>
+				))}
+			</div>
+		</div>
+	);
+};
 
 interface MatchPreviewModalProps {
 	isOpen: boolean;
@@ -41,9 +145,6 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 	matchedListing,
 	matchScore = 0,
 }) => {
-	const [loading, setLoading] = useState(false);
-
-	// Use custom hook for match comparison calculations
 	const {
 		priceComparison,
 		propertyComparison,
@@ -51,18 +152,6 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 		distance,
 		distanceDisplay,
 	} = useMatchComparison(originalListing, matchedListing);
-
-	const getScoreColor = (score: number) => {
-		if (score >= 80) return "text-green-600";
-		if (score >= 60) return "text-yellow-600";
-		return "text-red-600";
-	};
-
-	const getScoreBgColor = (score: number) => {
-		if (score >= 80) return "bg-green-100";
-		if (score >= 60) return "bg-yellow-100";
-		return "bg-red-100";
-	};
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onClose}>
@@ -82,7 +171,6 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 				</DialogHeader>
 
 				<div className="flex-1 overflow-auto space-y-6">
-					{/* Match Score Summary */}
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center justify-between">
@@ -116,86 +204,17 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 						</CardContent>
 					</Card>
 
-					{/* Listing Comparison */}
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						{/* Original Listing */}
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<Home className="w-4 h-4" />
-									Original Listing
-									<Badge
-										variant={
-											originalListing.listingType === "buyer"
-												? "default"
-												: "secondary"
-										}
-									>
-										{originalListing.listingType}
-									</Badge>
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-3">
-								<h4 className="font-semibold">{originalListing.headline}</h4>
-								<div className="flex items-center gap-1 text-sm text-gray-600">
-									<MapPin className="w-4 h-4" />
-									{originalListing.suburb}, {originalListing.state}
-								</div>
-								<div className="text-sm">
-									{originalListing.bedrooms} bed •{" "}
-									{originalListing.bathrooms} bath •{" "}
-									{originalListing.parking} car
-								</div>
-								{(originalListing.priceMin || originalListing.priceMax) && (
-									<div className="flex items-center gap-1 text-sm">
-										<DollarSign className="w-4 h-4" />$
-										{originalListing.priceMin.toLocaleString()} - $
-										{originalListing.priceMax.toLocaleString()}
-									</div>
-								)}
-							</CardContent>
-						</Card>
-
-						{/* Matched Listing */}
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<Home className="w-4 h-4" />
-									Matched Listing
-									<Badge
-										variant={
-											matchedListing.listingType === "buyer"
-												? "default"
-												: "secondary"
-										}
-									>
-										{matchedListing.listingType}
-									</Badge>
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-3">
-								<h4 className="font-semibold">{matchedListing.headline}</h4>
-								<div className="flex items-center gap-1 text-sm text-gray-600">
-									<MapPin className="w-4 h-4" />
-									{matchedListing.suburb}, {matchedListing.state}
-								</div>
-								<div className="text-sm">
-									{matchedListing.bedrooms} bed •{" "}
-									{matchedListing.bathrooms} bath •{" "}
-									{matchedListing.parking} car
-								</div>
-								{(matchedListing.priceMin || matchedListing.priceMax) && (
-									<div className="flex items-center gap-1 text-sm">
-										<DollarSign className="w-4 h-4" />$
-										{matchedListing.priceMin.toLocaleString()} - $
-										{matchedListing.priceMax.toLocaleString()}
-									</div>
-								)}
-							</CardContent>
-						</Card>
+						<ListingSummaryCard
+							listing={originalListing}
+							label="Original Listing"
+						/>
+						<ListingSummaryCard
+							listing={matchedListing}
+							label="Matched Listing"
+						/>
 					</div>
 
-					{/* Price Comparison */}
 					{priceComparison && (
 						<Card>
 							<CardHeader>
@@ -234,7 +253,6 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 						</Card>
 					)}
 
-					{/* Property Details Comparison */}
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
@@ -243,69 +261,12 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="grid grid-cols-3 gap-4 text-sm">
-								<div className="text-center">
-									<div className="font-medium">Bedrooms</div>
-									<div className="text-lg font-bold">
-										{propertyComparison.bedrooms.original} |{" "}
-										{propertyComparison.bedrooms.match}
-									</div>
-									<Badge
-										variant={
-											propertyComparison.bedrooms.matches
-												? "default"
-												: "destructive"
-										}
-										className="text-xs"
-									>
-										{propertyComparison.bedrooms.matches
-											? "Match"
-											: "Different"}
-									</Badge>
-								</div>
-								<div className="text-center">
-									<div className="font-medium">Bathrooms</div>
-									<div className="text-lg font-bold">
-										{propertyComparison.bathrooms.original} |{" "}
-										{propertyComparison.bathrooms.match}
-									</div>
-									<Badge
-										variant={
-											propertyComparison.bathrooms.matches
-												? "default"
-												: "destructive"
-										}
-										className="text-xs"
-									>
-										{propertyComparison.bathrooms.matches
-											? "Match"
-											: "Different"}
-									</Badge>
-								</div>
-								<div className="text-center">
-									<div className="font-medium">Parking</div>
-									<div className="text-lg font-bold">
-										{propertyComparison.parkingSpaces.original} |{" "}
-										{propertyComparison.parkingSpaces.match}
-									</div>
-									<Badge
-										variant={
-											propertyComparison.parkingSpaces.matches
-												? "default"
-												: "destructive"
-										}
-										className="text-xs"
-									>
-										{propertyComparison.parkingSpaces.matches
-											? "Match"
-											: "Different"}
-									</Badge>
-								</div>
-							</div>
+							<PropertyComparisonGrid
+								propertyComparison={propertyComparison}
+							/>
 						</CardContent>
 					</Card>
 
-					{/* Feature Comparison */}
 					{(originalListing.features?.length ||
 						matchedListing.features?.length) && (
 						<Card>
@@ -322,70 +283,28 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								{featureComparison.common.length > 0 && (
-									<div>
-										<h5 className="font-medium text-green-600 mb-2">
-											Common Features ({featureComparison.common.length})
-										</h5>
-										<div className="flex flex-wrap gap-1">
-											{featureComparison.common.map((feature, index) => (
-												<Badge
-													key={index}
-													variant="default"
-													className="text-xs"
-												>
-													{feature}
-												</Badge>
-											))}
-										</div>
-									</div>
-								)}
-
-								{featureComparison.onlyInOriginal.length > 0 && (
-									<div>
-										<h5 className="font-medium text-orange-600 mb-2">
-											Only in Original (
-											{featureComparison.onlyInOriginal.length})
-										</h5>
-										<div className="flex flex-wrap gap-1">
-											{featureComparison.onlyInOriginal.map(
-												(feature, index) => (
-													<Badge
-														key={index}
-														variant="outline"
-														className="text-xs"
-													>
-														{feature}
-													</Badge>
-												),
-											)}
-										</div>
-									</div>
-								)}
-
-								{featureComparison.onlyInMatch.length > 0 && (
-									<div>
-										<h5 className="font-medium text-blue-600 mb-2">
-											Only in Match ({featureComparison.onlyInMatch.length})
-										</h5>
-										<div className="flex flex-wrap gap-1">
-											{featureComparison.onlyInMatch.map((feature, index) => (
-												<Badge
-													key={index}
-													variant="secondary"
-													className="text-xs"
-												>
-													{feature}
-												</Badge>
-											))}
-										</div>
-									</div>
-								)}
+								<FeatureList
+									features={featureComparison.common}
+									label="Common Features"
+									colorClass="text-green-600"
+									variant="default"
+								/>
+								<FeatureList
+									features={featureComparison.onlyInOriginal}
+									label="Only in Original"
+									colorClass="text-orange-600"
+									variant="outline"
+								/>
+								<FeatureList
+									features={featureComparison.onlyInMatch}
+									label="Only in Match"
+									colorClass="text-blue-600"
+									variant="secondary"
+								/>
 							</CardContent>
 						</Card>
 					)}
 
-					{/* Action Buttons */}
 					<div className="flex gap-4">
 						<Button variant="outline" asChild className="flex-1">
 							<Link to={generateListingUrl(matchedListing)}>

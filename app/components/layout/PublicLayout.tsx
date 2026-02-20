@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { Header } from "./Header";
 
 export function PublicLayout({
 	children,

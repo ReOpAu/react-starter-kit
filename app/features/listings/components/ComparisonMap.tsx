@@ -116,9 +116,7 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 								<div className="flex items-center gap-2">
 									<Car className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Parking:</span>
-									<span className="font-medium">
-										{originalListing.parking}
-									</span>
+									<span className="font-medium">{originalListing.parking}</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Home className="w-4 h-4 text-gray-500" />
@@ -189,9 +187,7 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 								<div className="flex items-center gap-2">
 									<Bed className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Bedrooms:</span>
-									<span className="font-medium">
-										{matchedListing.bedrooms}
-									</span>
+									<span className="font-medium">{matchedListing.bedrooms}</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Bath className="w-4 h-4 text-gray-500" />
@@ -203,9 +199,7 @@ export const ComparisonMap: React.FC<ComparisonMapProps> = ({
 								<div className="flex items-center gap-2">
 									<Car className="w-4 h-4 text-gray-500" />
 									<span className="text-gray-600">Parking:</span>
-									<span className="font-medium">
-										{matchedListing.parking}
-									</span>
+									<span className="font-medium">{matchedListing.parking}</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<Home className="w-4 h-4 text-gray-500" />

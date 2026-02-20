@@ -1,5 +1,5 @@
-import type React from "react";
 import { ArrowLeft } from "lucide-react";
+import type React from "react";
 import { Link } from "react-router";
 import { Button } from "../../../components/ui/button";
 import type { ConvexListing } from "../types";
@@ -26,7 +26,9 @@ export const NavigationSection: React.FC<NavigationSectionProps> = ({
 
 				{matchedListing && (
 					<Button variant="outline" asChild>
-						<Link to={`/listings/${originalListing.state.toLowerCase()}/${originalListing.listingType}/${originalListing.suburb.toLowerCase()}/${originalListing._id}`}>
+						<Link
+							to={`/listings/${originalListing.state.toLowerCase()}/${originalListing.listingType}/${originalListing.suburb.toLowerCase()}/${originalListing._id}`}
+						>
 							View Original Listing
 						</Link>
 					</Button>

@@ -5,9 +5,13 @@ import { useMutation, useQuery } from "convex/react";
 import { AlertCircle, Home } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
+import type {
+	BuildingType,
+	Feature,
+	SellerType,
+} from "../../../../../shared/constants/listingConstants";
 import { PRICE_OPTIONS } from "../../../../../shared/constants/priceOptions";
 import { Alert, AlertDescription } from "../../../../components/ui/alert";
-import { Button } from "../../../../components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -23,14 +27,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../../../components/ui/select";
-import { Skeleton } from "../../../../components/ui/skeleton";
 import { Switch } from "../../../../components/ui/switch";
 import { Textarea } from "../../../../components/ui/textarea";
-import type { BuildingType, Feature, SellerType } from "../../../../../shared/constants/listingConstants";
+import { ContactFields } from "./shared/ContactFields";
 import { FeaturesFields } from "./shared/FeaturesFields";
+import { FormActions } from "./shared/FormActions";
+import { FormSkeleton } from "./shared/FormSkeleton";
 import { LocationFields } from "./shared/LocationFields";
 import { PriceFields } from "./shared/PriceFields";
 import { PropertyDetailsFields } from "./shared/PropertyDetailsFields";
+import { useFormStatus } from "./shared/useFormStatus";
 
 interface SellerListingFormProps {
 	listingId: Id<"listings">;
@@ -38,7 +44,6 @@ interface SellerListingFormProps {
 	onCancel?: () => void;
 }
 
-// Clean schema form data interface
 interface SellerFormData {
 	sellerType: SellerType;
 	buildingType: BuildingType | undefined;
@@ -60,6 +65,13 @@ interface SellerFormData {
 	contactPhone?: string;
 	isPremium: boolean;
 }
+
+const findClosestPrice = (price: number): number => {
+	const validPrices = PRICE_OPTIONS.map((opt) => opt.value);
+	return validPrices.reduce((closest, current) =>
+		Math.abs(current - price) < Math.abs(closest - price) ? current : closest,
+	);
+};
 
 export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 	listingId,
@@ -92,33 +104,11 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 		isPremium: false,
 	});
 
-	const [isLoading, setIsLoading] = useState(false);
-	const [isInitialized, setIsInitialized] = useState(false);
-	const [priceError, setPriceError] = useState<string | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [status, dispatch] = useFormStatus();
 
-	// Initialize form with listing data
 	useEffect(() => {
-		if (listing && !isInitialized && listing.listingType === "seller") {
-			console.log("🔍 SellerListingForm: Initializing with listing data:", {
-				buildingType: listing.buildingType,
-				state: listing.state,
-				priceMin: listing.priceMin,
-				priceMax: listing.priceMax,
-				sellerType: listing.sellerType,
-			});
-
-			// Helper function to find closest valid price option
-			const findClosestPrice = (price: number): number => {
-				const validPrices = PRICE_OPTIONS.map((opt) => opt.value);
-				return validPrices.reduce((closest, current) =>
-					Math.abs(current - price) < Math.abs(closest - price)
-						? current
-						: closest,
-				);
-			};
-
-			const newFormData: SellerFormData = {
+		if (listing && !status.isInitialized && listing.listingType === "seller") {
+			setFormData({
 				sellerType: listing.sellerType || "sale",
 				buildingType: listing.buildingType || undefined,
 				headline: listing.headline,
@@ -138,41 +128,15 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				contactEmail: listing.contactEmail || "",
 				contactPhone: listing.contactPhone || "",
 				isPremium: listing.isPremium || false,
-			};
-
-			console.log("🔍 SellerListingForm: Setting form data:", {
-				buildingType: newFormData.buildingType,
-				state: newFormData.state,
-				priceMin: newFormData.priceMin,
-				priceMax: newFormData.priceMax,
-				sellerType: newFormData.sellerType,
 			});
-
-			setFormData(newFormData);
-			setIsInitialized(true);
+			dispatch({ type: "INITIALIZED" });
 		}
-	}, [listing, isInitialized]);
+	}, [listing, status.isInitialized, dispatch]);
 
-	// Loading state
 	if (listing === undefined) {
-		return (
-			<div className="space-y-8">
-				{Array.from({ length: 5 }).map((_, i) => (
-					<Card key={i}>
-						<CardHeader>
-							<Skeleton className="h-6 w-48" />
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<Skeleton className="h-10 w-full" />
-							<Skeleton className="h-10 w-full" />
-						</CardContent>
-					</Card>
-				))}
-			</div>
-		);
+		return <FormSkeleton />;
 	}
 
-	// Error state - listing not found or wrong type
 	if (listing === null || listing.listingType !== "seller") {
 		return (
 			<Alert variant="destructive">
@@ -184,86 +148,79 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 		);
 	}
 
-	const validatePrice = () => {
-		if (formData.priceMin >= formData.priceMax) {
-			setPriceError("Maximum price must be greater than minimum price.");
-			return false;
-		}
-		setPriceError(null);
-		return true;
-	};
-
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!validatePrice()) {
+		if (formData.priceMin >= formData.priceMax) {
+			dispatch({
+				type: "SET_PRICE_ERROR",
+				payload: "Maximum price must be greater than minimum price.",
+			});
 			return;
 		}
-
-		setIsLoading(true);
-		setError(null);
+		dispatch({ type: "SET_PRICE_ERROR", payload: null });
+		dispatch({ type: "SUBMIT_START" });
 
 		try {
-			const updates = {
-				sellerType: formData.sellerType,
-				...(formData.buildingType && { buildingType: formData.buildingType }),
-				headline: formData.headline,
-				description: formData.description,
-				suburb: formData.suburb,
-				state: formData.state,
-				postcode: formData.postcode,
-				address: formData.address,
-				latitude: formData.latitude,
-				longitude: formData.longitude,
-				bedrooms: formData.bedrooms,
-				bathrooms: formData.bathrooms,
-				parking: formData.parking,
-				priceMin: formData.priceMin,
-				priceMax: formData.priceMax,
-				features: formData.features,
-				contactEmail: formData.contactEmail,
-				contactPhone: formData.contactPhone,
-				isPremium: formData.isPremium,
-				updatedAt: Date.now(),
-			};
-
-			const result = await updateListing({ id: listingId, updates });
-			console.log("Update result:", result);
+			await updateListing({
+				id: listingId,
+				updates: {
+					sellerType: formData.sellerType,
+					...(formData.buildingType && {
+						buildingType: formData.buildingType,
+					}),
+					headline: formData.headline,
+					description: formData.description,
+					suburb: formData.suburb,
+					state: formData.state,
+					postcode: formData.postcode,
+					address: formData.address,
+					latitude: formData.latitude,
+					longitude: formData.longitude,
+					bedrooms: formData.bedrooms,
+					bathrooms: formData.bathrooms,
+					parking: formData.parking,
+					priceMin: formData.priceMin,
+					priceMax: formData.priceMax,
+					features: formData.features,
+					contactEmail: formData.contactEmail,
+					contactPhone: formData.contactPhone,
+					isPremium: formData.isPremium,
+					updatedAt: Date.now(),
+				},
+			});
+			dispatch({ type: "SUBMIT_SUCCESS" });
 			onSuccess?.(listingId);
-		} catch (error) {
-			console.error("Failed to update seller listing:", error);
-			setError("Failed to update listing. Please try again.");
-		} finally {
-			setIsLoading(false);
+		} catch (err) {
+			dispatch({
+				type: "SUBMIT_ERROR",
+				payload: "Failed to update listing. Please try again.",
+			});
 		}
 	};
 
-	// Field update handlers
 	const handleFieldChange = (field: string, value: string | number) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const handlePriceChange = (price: { priceMin?: number; priceMax?: number }) => {
+	const handlePriceChange = (price: {
+		priceMin?: number;
+		priceMax?: number;
+	}) => {
 		setFormData((prev) => ({ ...prev, ...price }));
-
-		// Validate price range
 		const newMin = price.priceMin ?? formData.priceMin;
 		const newMax = price.priceMax ?? formData.priceMax;
-
-		if (newMin >= newMax) {
-			setPriceError("Maximum price must be greater than minimum price.");
-		} else {
-			setPriceError(null);
-		}
-	};
-
-	const handleFeaturesChange = (features: Feature[]) => {
-		setFormData((prev) => ({ ...prev, features }));
+		dispatch({
+			type: "SET_PRICE_ERROR",
+			payload:
+				newMin >= newMax
+					? "Maximum price must be greater than minimum price."
+					: null,
+		});
 	};
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-8">
-			{/* Basic Info */}
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
@@ -316,7 +273,6 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				</CardContent>
 			</Card>
 
-			{/* Location - Shared Component */}
 			<LocationFields
 				suburb={formData.suburb}
 				state={formData.state}
@@ -325,75 +281,47 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				showStreetField={true}
 				addressLabel="Property Address"
 				addressPlaceholder="e.g., 123 Campbell Parade"
-				onLocationChange={(location) => setFormData(prev => ({ ...prev, ...location }))}
+				onLocationChange={(location) =>
+					setFormData((prev) => ({ ...prev, ...location }))
+				}
 			/>
 
-			{/* Property Details - Shared Component */}
 			<PropertyDetailsFields
 				buildingType={(formData.buildingType || "") as any}
 				bedrooms={formData.bedrooms}
 				bathrooms={formData.bathrooms}
 				parking={formData.parking}
 				title="Property Specifications"
-				onPropertyChange={(property) => setFormData(prev => ({ ...prev, ...property } as any))}
+				onPropertyChange={(property) =>
+					setFormData((prev) => ({ ...prev, ...property }) as any)
+				}
 			/>
 
-			{/* Asking Price - Shared Component */}
 			<PriceFields
 				priceMin={formData.priceMin}
 				priceMax={formData.priceMax}
 				title="Asking Price"
 				minLabel="Minimum Price"
 				maxLabel="Maximum Price"
-				error={priceError}
+				error={status.priceError}
 				onPriceChange={handlePriceChange}
 			/>
 
-			{/* Features - Shared Component */}
 			<FeaturesFields
 				features={formData.features}
 				title="Property Features"
 				description="What features does your property have?"
-				onFeaturesChange={handleFeaturesChange}
+				onFeaturesChange={(features) =>
+					setFormData((prev) => ({ ...prev, features }))
+				}
 			/>
 
-			{/* Contact Information */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Contact Information</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-						<div className="space-y-2">
-							<Label htmlFor="contactEmail">Contact Email</Label>
-							<Input
-								id="contactEmail"
-								type="email"
-								value={formData.contactEmail}
-								onChange={(e) =>
-									handleFieldChange("contactEmail", e.target.value)
-								}
-								placeholder="your@email.com"
-							/>
-						</div>
+			<ContactFields
+				contactEmail={formData.contactEmail}
+				contactPhone={formData.contactPhone}
+				onFieldChange={handleFieldChange}
+			/>
 
-						<div className="space-y-2">
-							<Label htmlFor="contactPhone">Contact Phone</Label>
-							<Input
-								id="contactPhone"
-								type="tel"
-								value={formData.contactPhone}
-								onChange={(e) =>
-									handleFieldChange("contactPhone", e.target.value)
-								}
-								placeholder="0412 345 678"
-							/>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Additional Options */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Listing Options</CardTitle>
@@ -414,23 +342,12 @@ export const SellerListingForm: React.FC<SellerListingFormProps> = ({
 				</CardContent>
 			</Card>
 
-			{/* Actions */}
-			{error && (
-				<Alert variant="destructive">
-					<AlertCircle className="h-4 w-4" />
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-			)}
-			<div className="flex gap-4 justify-end">
-				{onCancel && (
-					<Button type="button" variant="outline" onClick={onCancel}>
-						Cancel
-					</Button>
-				)}
-				<Button type="submit" disabled={isLoading}>
-					{isLoading ? "Updating..." : "Update Property Listing"}
-				</Button>
-			</div>
+			<FormActions
+				error={status.error}
+				isLoading={status.isLoading}
+				submitLabel="Update Property Listing"
+				onCancel={onCancel}
+			/>
 		</form>
 	);
 };

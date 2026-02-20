@@ -28,7 +28,10 @@ export function createRuralActions(
 		};
 
 		ctx.setSelectedResult(enrichedResult);
-		ctx.setActiveSearch({ query: enrichedResult.description, source: "manual" });
+		ctx.setActiveSearch({
+			query: enrichedResult.description,
+			source: "manual",
+		});
 		ctx.setAgentRequestedManual(false);
 		// Reset options display when making a new selection
 		useUIStore.getState().setShowingOptionsAfterConfirmation(false);
@@ -40,7 +43,10 @@ export function createRuralActions(
 		state.setPendingRuralConfirmation(null);
 
 		// Notify agent about rural address selection
-		if (ctx.isRecording && ctx.conversationRef.current?.status === "connected") {
+		if (
+			ctx.isRecording &&
+			ctx.conversationRef.current?.status === "connected"
+		) {
 			const selectionMessage = `I have confirmed the rural address "${enrichedResult.description}". Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed.`;
 			ctx.log("🗨️ SENDING MESSAGE TO AGENT:", selectionMessage);
 			try {

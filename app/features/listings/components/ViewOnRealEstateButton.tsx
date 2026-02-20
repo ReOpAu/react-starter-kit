@@ -28,8 +28,8 @@ export const ViewOnRealEstateButton: React.FC<ViewOnRealEstateButtonProps> = ({
 		};
 
 		const buildingType = listing.buildingType
-			? (buildingTypeMap[listing.buildingType] ||
-			   listing.buildingType.toLowerCase().replace(/\s+/g, "-"))
+			? buildingTypeMap[listing.buildingType] ||
+				listing.buildingType.toLowerCase().replace(/\s+/g, "-")
 			: "house";
 
 		// Function to round price to RealEstate.com.au increments

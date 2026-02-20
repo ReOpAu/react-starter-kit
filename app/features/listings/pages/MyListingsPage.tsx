@@ -26,14 +26,119 @@ import { Skeleton } from "../../../components/ui/skeleton";
 import { DeleteListingButton } from "../components/forms";
 import { type ConvexListing, formatListingPrice } from "../types";
 
+const formatPrice = (listing: ConvexListing) => {
+	if (listing.priceMin === listing.priceMax) {
+		return `$${listing.priceMin.toLocaleString()}`;
+	}
+	return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
+};
+
+const formatDate = (timestamp: number) => {
+	return new Date(timestamp).toLocaleDateString();
+};
+
+const MyListingCard: React.FC<{
+	listing: ConvexListing;
+	onDeleteSuccess: () => void;
+}> = ({ listing, onDeleteSuccess }) => {
+	return (
+		<Card className="hover:shadow-md transition-shadow">
+			<CardHeader>
+				<div className="flex items-start justify-between">
+					<div className="flex-1">
+						<div className="flex items-center gap-2 mb-2">
+							<Badge
+								variant={
+									listing.listingType === "buyer" ? "default" : "secondary"
+								}
+							>
+								{listing.listingType}
+							</Badge>
+							{listing.buyerType && (
+								<Badge variant="outline">{listing.buyerType}</Badge>
+							)}
+							{listing.sellerType && (
+								<Badge variant="outline">{listing.sellerType}</Badge>
+							)}
+							{listing.isPremium && (
+								<Badge variant="destructive">Premium</Badge>
+							)}
+						</div>
+						<CardTitle className="text-lg">{listing.headline}</CardTitle>
+					</div>
+				</div>
+				<div className="flex items-center gap-4 text-sm text-muted-foreground">
+					<div className="flex items-center gap-1">
+						<MapPin className="w-3 h-3" />
+						{listing.suburb}, {listing.state}
+					</div>
+					<div className="flex items-center gap-1">
+						<Calendar className="w-3 h-3" />
+						{formatDate(listing.createdAt)}
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+					{listing.description}
+				</p>
+
+				<div className="space-y-3">
+					<div className="flex items-center gap-4 text-sm">
+						<span>{listing.bedrooms} bed</span>
+						<span>{listing.bathrooms} bath</span>
+						<span>{listing.parking} car</span>
+						{listing.buildingType && <span>{listing.buildingType}</span>}
+					</div>
+
+					<div className="flex items-center gap-1 text-sm font-medium">
+						<DollarSign className="w-3 h-3" />
+						{formatPrice(listing)}
+					</div>
+
+					{listing.features?.length > 0 && (
+						<div className="flex flex-wrap gap-1">
+							{listing.features.slice(0, 3).map((feature: string) => (
+								<Badge key={feature} variant="outline" className="text-xs">
+									{feature}
+								</Badge>
+							))}
+							{listing.features.length > 3 && (
+								<Badge variant="outline" className="text-xs">
+									+{listing.features.length - 3} more
+								</Badge>
+							)}
+						</div>
+					)}
+				</div>
+
+				<div className="flex gap-2 mt-4 pt-4 border-t">
+					<Button variant="outline" size="sm" asChild className="flex-1">
+						<Link to={`/listings/edit/${listing._id}`}>
+							<Edit className="w-3 h-3 mr-1" />
+							Edit
+						</Link>
+					</Button>
+					<DeleteListingButton
+						listingId={listing._id!}
+						listingTitle={listing.headline}
+						onSuccess={onDeleteSuccess}
+						variant="outline"
+						size="sm"
+					>
+						Delete
+					</DeleteListingButton>
+				</div>
+			</CardContent>
+		</Card>
+	);
+};
+
 const MyListingsPage: React.FC = () => {
 	const { user } = useUser();
 	const [filter, setFilter] = useState<"all" | "buyer" | "seller">("all");
-
-	// Query user's listings - we'll need to create this query
 	const allListings = useQuery(api.listings.listListings, {});
 
-	// Filter listings by current user
 	const userListings =
 		allListings?.listings?.filter((listing) => listing.userId === user?.id) ||
 		[];
@@ -49,20 +154,7 @@ const MyListingsPage: React.FC = () => {
 		sellers: userListings.filter((l) => l.listingType === "seller").length,
 	};
 
-	const formatPrice = (listing: ConvexListing) => {
-		if (listing.priceMin === listing.priceMax) {
-			return `$${listing.priceMin.toLocaleString()}`;
-		}
-		return `$${listing.priceMin.toLocaleString()} - $${listing.priceMax.toLocaleString()}`;
-	};
-
-	const formatDate = (timestamp: number) => {
-		return new Date(timestamp).toLocaleDateString();
-	};
-
-	const handleDeleteSuccess = () => {
-		// Refetch will happen automatically due to Convex reactivity
-	};
+	const handleDeleteSuccess = () => {};
 
 	if (!user) {
 		return (
@@ -82,7 +174,6 @@ const MyListingsPage: React.FC = () => {
 	return (
 		<div className="flex-1 bg-gradient-to-b from-gray-50 to-white">
 			<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-				{/* Header */}
 				<div className="flex items-center justify-between mb-8">
 					<div>
 						<h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
@@ -100,7 +191,6 @@ const MyListingsPage: React.FC = () => {
 					</Button>
 				</div>
 
-				{/* Stats Cards */}
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 					<Card>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -146,7 +236,6 @@ const MyListingsPage: React.FC = () => {
 					</Card>
 				</div>
 
-				{/* Filters */}
 				<div className="flex gap-2 mb-6">
 					<Button
 						variant={filter === "all" ? "default" : "outline"}
@@ -168,9 +257,7 @@ const MyListingsPage: React.FC = () => {
 					</Button>
 				</div>
 
-				{/* Listings */}
 				{allListings === undefined ? (
-					// Loading state
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 						{Array.from({ length: 4 }).map((_, i) => (
 							<Card key={i}>
@@ -186,7 +273,6 @@ const MyListingsPage: React.FC = () => {
 						))}
 					</div>
 				) : filteredListings.length === 0 ? (
-					// Empty state
 					<Card>
 						<CardContent className="text-center py-12">
 							<Home className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -207,122 +293,13 @@ const MyListingsPage: React.FC = () => {
 						</CardContent>
 					</Card>
 				) : (
-					// Listings grid
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 						{filteredListings.map((listing: ConvexListing) => (
-							<Card
+							<MyListingCard
 								key={listing._id}
-								className="hover:shadow-md transition-shadow"
-							>
-								<CardHeader>
-									<div className="flex items-start justify-between">
-										<div className="flex-1">
-											<div className="flex items-center gap-2 mb-2">
-												<Badge
-													variant={
-														listing.listingType === "buyer"
-															? "default"
-															: "secondary"
-													}
-												>
-													{listing.listingType}
-												</Badge>
-												{listing.buyerType && (
-												<Badge variant="outline">{listing.buyerType}</Badge>
-											)}
-											{listing.sellerType && (
-												<Badge variant="outline">{listing.sellerType}</Badge>
-											)}
-												{listing.isPremium && (
-													<Badge variant="destructive">Premium</Badge>
-												)}
-											</div>
-											<CardTitle className="text-lg">
-												{listing.headline}
-											</CardTitle>
-										</div>
-									</div>
-									<div className="flex items-center gap-4 text-sm text-muted-foreground">
-										<div className="flex items-center gap-1">
-											<MapPin className="w-3 h-3" />
-											{listing.suburb}, {listing.state}
-										</div>
-										<div className="flex items-center gap-1">
-											<Calendar className="w-3 h-3" />
-											{formatDate(listing.createdAt)}
-										</div>
-									</div>
-								</CardHeader>
-								<CardContent>
-									<p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-										{listing.description}
-									</p>
-
-									<div className="space-y-3">
-										{/* Property Details */}
-										<div className="flex items-center gap-4 text-sm">
-											<span>{listing.bedrooms} bed</span>
-											<span>{listing.bathrooms} bath</span>
-											<span>{listing.parking} car</span>
-											{listing.buildingType && (
-												<span>{listing.buildingType}</span>
-											)}
-										</div>
-
-										{/* Price */}
-										<div className="flex items-center gap-1 text-sm font-medium">
-											<DollarSign className="w-3 h-3" />
-											{formatPrice(listing)}
-										</div>
-
-										{/* Features */}
-										{listing.features?.length > 0 && (
-											<div className="flex flex-wrap gap-1">
-												{listing.features
-													.slice(0, 3)
-													.map((feature: string, index: number) => (
-														<Badge
-															key={index}
-															variant="outline"
-															className="text-xs"
-														>
-															{feature}
-														</Badge>
-													))}
-												{listing.features.length > 3 && (
-													<Badge variant="outline" className="text-xs">
-														+{listing.features.length - 3} more
-													</Badge>
-												)}
-											</div>
-										)}
-									</div>
-
-									{/* Actions */}
-									<div className="flex gap-2 mt-4 pt-4 border-t">
-										<Button
-											variant="outline"
-											size="sm"
-											asChild
-											className="flex-1"
-										>
-											<Link to={`/listings/edit/${listing._id}`}>
-												<Edit className="w-3 h-3 mr-1" />
-												Edit
-											</Link>
-										</Button>
-										<DeleteListingButton
-											listingId={listing._id!}
-											listingTitle={listing.headline}
-											onSuccess={handleDeleteSuccess}
-											variant="outline"
-											size="sm"
-										>
-											Delete
-										</DeleteListingButton>
-									</div>
-								</CardContent>
-							</Card>
+								listing={listing}
+								onDeleteSuccess={handleDeleteSuccess}
+							/>
 						))}
 					</div>
 				)}

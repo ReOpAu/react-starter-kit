@@ -1,11 +1,7 @@
 import type { useConversation } from "@elevenlabs/react";
 import type { QueryClient } from "@tanstack/react-query";
 import type { RefObject } from "react";
-import type {
-	HistoryItem,
-	LocationIntent,
-	Suggestion,
-} from "~/stores/types";
+import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
 
 /**
  * Shared context interface for all action modules.
@@ -23,7 +19,10 @@ export interface ActionContext {
 
 	// Selection state management
 	setSelectedResult: (result: Suggestion | null) => void;
-	setActiveSearch: (payload: { query: string; source: "manual" | "voice" }) => void;
+	setActiveSearch: (payload: {
+		query: string;
+		source: "manual" | "voice";
+	}) => void;
 	searchQuery: string;
 
 	// UI state management

@@ -819,10 +819,10 @@ export function useAddressFinderClientTools(
 					intentStore: useIntentStore,
 					uiStore: useUIStore,
 					apiStore: useApiStore,
-					searchHistoryStore:
-						require("~/stores/searchHistoryStore").useSearchHistoryStore,
-					addressSelectionStore:
-						require("~/stores/addressSelectionStore").useAddressSelectionStore,
+					searchHistoryStore: require("~/stores/searchHistoryStore")
+						.useSearchHistoryStore,
+					addressSelectionStore: require("~/stores/addressSelectionStore")
+						.useAddressSelectionStore,
 				});
 				const result = service.showOptionsAgain();
 

@@ -5,6 +5,19 @@ import { useMutation } from "convex/react";
 import { AlertCircle, Home, Search } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import {
+	type BuildingType,
+	type BuyerType,
+	DEFAULT_BATHROOMS,
+	DEFAULT_BEDROOMS,
+	DEFAULT_PARKING,
+	DEFAULT_SEARCH_RADIUS,
+	type Feature,
+} from "../../../../../shared/constants/listingConstants";
+import {
+	DEFAULT_MAX_PRICE,
+	DEFAULT_MIN_PRICE,
+} from "../../../../../shared/constants/listingPrices";
 import { Alert, AlertDescription } from "../../../../components/ui/alert";
 import { Button } from "../../../../components/ui/button";
 import {
@@ -17,16 +30,6 @@ import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
 import { Switch } from "../../../../components/ui/switch";
 import { Textarea } from "../../../../components/ui/textarea";
-import {
-	type BuyerType,
-	type BuildingType,
-	type Feature,
-	DEFAULT_SEARCH_RADIUS,
-	DEFAULT_BEDROOMS,
-	DEFAULT_BATHROOMS,
-	DEFAULT_PARKING,
-} from "../../../../../shared/constants/listingConstants";
-import { DEFAULT_MIN_PRICE, DEFAULT_MAX_PRICE } from "../../../../../shared/constants/listingPrices";
 import { BuyerTypeFields } from "./shared/BuyerTypeFields";
 import { FeaturesFields } from "./shared/FeaturesFields";
 import { LocationFields } from "./shared/LocationFields";
@@ -131,7 +134,8 @@ export const CreateBuyerListingForm: React.FC<CreateBuyerListingFormProps> = ({
 				priceMax: formData.priceMax,
 				features: formData.features,
 				buyerType: formData.buyerType,
-				searchRadius: formData.buyerType === "street" ? formData.searchRadius : undefined,
+				searchRadius:
+					formData.buyerType === "street" ? formData.searchRadius : undefined,
 				headline: formData.headline,
 				description: formData.description,
 				contactEmail: formData.contactEmail || undefined,
@@ -151,7 +155,7 @@ export const CreateBuyerListingForm: React.FC<CreateBuyerListingFormProps> = ({
 	};
 
 	const updateFormData = (updates: Partial<BuyerFormData>) => {
-		setFormData(prev => ({ ...prev, ...updates }));
+		setFormData((prev) => ({ ...prev, ...updates }));
 	};
 
 	return (
@@ -176,7 +180,9 @@ export const CreateBuyerListingForm: React.FC<CreateBuyerListingFormProps> = ({
 						buyerType={formData.buyerType}
 						onBuyerTypeChange={(value) => updateFormData({ buyerType: value })}
 						searchRadius={formData.searchRadius}
-						onSearchRadiusChange={(value) => updateFormData({ searchRadius: value })}
+						onSearchRadiusChange={(value) =>
+							updateFormData({ searchRadius: value })
+						}
 					/>
 				</CardContent>
 			</Card>
@@ -291,7 +297,9 @@ export const CreateBuyerListingForm: React.FC<CreateBuyerListingFormProps> = ({
 						<Switch
 							id="isPremium"
 							checked={formData.isPremium}
-							onCheckedChange={(checked) => updateFormData({ isPremium: checked })}
+							onCheckedChange={(checked) =>
+								updateFormData({ isPremium: checked })
+							}
 						/>
 						<Label htmlFor="isPremium">
 							Premium Listing (Featured placement)

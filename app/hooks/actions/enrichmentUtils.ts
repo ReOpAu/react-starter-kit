@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Suggestion } from "~/stores/types";
-import { ENRICHMENT_CACHE_KEY, type ActionContext } from "./types";
+import { type ActionContext, ENRICHMENT_CACHE_KEY } from "./types";
 
 /**
  * Check if a result already has enriched data (postcode, suburb, coordinates).
@@ -97,7 +97,10 @@ export async function enrichSuggestion(
 			});
 
 			// Cache the result
-			queryClient.setQueryData([ENRICHMENT_CACHE_KEY, result.placeId], detailsRes);
+			queryClient.setQueryData(
+				[ENRICHMENT_CACHE_KEY, result.placeId],
+				detailsRes,
+			);
 
 			return {
 				...result,

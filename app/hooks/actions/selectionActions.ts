@@ -21,13 +21,17 @@ export function createSelectionActions(
 		intent: string,
 		isRural = false,
 	): void => {
-		if (ctx.isRecording && ctx.conversationRef.current?.status === "connected") {
+		if (
+			ctx.isRecording &&
+			ctx.conversationRef.current?.status === "connected"
+		) {
 			const messagePrefix = isRural
 				? "I have confirmed the rural address"
 				: `I have selected`;
-			const messageSuffix = intent === "address"
-				? "from the available options. Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed."
-				: `. This is a ${intent}, not a full address. Please acknowledge this selection.`;
+			const messageSuffix =
+				intent === "address"
+					? "from the available options. Please acknowledge this selection and do not use the selectSuggestion tool - the selection is already confirmed."
+					: `. This is a ${intent}, not a full address. Please acknowledge this selection.`;
 
 			const selectionMessage = `${messagePrefix} "${description}" ${messageSuffix}`;
 			ctx.log("🗨️ SENDING MESSAGE TO AGENT:", selectionMessage);
@@ -109,12 +113,11 @@ export function createSelectionActions(
 			} else {
 				errorMessage = error.message;
 			}
-		} else if (
-			typeof error === "object" &&
-			error !== null &&
-			"data" in error
-		) {
-			const errorObj = error as { data?: { message?: string }; message?: string };
+		} else if (typeof error === "object" && error !== null && "data" in error) {
+			const errorObj = error as {
+				data?: { message?: string };
+				message?: string;
+			};
 			if (errorObj.data?.message) {
 				errorMessage = errorObj.data.message;
 			} else if (errorObj.message) {
@@ -189,8 +192,11 @@ export function createSelectionActions(
 					// Further enrich with validation data if available
 					const finalResult: Suggestion = {
 						...enrichedResult,
-						description: validation.result?.address.formattedAddress ?? enrichedResult.description,
-						placeId: validation.result?.geocode.placeId ?? enrichedResult.placeId,
+						description:
+							validation.result?.address.formattedAddress ??
+							enrichedResult.description,
+						placeId:
+							validation.result?.geocode.placeId ?? enrichedResult.placeId,
 						lat: validation.result?.geocode?.location?.latitude,
 						lng: validation.result?.geocode?.location?.longitude,
 					};
@@ -201,12 +207,12 @@ export function createSelectionActions(
 					updateSelectionState(finalResult);
 					notifyAgentOfSelection(finalResult.description, "address");
 					storeSelectionAndSync(finalResult, currentSearchQuery);
-				} else if (
-					validation.success &&
-					validation.isRuralException
-				) {
+				} else if (validation.success && validation.isRuralException) {
 					// Rural exception: prompt user for confirmation
-					state.setPendingRuralConfirmation({ result: enrichedResult, validation });
+					state.setPendingRuralConfirmation({
+						result: enrichedResult,
+						validation,
+					});
 					state.setValidationError(null);
 					ctx.addHistory({
 						type: "system",
@@ -214,8 +220,7 @@ export function createSelectionActions(
 					});
 				} else {
 					const errorMessage =
-						validation.error ||
-						"The selected address could not be validated.";
+						validation.error || "The selected address could not be validated.";
 					ctx.log(`❌ VALIDATION FAILED: ${errorMessage}`);
 					state.setValidationError(errorMessage);
 					ctx.addHistory({
@@ -283,7 +288,8 @@ export function createSelectionActions(
 				if (validation.success && validation.isValid) {
 					const enrichedResult: Suggestion = {
 						...result,
-						description: validation.result?.address.formattedAddress ?? result.description,
+						description:
+							validation.result?.address.formattedAddress ?? result.description,
 						placeId: validation.result?.geocode.placeId ?? result.placeId,
 						lat: validation.result?.geocode?.location?.latitude,
 						lng: validation.result?.geocode?.location?.longitude,
@@ -294,10 +300,7 @@ export function createSelectionActions(
 
 					updateSelectionState(enrichedResult);
 					notifyAgentOfSelection(enrichedResult.description, "address");
-				} else if (
-					validation.success &&
-					validation.isRuralException
-				) {
+				} else if (validation.success && validation.isRuralException) {
 					// Rural exception: prompt user for confirmation
 					state.setPendingRuralConfirmation({ result, validation });
 					state.setValidationError(null);
@@ -307,8 +310,7 @@ export function createSelectionActions(
 					});
 				} else {
 					const errorMessage =
-						validation.error ||
-						"The selected address could not be validated.";
+						validation.error || "The selected address could not be validated.";
 					ctx.log(`❌ VALIDATION FAILED: ${errorMessage}`);
 					state.setValidationError(errorMessage);
 					ctx.addHistory({
@@ -327,7 +329,10 @@ export function createSelectionActions(
 			ctx.setActiveSearch({ query: result.description, source: "manual" });
 			ctx.setAgentRequestedManual(false);
 			useUIStore.getState().setShowingOptionsAfterConfirmation(false);
-			ctx.addHistory({ type: "user", text: `Selected: "${result.description}"` });
+			ctx.addHistory({
+				type: "user",
+				text: `Selected: "${result.description}"`,
+			});
 			ctx.clearSessionToken();
 
 			notifyAgentOfSelection(result.description, intent);

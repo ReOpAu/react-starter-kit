@@ -1,5 +1,6 @@
 import { Building2, Search } from "lucide-react";
 import type React from "react";
+import type { ListingType } from "../../../../../../shared/constants/listingConstants";
 import { Label } from "../../../../../components/ui/label";
 import {
 	Select,
@@ -8,7 +9,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../../../../components/ui/select";
-import type { ListingType } from "../../../../../../shared/constants/listingConstants";
 
 interface ListingTypeSelectorProps {
 	value: ListingType;
@@ -24,11 +24,7 @@ export const ListingTypeSelector: React.FC<ListingTypeSelectorProps> = ({
 	return (
 		<div className="space-y-2">
 			<Label htmlFor="listingType">I am a</Label>
-			<Select
-				value={value}
-				onValueChange={onChange}
-				disabled={disabled}
-			>
+			<Select value={value} onValueChange={onChange} disabled={disabled}>
 				<SelectTrigger>
 					<SelectValue />
 				</SelectTrigger>

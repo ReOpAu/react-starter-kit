@@ -39,6 +39,26 @@ interface CachedData {
 	error: string | null;
 }
 
+const STAR_POSITIONS = [1, 2, 3, 4, 5] as const;
+
+const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
+	return (
+		<div className="flex items-center gap-1">
+			{STAR_POSITIONS.map((position) => (
+				<Star
+					key={position}
+					className={`w-4 h-4 ${
+						position <= Math.round(rating)
+							? "text-yellow-400 fill-yellow-400"
+							: "text-gray-300"
+					}`}
+				/>
+			))}
+			<span className="text-sm text-gray-600 ml-1">{rating.toFixed(1)}</span>
+		</div>
+	);
+};
+
 export const NearbyPlacesTabs: React.FC<NearbyPlacesTabsProps> = ({
 	latitude,
 	longitude,
@@ -116,7 +136,7 @@ export const NearbyPlacesTabs: React.FC<NearbyPlacesTabsProps> = ({
 
 				const convexUrl = import.meta.env.VITE_CONVEX_URL;
 				// Convert .convex.cloud to .convex.site for HTTP actions
-				const httpUrl = convexUrl.replace('.convex.cloud', '.convex.site');
+				const httpUrl = convexUrl.replace(".convex.cloud", ".convex.site");
 				const response = await fetch(`${httpUrl}/api/nearbyPlaces`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -169,24 +189,6 @@ export const NearbyPlacesTabs: React.FC<NearbyPlacesTabsProps> = ({
 			fetchTabData(activeTabConfig);
 		}
 	}, [activeTab, cachedData, fetchTabData]);
-
-	const renderRating = (rating: number) => {
-		return (
-			<div className="flex items-center gap-1">
-				{[...Array(5)].map((_, i) => (
-					<Star
-						key={`star-${i}`}
-						className={`w-4 h-4 ${
-							i < Math.round(rating)
-								? "text-yellow-400 fill-yellow-400"
-								: "text-gray-300"
-						}`}
-					/>
-				))}
-				<span className="text-sm text-gray-600 ml-1">{rating.toFixed(1)}</span>
-			</div>
-		);
-	};
 
 	return (
 		<div className="w-full h-full flex flex-col">
@@ -273,7 +275,7 @@ export const NearbyPlacesTabs: React.FC<NearbyPlacesTabsProps> = ({
 																)}
 																{place.rating && (
 																	<div className="mt-2">
-																		{renderRating(place.rating)}
+																		<StarRating rating={place.rating} />
 																	</div>
 																)}
 															</CardContent>

@@ -119,9 +119,7 @@ export class AddressCache {
 		return ["addressSearch", query];
 	}
 
-	private toEnrichmentQueryKey(
-		cacheKey: EnrichmentCacheKey,
-	): [string, string] {
+	private toEnrichmentQueryKey(cacheKey: EnrichmentCacheKey): [string, string] {
 		const placeId = cacheKey.replace("placeDetails:", "");
 		return ["placeDetails", placeId];
 	}

@@ -66,11 +66,13 @@ export const MatchSummary: React.FC<MatchSummaryProps> = ({
 	// Always calculate with our centralized service to ensure correct interface
 	// The overrideBreakdown might be in old format from database, so we ignore it for now
 	const scoreBreakdown = calculateMatchScore(originalListing, matchedListing);
-	
+
 	if (!scoreBreakdown) {
-		return <div className="text-red-500">Error: Unable to calculate match score</div>;
+		return (
+			<div className="text-red-500">Error: Unable to calculate match score</div>
+		);
 	}
-	
+
 	const finalScore = overrideScore ?? scoreBreakdown.overall;
 
 	// Calculate distance for display

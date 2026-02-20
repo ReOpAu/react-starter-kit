@@ -8,11 +8,11 @@ import type { HistoryItem, LocationIntent, Suggestion } from "~/stores/types";
 
 // Import action factories from decomposed modules
 import {
+	type ActionContext,
+	type ActionInternalState,
 	createClearActions,
 	createRuralActions,
 	createSelectionActions,
-	type ActionContext,
-	type ActionInternalState,
 } from "./actions";
 
 type UseActionHandlerDependencies = {
@@ -172,10 +172,7 @@ export function useActionHandler({
 		[ctx, internalState],
 	);
 
-	const clearActions = useMemo(
-		() => createClearActions(ctx),
-		[ctx],
-	);
+	const clearActions = useMemo(() => createClearActions(ctx), [ctx]);
 
 	const ruralActions = useMemo(
 		() => createRuralActions(ctx, internalState),
