@@ -32,6 +32,7 @@ async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 		console.log(`   ${assignedTools.join(", ")}`);
 
 		// Generate API-compatible tool definitions for this specific agent
+		// ElevenLabs uses type: "client" (not "function") with flat structure
 		const apiTools = assignedTools.map((toolName) => {
 			const toolDef = toolDefinitions[toolName];
 			const schema = zodToJsonSchema(toolDef.parametersSchema, {
@@ -39,15 +40,13 @@ async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 			});
 			const schemaObj = schema as any; // Type assertion for schema properties
 			return {
-				type: "function",
-				function: {
-					name: toolName,
-					description: toolDef.description,
-					parameters: {
-						type: "object",
-						properties: schemaObj.properties || {},
-						required: schemaObj.required || [],
-					},
+				type: "client" as const,
+				name: toolName,
+				description: toolDef.description,
+				parameters: {
+					type: "object" as const,
+					properties: schemaObj.properties || {},
+					required: schemaObj.required || [],
 				},
 			};
 		});
@@ -55,7 +54,7 @@ async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 		// Generate the tools section for the prompt
 		let toolsPrompt = "#### **AVAILABLE TOOLS:**\n";
 		apiTools.forEach((tool) => {
-			toolsPrompt += `*   \`${tool.function.name}\`: ${tool.function.description}\n`;
+			toolsPrompt += `*   \`${tool.name}\`: ${tool.description}\n`;
 		});
 
 		// Assemble the final prompt
@@ -113,14 +112,19 @@ If user asks "Are there any restaurants near this address?", use:
 
 		finalPrompt += `\n\n${toolsPrompt}`;
 
-		// Prepare the payload
+		// Prepare the payload — must match ElevenLabs API nesting:
+		// conversation_config.agent.prompt
 		const payload = {
-			prompt: {
-				prompt: finalPrompt,
-				llm: "gemini-2.0-flash-001",
-				temperature: 0,
-				max_tokens: -1,
-				tools: apiTools,
+			conversation_config: {
+				agent: {
+					prompt: {
+						prompt: finalPrompt,
+						llm: "gemini-2.0-flash-001",
+						temperature: 0,
+						max_tokens: -1,
+						tools: apiTools,
+					},
+				},
 			},
 		};
 
@@ -139,7 +143,7 @@ If user asks "Are there any restaurants near this address?", use:
 			);
 			console.log("\n📄 Tool list for this agent:");
 			apiTools.forEach((tool) =>
-				console.log(`  - ${tool.function.name}: ${tool.function.description}`),
+				console.log(`  - ${tool.name}: ${tool.description}`),
 			);
 			return;
 		}

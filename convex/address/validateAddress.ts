@@ -18,7 +18,7 @@ export const validateAddress = action({
 		}),
 	),
 	handler: async (ctx, args) => {
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false as const,

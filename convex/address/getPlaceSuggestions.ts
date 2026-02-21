@@ -81,7 +81,7 @@ export const getPlaceSuggestions = action({
 		}),
 	),
 	handler: async (ctx, args) => {
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false as const,
@@ -138,6 +138,7 @@ export const getPlaceSuggestions = action({
 					args.location,
 					args.radius,
 					args.sessionToken,
+					true,
 				);
 			}
 			return await getPlacesApiSuggestions(
@@ -148,6 +149,7 @@ export const getPlaceSuggestions = action({
 				args.location,
 				args.radius,
 				args.sessionToken,
+				args.isAutocomplete,
 			);
 		} catch (error) {
 			return {

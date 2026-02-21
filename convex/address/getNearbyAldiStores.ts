@@ -20,7 +20,7 @@ export const getNearbyAldiStores = action({
 		// Add this line for debugging
 		console.log("Received coordinates:", { lat: args.lat, lng: args.lng });
 
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false as const,
