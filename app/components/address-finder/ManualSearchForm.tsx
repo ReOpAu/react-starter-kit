@@ -48,6 +48,7 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 		const containerRef = useRef<HTMLDivElement>(null);
 		const inputRef = useRef<HTMLInputElement>(null);
 		const isUserTypingRef = useRef(false);
+		const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 		// Google's recommended minimum character threshold
 		const MIN_SEARCH_CHARS = 3;
@@ -114,7 +115,7 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 					return result.suggestions || [];
 				}
 
-				return [];
+				throw new Error(result.error || "Address search failed");
 			},
 			enabled:
 				!!internalQuery && internalQuery.trim().length >= MIN_SEARCH_CHARS,
@@ -154,7 +155,10 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 				onTyping?.(query);
 
 				// Debounced internal query update for autocomplete
-				const timer = setTimeout(() => {
+				if (debounceTimerRef.current) {
+					clearTimeout(debounceTimerRef.current);
+				}
+				debounceTimerRef.current = setTimeout(() => {
 					if (meetsMinimum) {
 						setInternalQuery(query);
 						setShowSuggestions(true);
@@ -163,8 +167,6 @@ export const ManualSearchForm: React.FC<ManualSearchFormProps> = React.memo(
 						setShowSuggestions(false);
 					}
 				}, 300);
-
-				return () => clearTimeout(timer);
 			},
 			[onTyping],
 		);
