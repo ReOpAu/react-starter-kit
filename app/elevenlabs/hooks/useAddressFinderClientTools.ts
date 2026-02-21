@@ -237,9 +237,8 @@ export function useAddressFinderClientTools(
 							return JSON.stringify({
 								status: "validated",
 								count: 1,
-								message:
-									"Address was successfully validated and is now displayed on screen for selection.",
-								note: "Validated address is displayed visually - do not read it aloud",
+								message: "Found it — it's on screen.",
+								note: "IMPORTANT: Do NOT read the address aloud. The user can see it on screen. Just say something brief like 'Found it' or 'That's on screen now'.",
 							});
 						}
 						// Strict validation found no results — fall back to loose
@@ -265,8 +264,8 @@ export function useAddressFinderClientTools(
 							return JSON.stringify({
 								status: "suggestions_available",
 								count: looseResults.length,
-								message: `Validation couldn't confirm a single best match, but ${looseResults.length} address options are now displayed on screen.`,
-								note: "Suggestions are displayed visually - do not read them aloud",
+								message: "Some options are on screen.",
+								note: "IMPORTANT: Do NOT read addresses aloud or state the count. Just say 'some options are on screen' or similar.",
 							});
 						}
 
@@ -342,8 +341,8 @@ export function useAddressFinderClientTools(
 						return JSON.stringify({
 							status: "suggestions_available",
 							count: result.suggestions.length,
-							message: `Found ${result.suggestions.length} address options. They are now displayed on screen for you to choose from.`,
-							note: "Suggestions are displayed visually - do not read them aloud",
+							message: "Options are on screen.",
+							note: "IMPORTANT: Do NOT read addresses aloud, state the count, or describe the results. Just say 'options are on screen' or 'take a look'.",
 						});
 					}
 
@@ -385,9 +384,9 @@ export function useAddressFinderClientTools(
 					mode: isRecordingFromState ? "conversation" : "manual",
 					message:
 						suggestions.length > 0
-							? `${suggestions.length} address options are available on screen`
-							: "No address suggestions currently available",
-					note: "Suggestions are displayed visually - do not read them aloud",
+							? "Options are on screen."
+							: "No suggestions available.",
+					note: "IMPORTANT: Do NOT read addresses or counts aloud.",
 				});
 			},
 
@@ -471,9 +470,9 @@ export function useAddressFinderClientTools(
 						await onSelectResult(updatedSelection);
 						return JSON.stringify({
 							status: "confirmed",
-							selection: updatedSelection,
 							timestamp: Date.now(),
-							confirmationMessage: `Successfully selected "${updatedSelection.description}"`,
+							message: "Done.",
+							note: "IMPORTANT: Do NOT read the address aloud. It is visible on screen. Say 'got it', 'done', or ask what's next.",
 						});
 					}
 					// fallback: legacy direct state update (should not be used)
@@ -492,10 +491,10 @@ export function useAddressFinderClientTools(
 					setAgentLastSearchQuery(null);
 					return JSON.stringify({
 						status: "confirmed",
-						selection: updatedSelection,
 						intent,
 						timestamp: Date.now(),
-						confirmationMessage: `Successfully selected "${updatedSelection.description}" as ${intent}`,
+						message: "Done.",
+						note: "IMPORTANT: Do NOT read the address aloud. It is visible on screen. Say 'got it', 'done', or ask what's next.",
 					});
 				}
 
@@ -526,10 +525,10 @@ export function useAddressFinderClientTools(
 					const intent = useIntentStore.getState().currentIntent;
 					return JSON.stringify({
 						status: "confirmed",
-						selection: currentSelection,
 						intent,
 						timestamp: Date.now(),
-						confirmationMessage: `Confirmed selection of \"${currentSelection.description}\" as ${intent} (defensive path)`,
+						message: "Done.",
+						note: "IMPORTANT: Do NOT read the address aloud. It is visible on screen.",
 					});
 				}
 
@@ -666,9 +665,9 @@ export function useAddressFinderClientTools(
 				if (currentSelection) {
 					const response = {
 						status: "acknowledged",
-						selection: currentSelection,
 						intent: currentIntent,
-						message: `Perfect! I've acknowledged your selection of "${currentSelection.description}" as a ${currentIntent}. The selection is now confirmed and ready to use.`,
+						message: "Got it.",
+						note: "IMPORTANT: Do NOT read the address back. The user can see it on screen. Just say 'got it' and ask what's next.",
 						timestamp: Date.now(),
 					};
 
@@ -875,10 +874,9 @@ export function useAddressFinderClientTools(
 
 				return JSON.stringify({
 					status: "options_displayed",
-					message: `Showing ${optionsCount} previous address options on screen again. You can select a different option or confirm the current selection.`,
+					message: "Previous options are on screen.",
+					note: "IMPORTANT: Do NOT list or describe the options. They are visible on screen.",
 					optionsCount,
-					currentSelection:
-						currentSelection?.selectedSuggestion.description ?? null,
 				});
 			},
 
