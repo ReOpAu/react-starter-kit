@@ -19,6 +19,7 @@
 export { getPlaceSuggestions } from "./getPlaceSuggestions";
 export { validateAddress } from "./validateAddress";
 export { getPlaceDetails } from "./getPlaceDetails";
+export { getPlacePhotos } from "./getPlacePhotos";
 
 // Export types for consistency
 export type * from "./types";

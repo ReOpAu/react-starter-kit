@@ -1,9 +1,10 @@
-import { CheckCircle, Home, MapPin, Store } from "lucide-react";
+import { Camera, CheckCircle, Home, MapPin, Store } from "lucide-react";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import type { Suggestion } from "~/stores/types";
 import { NearbyAldiStores } from "./NearbyAldiStores";
+import { PlacePhotos } from "./PlacePhotos";
 
 interface SelectedResultCardProps {
 	result: Suggestion | null;
@@ -19,6 +20,7 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 	lng,
 }) => {
 	const [showAldiStores, setShowAldiStores] = useState(false);
+	const [showPhotos, setShowPhotos] = useState(false);
 
 	if (!result) return null;
 
@@ -88,7 +90,16 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								src={`https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed&iwloc=A`}
 							/>
 						</div>
-						<div>
+						<div className="flex items-center gap-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setShowPhotos(!showPhotos)}
+								className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+							>
+								<Camera className="w-4 h-4" />
+								{showPhotos ? "Hide" : "Show"} photos
+							</Button>
 							<Button
 								variant="ghost"
 								size="sm"
@@ -98,8 +109,11 @@ export const SelectedResultCard: React.FC<SelectedResultCardProps> = ({
 								<Store className="w-4 h-4" />
 								{showAldiStores ? "Hide" : "Show"} nearby Aldi stores
 							</Button>
-							{showAldiStores && <NearbyAldiStores lat={lat} lng={lng} />}
 						</div>
+						{showPhotos && result.placeId && (
+							<PlacePhotos placeId={result.placeId} lat={lat} lng={lng} />
+						)}
+						{showAldiStores && <NearbyAldiStores lat={lat} lng={lng} />}
 					</div>
 				)}
 			</CardContent>
