@@ -149,31 +149,33 @@ export function useAddressFinderClientTools(
 							`🔬 Intent is "address", using validateThenEnrichAddress flow for agent.`,
 						);
 
-						// First, get multiple suggestions to preserve options for "show options again"
-						const multipleResultsCall = await withRetry(
-							() =>
-								getPlaceSuggestionsAction({
-									query,
-									intent: "general", // Use general to get multiple options
-									isAutocomplete: true,
-									sessionToken: getSessionToken(),
-								}),
-							API_RETRY_CONFIG,
-							`multiple suggestions for "${query}"`,
-						);
-
-						// Then, validate the top result for address intent
-						const validationResult = await withRetry(
-							() =>
-								getPlaceSuggestionsAction({
-									query,
-									intent: "address",
-									maxResults: 1,
-									isAutocomplete: false,
-								}),
-							API_RETRY_CONFIG,
-							`address validation for "${query}"`,
-						);
+						// Run both calls in parallel — they are independent
+						const [multipleResultsCall, validationResult] = await Promise.all([
+							// Get multiple suggestions to preserve options for "show options again"
+							withRetry(
+								() =>
+									getPlaceSuggestionsAction({
+										query,
+										intent: "general", // Use general to get multiple options
+										isAutocomplete: true,
+										sessionToken: getSessionToken(),
+									}),
+								API_RETRY_CONFIG,
+								`multiple suggestions for "${query}"`,
+							),
+							// Validate the top result for address intent
+							withRetry(
+								() =>
+									getPlaceSuggestionsAction({
+										query,
+										intent: "address",
+										maxResults: 1,
+										isAutocomplete: false,
+									}),
+								API_RETRY_CONFIG,
+								`address validation for "${query}"`,
+							),
+						]);
 
 						if (!validationResult.success) {
 							log(

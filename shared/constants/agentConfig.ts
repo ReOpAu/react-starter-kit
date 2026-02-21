@@ -27,6 +27,7 @@ export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
 		"getPreviousSearches",
 		"selectByOrdinal",
 		"setSelectionAcknowledged",
+		"showOptionsAgain",
 		"transferToAgent",
 	],
 	ADDRESS_FINDER_TEST: [
@@ -42,6 +43,7 @@ export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
 		"getPreviousSearches",
 		"selectByOrdinal",
 		"setSelectionAcknowledged",
+		"showOptionsAgain",
 		"transferToAgent",
 	],
 	CONVERSATION_ASSISTANT: [
@@ -57,9 +59,9 @@ export const AGENT_TOOL_MATRIX: Record<string, readonly ToolName[]> = {
 export const ELEVENLABS_AGENTS = {
 	// Production address finder agent
 	ADDRESS_FINDER: {
-		id: "agent_01jydc3p56er8tn495y66hybmn",
+		id: "agent_01k063krh2f17b2t7e97t9ck1r",
 		name: "AddressFinder",
-		description: "Production address finder with 12 client tools",
+		description: "Production address finder with 14 client tools",
 		envVar: "VITE_ELEVENLABS_ADDRESS_AGENT_ID",
 		transferIndex: 0, // For agent-to-agent transfers
 		specializations: [
