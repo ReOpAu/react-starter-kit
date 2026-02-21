@@ -121,7 +121,6 @@ export function useAddressFinderClientTools(
 
 				// STATE RESET: Per documentation, a new search must clear any existing selection.
 				setSelectedResult(null);
-				setCurrentIntent("general");
 
 				const { query } = params;
 
@@ -139,6 +138,8 @@ export function useAddressFinderClientTools(
 
 				try {
 					const intent = classifyIntent(query);
+					// Set intent AFTER classification so frontend and backend agree
+					setCurrentIntent(intent);
 					log(
 						`🔧 Agent search for "${query}" classified with intent: "${intent}"`,
 					);
@@ -241,6 +242,34 @@ export function useAddressFinderClientTools(
 								note: "Validated address is displayed visually - do not read it aloud",
 							});
 						}
+						// Strict validation found no results — fall back to loose
+						// results from the general/autocomplete call if available.
+						const looseResults =
+							multipleResultsCall.success &&
+							multipleResultsCall.result?.success &&
+							multipleResultsCall.result.suggestions?.length > 0
+								? multipleResultsCall.result.suggestions
+								: null;
+
+						if (looseResults) {
+							log(
+								`⚠️ Strict validation failed but loose call returned ${looseResults.length} results — falling back`,
+							);
+							queryClient.setQueryData(
+								["addressSearch", query],
+								looseResults,
+							);
+							setAgentLastSearchQuery(query);
+							setActiveSearch({ query, source: "voice" });
+
+							return JSON.stringify({
+								status: "suggestions_available",
+								count: looseResults.length,
+								message: `Validation couldn't confirm a single best match, but ${looseResults.length} address options are now displayed on screen.`,
+								note: "Suggestions are displayed visually - do not read them aloud",
+							});
+						}
+
 						const errorMessage = validation.success
 							? "No suggestions found"
 							: validation.error;

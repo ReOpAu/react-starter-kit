@@ -364,11 +364,9 @@ function shouldIncludeResult(
 ): boolean {
 	const description = prediction.description.toLowerCase();
 	const types = prediction.types;
-	if (
-		!/(VIC|NSW|QLD|WA|SA|TAS|NT|ACT|Australia)/i.test(prediction.description)
-	) {
-		return false;
-	}
+	// Geographic filtering removed — includedRegionCodes: ["au"] in the API
+	// request already constrains results to Australia, and
+	// calculateAustralianRelevance() handles ranking via confidence scoring.
 	const unwantedTypes = [
 		"establishment",
 		"point_of_interest",
@@ -666,46 +664,15 @@ export async function getPlacesApiSuggestions(
 		})
 		.slice(0, maxResults);
 
-	// In autocomplete mode, skip strict filtering — partial input often doesn't
-	// match the detected intent yet, so filtering would discard valid results.
-	if (isAutocomplete) {
-		return {
-			success: true,
-			suggestions: sortedSuggestions,
-			detectedIntent: actualIntent,
-		};
-	}
-
-	// STRICT FILTERING: Only include results matching intent, unless intent is 'general'
-	const strictlyFiltered =
-		actualIntent !== "general"
-			? sortedSuggestions.filter((s) => s.resultType === actualIntent)
-			: sortedSuggestions;
-
-	// --- STRICT SUBURB FILTERING FOR SINGLE-WORD QUERIES ---
-	// See UNIFIED_ADDRESS_SYSTEM.md and state-management-strategy.md for rationale.
-	const isSingleWord = !query.includes(" ");
-	if (actualIntent === "suburb" && isSingleWord) {
-		const suburbOrLocality = strictlyFiltered.filter(
-			(s) => s.resultType === "suburb" || s.types.includes("locality"),
-		);
-		if (suburbOrLocality.length > 0) {
-			return {
-				success: true,
-				suggestions: suburbOrLocality,
-				detectedIntent: actualIntent,
-			};
-		} else {
-			return {
-				success: false,
-				error: "No suburb or locality found for this query.",
-			};
-		}
-	}
-
+	// Intent-matching results are already ranked first by the sort above (lines
+	// 659-667) and confidence scoring handles relevance. Strict post-sort
+	// filtering was silently discarding valid results when Google's type
+	// classification didn't match our classifyResultType(). Return the
+	// intent-ranked list directly so non-matching-but-valid results appear at the
+	// bottom rather than being deleted.
 	return {
 		success: true,
-		suggestions: strictlyFiltered,
+		suggestions: sortedSuggestions,
 		detectedIntent: actualIntent,
 	};
 }
