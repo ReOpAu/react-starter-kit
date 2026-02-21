@@ -105,13 +105,20 @@ export async function fetchLatLngForPlaceId(
 	apiKey: string,
 ): Promise<{ lat: number; lng: number } | null> {
 	const res = await fetch(
-		`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${apiKey}`,
+		`https://places.googleapis.com/v1/places/${placeId}`,
+		{
+			headers: {
+				"X-Goog-Api-Key": apiKey,
+				"X-Goog-FieldMask": "location",
+			},
+		},
 	);
+	if (!res.ok) return null;
 	const data = await res.json();
-	if (data.result?.geometry?.location) {
+	if (data.location) {
 		return {
-			lat: data.result.geometry.location.lat,
-			lng: data.result.geometry.location.lng,
+			lat: data.location.latitude,
+			lng: data.location.longitude,
 		};
 	}
 	return null;

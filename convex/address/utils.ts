@@ -518,6 +518,7 @@ export async function getPlacesApiSuggestions(
 	location?: { lat: number; lng: number },
 	radius?: number,
 	sessionToken?: string,
+	isAutocomplete?: boolean,
 ): Promise<
 	| {
 			success: true;
@@ -526,75 +527,132 @@ export async function getPlacesApiSuggestions(
 	  }
 	| { success: false; error: string }
 > {
-	const getApiConfig = (intent: LocationIntent) => {
+	const getStrictness = (intent: LocationIntent): string => {
 		switch (intent) {
 			case "suburb":
-				return { types: "(regions)", strictness: "high" };
+				return "high";
 			case "street":
-				return { types: "geocode", strictness: "medium" };
+				return "medium";
 			case "address":
-				return { types: "address", strictness: "low" };
+				return "low";
 			default:
-				return { types: "geocode", strictness: "medium" };
+				return "medium";
 		}
 	};
-	const config = getApiConfig(actualIntent);
+	const config = { strictness: getStrictness(actualIntent) };
 	const suggestions: PlaceSuggestion[] = [];
-	let locationParam = "";
-	if (location) {
-		locationParam = `&location=${location.lat},${location.lng}`;
-		if (radius) {
-			locationParam += `&radius=${radius}`;
-		}
+
+	// Build request body for Places API (New)
+	const requestBody: Record<string, unknown> = {
+		input: query,
+		includedRegionCodes: ["au"],
+	};
+	if (sessionToken) {
+		requestBody.sessionToken = sessionToken;
 	}
-	const sessionParam = sessionToken ? `&sessiontoken=${sessionToken}` : "";
-	const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&types=${config.types}&components=country:au${locationParam}${sessionParam}&key=${apiKey}`;
-	const response = await fetch(url);
+	if (location) {
+		requestBody.locationBias = {
+			circle: {
+				center: { latitude: location.lat, longitude: location.lng },
+				radius: radius || 50000,
+			},
+		};
+	}
+
+	const response = await fetch(
+		"https://places.googleapis.com/v1/places:autocomplete",
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Goog-Api-Key": apiKey,
+			},
+			body: JSON.stringify(requestBody),
+		},
+	);
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({}));
+		const errorMsg = (errorData as Record<string, any>).error?.message;
+		return {
+			success: false as const,
+			error: `Google Places API error: ${response.status}${errorMsg ? ` — ${errorMsg}` : ""}`,
+		};
+	}
+
 	const data = await response.json();
-	if (data.status === "OK" && data.predictions) {
-		for (let i = 0; i < data.predictions.length; i++) {
-			const prediction = data.predictions[i];
-			const resultType = classifyResultType(
-				prediction.types,
-				prediction.description,
-			);
-			const confidence = calculateConfidence(
-				prediction,
-				actualIntent,
+
+	// Transform new API suggestions to legacy prediction format
+	// so existing scoring/filtering functions work unchanged
+	const convertMatches = (
+		matches?: Array<{ startOffset?: number; endOffset?: number }>,
+	) =>
+		(matches || []).map((m) => ({
+			offset: m.startOffset || 0,
+			length: (m.endOffset || 0) - (m.startOffset || 0),
+		}));
+
+	const predictions = ((data as Record<string, any>).suggestions || [])
+		.filter((s: any) => s.placePrediction)
+		.map((s: any) => {
+			const pp = s.placePrediction;
+			return {
+				place_id: pp.placeId,
+				description: pp.text?.text || "",
+				types: pp.types || [],
+				matched_substrings: convertMatches(pp.text?.matches),
+				structured_formatting: {
+					main_text: pp.structuredFormat?.mainText?.text || "",
+					secondary_text: pp.structuredFormat?.secondaryText?.text || "",
+					main_text_matched_substrings: convertMatches(
+						pp.structuredFormat?.mainText?.matches,
+					),
+				},
+			};
+		});
+
+	for (let i = 0; i < predictions.length; i++) {
+		const prediction = predictions[i];
+		const resultType = classifyResultType(
+			prediction.types,
+			prediction.description,
+		);
+		const confidence = calculateConfidence(
+			prediction,
+			actualIntent,
+			resultType,
+			query,
+			i,
+		);
+		if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
+			const tempSuggestion: PlaceSuggestion = {
+				placeId: prediction.place_id,
+				description: prediction.description,
+				types: prediction.types,
+				matchedSubstrings: prediction.matched_substrings || [],
+				structuredFormatting: {
+					mainText:
+						prediction.structured_formatting?.main_text ||
+						prediction.description.split(",")[0],
+					secondaryText:
+						prediction.structured_formatting?.secondary_text ||
+						prediction.description.split(",").slice(1).join(",").trim(),
+					main_text: prediction.structured_formatting?.main_text,
+					secondary_text: prediction.structured_formatting?.secondary_text,
+					main_text_matched_substrings:
+						prediction.structured_formatting?.main_text_matched_substrings,
+				},
 				resultType,
-				query, // Pass the search query for similarity analysis
-				i, // Pass the position for ranking-based scoring
-			);
-			if (shouldIncludeResult(prediction, actualIntent, config.strictness)) {
-				const tempSuggestion: PlaceSuggestion = {
-					placeId: prediction.place_id,
-					description: prediction.description,
-					types: prediction.types,
-					matchedSubstrings: prediction.matched_substrings || [],
-					structuredFormatting: {
-						mainText:
-							prediction.structured_formatting?.main_text ||
-							prediction.description.split(",")[0],
-						secondaryText:
-							prediction.structured_formatting?.secondary_text ||
-							prediction.description.split(",").slice(1).join(",").trim(),
-						main_text: prediction.structured_formatting?.main_text,
-						secondary_text: prediction.structured_formatting?.secondary_text,
-						main_text_matched_substrings:
-							prediction.structured_formatting?.main_text_matched_substrings,
-					},
-					resultType,
-					confidence,
-				};
-				const extractedSuburb =
-					extractSuburbFromPlacesSuggestion(tempSuggestion);
-				suggestions.push({
-					...tempSuggestion,
-					suburb: extractedSuburb,
-				});
-				if (suggestions.length >= maxResults) {
-					break;
-				}
+				confidence,
+			};
+			const extractedSuburb =
+				extractSuburbFromPlacesSuggestion(tempSuggestion);
+			suggestions.push({
+				...tempSuggestion,
+				suburb: extractedSuburb,
+			});
+			if (suggestions.length >= maxResults) {
+				break;
 			}
 		}
 	}
@@ -607,6 +665,16 @@ export async function getPlacesApiSuggestions(
 			return b.confidence - a.confidence;
 		})
 		.slice(0, maxResults);
+
+	// In autocomplete mode, skip strict filtering — partial input often doesn't
+	// match the detected intent yet, so filtering would discard valid results.
+	if (isAutocomplete) {
+		return {
+			success: true,
+			suggestions: sortedSuggestions,
+			detectedIntent: actualIntent,
+		};
+	}
 
 	// STRICT FILTERING: Only include results matching intent, unless intent is 'general'
 	const strictlyFiltered =

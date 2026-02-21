@@ -1,46 +1,40 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 
-// Constants for Google Places API
-const GOOGLE_PLACES_FIELDS =
-	"address_components,formatted_address,geometry,name,place_id,types";
+// Field mask for Places API (New) — controls which fields are returned
+const GOOGLE_PLACES_FIELD_MASK =
+	"id,formattedAddress,location,addressComponents,types,displayName";
 
-// TypeScript interfaces for Google Places API response
-interface AddressComponent {
-	long_name: string;
-	short_name: string;
+// TypeScript interfaces for Places API (New) response
+interface NewAddressComponent {
+	longText: string;
+	shortText: string;
 	types: string[];
+	languageCode?: string;
 }
 
-interface PlaceGeometry {
-	location: {
-		lat: number;
-		lng: number;
+interface NewPlaceDetailsResponse {
+	id?: string;
+	formattedAddress?: string;
+	location?: {
+		latitude: number;
+		longitude: number;
+	};
+	addressComponents?: NewAddressComponent[];
+	types?: string[];
+	displayName?: {
+		text: string;
+		languageCode?: string;
 	};
 }
 
-interface GooglePlaceResult {
-	address_components?: AddressComponent[];
-	formatted_address?: string;
-	geometry?: PlaceGeometry;
-	name?: string;
-	place_id: string;
-	types?: string[];
-}
-
-interface GooglePlacesResponse {
-	result?: GooglePlaceResult;
-	status: string;
-	error_message?: string;
-}
-
-// Helper function to extract specific address components from the Google Places response
+// Helper function to extract specific address components from the response
 const extractComponent = (
-	components: AddressComponent[],
+	components: NewAddressComponent[],
 	type: string,
 ): string | undefined => {
 	const component = components.find((c) => c.types.includes(type));
-	return component?.long_name;
+	return component?.longText;
 };
 
 export const getPlaceDetails = action({
@@ -62,7 +56,7 @@ export const getPlaceDetails = action({
 		v.object({ success: v.literal(false), error: v.string() }),
 	),
 	handler: async (ctx, args) => {
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false as const,
@@ -70,80 +64,80 @@ export const getPlaceDetails = action({
 			};
 		}
 		try {
-			// Request essential fields: address_components (for postcode/suburb), geometry (for lat/lng),
-			// formatted_address, place_id, and types.
-			const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${args.placeId}&fields=${GOOGLE_PLACES_FIELDS}&key=${apiKey}`;
+			// Places API (New): GET place by resource name with field mask header
+			const url = `https://places.googleapis.com/v1/places/${args.placeId}`;
 
-			const res = await fetch(url);
+			const res = await fetch(url, {
+				headers: {
+					"X-Goog-Api-Key": apiKey,
+					"X-Goog-FieldMask": GOOGLE_PLACES_FIELD_MASK,
+				},
+			});
 			if (!res.ok) {
+				const errorData = await res.json().catch(() => ({}));
+				const errorMsg =
+					(errorData as Record<string, any>).error?.message ||
+					`${res.status} ${res.statusText}`;
+				console.error(
+					`[getPlaceDetails] Google Places API error for place ${args.placeId}:`,
+					errorMsg,
+				);
 				return {
 					success: false as const,
-					error: `HTTP error: ${res.status} ${res.statusText}`,
+					error: `HTTP error: ${errorMsg}`,
 				};
 			}
 
-			const data: GooglePlacesResponse = await res.json();
+			const data: NewPlaceDetailsResponse = await res.json();
 
-			if (data.status === "OK" && data.result) {
-				const { result } = data;
-				const components = result.address_components || [];
+			// Validate essential data
+			if (!data.formattedAddress) {
+				return {
+					success: false as const,
+					error: "Missing formattedAddress in response",
+				};
+			}
 
-				// Validate that we have the essential data
-				if (!result.formatted_address) {
-					return {
-						success: false as const,
-						error: "Missing formatted_address in response",
-					};
-				}
+			if (!data.location) {
+				return {
+					success: false as const,
+					error: "Missing location data in response",
+				};
+			}
 
-				if (!result.geometry?.location) {
-					return {
-						success: false as const,
-						error: "Missing geometry data in response",
-					};
-				}
+			const components = data.addressComponents || [];
 
-				// Extract structured data from the components array
-				const postcode = extractComponent(components, "postal_code");
-				const suburb = extractComponent(components, "locality");
-				const state = extractComponent(
-					components,
-					"administrative_area_level_1",
-				);
+			// Extract structured data from the components array
+			const postcode = extractComponent(components, "postal_code");
+			const suburb = extractComponent(components, "locality");
+			const state = extractComponent(
+				components,
+				"administrative_area_level_1",
+			);
 
-				const details = {
-					placeId: result.place_id,
-					formattedAddress: result.formatted_address,
-					lat: result.geometry.location.lat,
-					lng: result.geometry.location.lng,
-					types: result.types || [],
+			const details = {
+				placeId: data.id || args.placeId,
+				formattedAddress: data.formattedAddress,
+				lat: data.location.latitude,
+				lng: data.location.longitude,
+				types: data.types || [],
+				postcode,
+				suburb,
+				state,
+			};
+
+			// Log successful enrichment for debugging
+			console.log(
+				`[getPlaceDetails] Successfully enriched place: ${data.id || args.placeId}`,
+				{
+					formattedAddress: data.formattedAddress,
 					postcode,
 					suburb,
 					state,
-				};
-
-				// Log successful enrichment for debugging
-				console.log(
-					`[getPlaceDetails] Successfully enriched place: ${result.place_id}`,
-					{
-						formattedAddress: result.formatted_address,
-						postcode,
-						suburb,
-						state,
-					},
-				);
-
-				return { success: true as const, details };
-			}
-			const errorMessage = data.error_message || data.status || "Unknown error";
-			console.error(
-				`[getPlaceDetails] Google Places API error for place ${args.placeId}:`,
-				errorMessage,
+				},
 			);
-			return {
-				success: false as const,
-				error: String(errorMessage),
-			};
+
+			return { success: true as const, details };
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
 			console.error(
