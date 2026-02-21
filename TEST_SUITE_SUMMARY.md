@@ -156,7 +156,7 @@ Accuracy: 75.0%
 - name: Address Validation Tests
   run: npm run test:validation:ci
   env:
-    GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+    GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 ```
 
 ### Regular Testing Schedule

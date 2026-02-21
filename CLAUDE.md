@@ -206,7 +206,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # Maps Configuration
 VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_access_token_here
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 
 # Application URL
 FRONTEND_URL=http://localhost:5173

@@ -91,7 +91,7 @@ scripts/
 
 ### Environment Variables Required
 ```bash
-GOOGLE_PLACES_API_KEY=your_key_here
+GOOGLE_MAPS_API_KEY=your_key_here
 VITE_CONVEX_URL=your_convex_url
 ```
 
@@ -189,7 +189,7 @@ Accuracy: 72.0%
 - name: Run Address Validation Tests
   run: npm run test:validation:ci
   env:
-    GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+    GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
     VITE_CONVEX_URL: ${{ secrets.CONVEX_URL }}
 ```
 
@@ -219,7 +219,7 @@ Monitor these metrics:
 ### Common Issues
 
 **"API key not configured"**
-- Ensure `GOOGLE_PLACES_API_KEY` environment variable is set
+- Ensure `GOOGLE_MAPS_API_KEY` environment variable is set
 
 **"Test execution failed"**
 - Check Convex backend is running (`npx convex dev`)

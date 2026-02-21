@@ -52,7 +52,7 @@ useEffect(() => {
 ## 🔒 Google Maps API Key Security
 
 - Always restrict your Google Maps API key in the Google Cloud Console to only allow requests from your authorized domains (HTTP referrer restrictions).
-- Set the `VITE_GOOGLE_MAPS_API_KEY` environment variable to this restricted key.
+- Set the `GOOGLE_MAPS_API_KEY` environment variable to this restricted key.
 - Never use unrestricted or admin-level keys in frontend code.
 - For sensitive or quota-limited operations (e.g., geocoding, data enrichment), move the logic to a server-side proxy or backend function to keep the key secret and protected from abuse.
 - Regularly audit your API key usage and rotate keys if you suspect exposure or abuse.
