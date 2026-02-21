@@ -14,6 +14,17 @@ import { getElevenLabsConfig } from "./env-loader.js";
  * Uses AGENT_TOOL_MATRIX from agentConfig.ts as single source of truth
  */
 
+/**
+ * Per-agent prompt file mapping.
+ * Each agent key maps to its dedicated prompt file (relative to project root).
+ * CRITICAL: Never fall back to a different agent's prompt — fail loudly instead.
+ */
+const AGENT_PROMPT_PATHS: Record<AgentKey, string> = {
+	ADDRESS_FINDER: "ai/address-finder/master_prompt_base.txt",
+	ADDRESS_FINDER_TEST: "ai/address-finder/master_prompt_base.txt",
+	CONVERSATION_ASSISTANT: "ai/conversation_agent/master_prompt.txt",
+};
+
 async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 	try {
 		const agentConfig = ELEVENLABS_AGENTS[agentKey];
@@ -57,17 +68,25 @@ async function syncAgentConfiguration(agentKey: AgentKey, dryRun = false) {
 			toolsPrompt += `*   \`${tool.name}\`: ${tool.description}\n`;
 		});
 
-		// Assemble the final prompt
-		const basePromptPath = path.resolve(
-			process.cwd(),
-			"ai",
-			"address-finder",
-			"master_prompt_base.txt",
-		);
+		// Resolve the prompt file for this specific agent
+		const promptRelativePath = AGENT_PROMPT_PATHS[agentKey];
+		if (!promptRelativePath) {
+			throw new Error(
+				`No prompt path configured for agent "${agentKey}". ` +
+					`Add an entry to AGENT_PROMPT_PATHS in 4-multi-agent-sync.ts. ` +
+					`Refusing to sync — each agent MUST have its own dedicated prompt.`,
+			);
+		}
+
+		const basePromptPath = path.resolve(process.cwd(), promptRelativePath);
 
 		if (!fs.existsSync(basePromptPath)) {
-			throw new Error(`Base prompt file not found: ${basePromptPath}`);
+			throw new Error(
+				`Prompt file not found for agent "${agentKey}": ${basePromptPath}`,
+			);
 		}
+
+		console.log(`📝 Prompt file: ${promptRelativePath}`);
 
 		const basePrompt = fs.readFileSync(basePromptPath, "utf-8");
 
@@ -133,6 +152,7 @@ If user asks "Are there any restaurants near this address?", use:
 		if (dryRun) {
 			console.log("--- DRY RUN for", agentConfig.name, "---");
 			console.log("📊 Payload Preview:");
+			console.log("- Prompt file:", promptRelativePath);
 			console.log("- Tools count:", apiTools.length);
 			console.log("- Prompt length:", finalPrompt.length, "characters");
 			console.log(
@@ -145,6 +165,8 @@ If user asks "Are there any restaurants near this address?", use:
 			apiTools.forEach((tool) =>
 				console.log(`  - ${tool.name}: ${tool.description}`),
 			);
+			console.log("\n📄 First 200 characters of prompt:");
+			console.log(basePrompt.substring(0, 200) + "...");
 			return;
 		}
 

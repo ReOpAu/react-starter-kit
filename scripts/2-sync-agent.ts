@@ -5,7 +5,15 @@ import { toolDefinitions } from "../ai/tools.config.js";
 import { getElevenLabsConfig } from "./env-loader.js";
 
 /**
- * Sync local configuration to ElevenLabs agent
+ * Sync local configuration to ElevenLabs ADDRESS_FINDER agent (single-agent script).
+ *
+ * IMPORTANT: This script is ADDRESS_FINDER-specific. It reads the agent ID from
+ * ELEVENLABS_AGENT_ID / VITE_ELEVENLABS_ADDRESS_AGENT_ID and uses the address-finder
+ * prompt at ai/address-finder/master_prompt_base.txt.
+ *
+ * For multi-agent sync (including CONVERSATION_ASSISTANT), use:
+ *   npx tsx scripts/4-multi-agent-sync.ts
+ *
  * Uses correct ElevenLabs API format for conversation_config
  */
 async function syncAgent(dryRun = false) {

@@ -81,6 +81,28 @@ export function useAgentSync() {
 					agentState.api.suggestions,
 				);
 
+				// Sync missing context variables referenced in the agent prompt
+				windowWithElevenLabs.setVariable(
+					"searchResultsCount",
+					agentState.api.resultCount,
+				);
+				windowWithElevenLabs.setVariable(
+					"agentLastSearchQuery",
+					intent.agentLastSearchQuery,
+				);
+				windowWithElevenLabs.setVariable(
+					"currentIntent",
+					intent.currentIntent,
+				);
+				windowWithElevenLabs.setVariable(
+					"activeSearchSource",
+					intent.activeSearchSource,
+				);
+				windowWithElevenLabs.setVariable(
+					"selectionAcknowledged",
+					ui.selectionAcknowledged,
+				);
+
 				if (ui.isLoggingEnabled) {
 					console.log("[AgentSync] State synchronized:", agentState);
 				}
