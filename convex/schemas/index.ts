@@ -1,4 +1,5 @@
 import { defineSchema } from "convex/server";
+import { cartesiaSessions } from "./cartesiaSessions";
 import { listings } from "./listings";
 import { savedListingsTable } from "./savedListings";
 import { searches } from "./searches";
@@ -15,4 +16,5 @@ export default defineSchema({
 	searches,
 	userPreferences,
 	savedListings: savedListingsTable,
+	cartesiaSessions,
 });

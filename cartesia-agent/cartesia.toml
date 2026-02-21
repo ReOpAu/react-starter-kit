@@ -1,0 +1,9 @@
+[app]
+name = "cartesia-agent"
+agent_id = "agent_FEKyPHKhuYLH6ZRGvgXMSv"
+
+[build]
+cmd = "pip install -r requirements.txt"
+
+[run]
+cmd = "python main.py"

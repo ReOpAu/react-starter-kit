@@ -14,6 +14,7 @@ export default [
 	route("subscription-required", "routes/subscription-required.tsx"),
 	route("about", "routes/about.tsx"),
 	route("address-finder", "routes/address-finder.tsx"),
+	route("address-finder-cartesia", "routes/address-finder-cartesia.tsx"),
 	route("test-aldi", "routes/test-aldi.tsx"),
 	route("address-validation-tests", "routes/address-validation-tests.tsx"),
 	route("debug-listings", "routes/debug-listings.tsx"),

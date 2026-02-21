@@ -33,6 +33,12 @@ export function Header({
 						>
 							Address Finder
 						</Link>
+						<Link
+							to="/address-finder-cartesia"
+							className="text-gray-600 hover:text-primary"
+						>
+							Cartesia AF
+						</Link>
 						<div className="flex items-center gap-2">
 							{loaderData?.isSignedIn ? (
 								<UserButton />
