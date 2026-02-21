@@ -15,6 +15,7 @@ A modern, production-ready SaaS starter template for building full-stack React a
 - 🗄️ **Real-time database with Convex** - Serverless backend
 - 🤖 **AI Chat Integration** - OpenAI-powered chat functionality
 - 🎤 **ElevenLabs Voice AI** - Conversational voice agents with centralized configuration
+- 🔊 **Cartesia Line Voice AI** - Alternative voice agent using Cartesia Line SDK (Python)
 - 📊 **Interactive Dashboard** - User management and analytics
 - 🎯 **Webhook handling** - Payment and subscription events
 - 📱 **Responsive Design** - Mobile-first approach
@@ -36,6 +37,7 @@ A modern, production-ready SaaS starter template for building full-stack React a
 - **Polar.sh** - Subscription billing and payments
 - **OpenAI** - AI chat capabilities
 - **ElevenLabs** - Conversational voice AI with centralized configuration
+- **Cartesia Line** - Alternative voice agent platform (Python SDK + Convex state bridge)
 
 ### Development & Deployment
 - **Vite** - Fast build tool
@@ -52,6 +54,7 @@ A modern, production-ready SaaS starter template for building full-stack React a
 - Polar.sh account for subscriptions
 - OpenAI API key (for AI chat features)
 - ElevenLabs account for voice AI (optional)
+- Cartesia account + CLI for Cartesia voice agent (optional)
 
 ### Installation
 
@@ -90,6 +93,11 @@ OPENAI_API_KEY=your_openai_api_key_here
 VITE_ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 VITE_ELEVENLABS_ADDRESS_AGENT_ID=your_agent_id_here
+
+# Cartesia Configuration (for Cartesia voice agent)
+CARTESIA_API_KEY=your_cartesia_api_key_here
+VITE_CARTESIA_API_KEY=your_cartesia_api_key_here
+VITE_CARTESIA_AGENT_ID=your_cartesia_agent_id_here
 
 # Frontend URL for redirects
 FRONTEND_URL=http://localhost:5173
@@ -170,6 +178,69 @@ scripts/
 
 For complete documentation, see [`docs/elevenlabs-ai-in-local-code.md`](docs/elevenlabs-ai-in-local-code.md).
 
+## Cartesia Line Voice Agent
+
+An alternative voice-powered address finder at `/address-finder-cartesia` using the [Cartesia Line SDK](https://docs.cartesia.ai/line). The existing ElevenLabs `/address-finder` route is completely untouched.
+
+### How It Works
+
+- **Python agent** (`cartesia-agent/`) runs on Cartesia cloud with 9 loopback tools
+- Tools call Convex HTTP API for address lookups (same backend as ElevenLabs)
+- UI updates flow through a **Convex real-time subscription** state bridge (since Line SDK tools run server-side, not in the browser)
+- Browser handles WebSocket audio (mic capture + playback) via `app/cartesia/` hooks
+- Uses **Gemini 2.5 Flash** as the LLM (configurable to any LiteLLM-supported model)
+
+### Quick Start
+
+```bash
+# 1. Install Cartesia CLI
+curl -fsSL https://line.cartesia.ai/install.sh | bash
+cartesia auth login <your_api_key>
+
+# 2. Set agent environment variables
+cartesia env set --agent-id=<AGENT_ID> \
+  GEMINI_API_KEY=<your_key> \
+  CONVEX_URL=https://your-deployment.convex.cloud
+
+# 3. Deploy
+cd cartesia-agent
+cartesia deploy --agent-id=<AGENT_ID>
+
+# 4. Set browser-side env vars in .env.local
+# VITE_CARTESIA_AGENT_ID=<agent_id>
+# VITE_CARTESIA_API_KEY=<api_key>
+# Also set CARTESIA_API_KEY in Convex: npx convex env set CARTESIA_API_KEY=<key>
+
+# 5. Visit /address-finder-cartesia
+```
+
+### Project Structure
+
+```
+cartesia-agent/               # Python agent (deployed to Cartesia cloud)
+├── main.py                   # Agent entry point
+├── tools.py                  # 9 loopback tools (address search, select, etc.)
+├── config.py                 # System prompt, LLM model, voice config
+├── requirements.txt          # cartesia-line, httpx
+└── cartesia.toml             # Deployment config
+
+app/cartesia/                 # Browser-side hooks and utilities
+├── hooks/
+│   ├── useCartesiaConversation.ts    # WebSocket lifecycle
+│   ├── useCartesiaEventHandler.ts    # Convex subscription → store updates
+│   └── useCartesiaAudioManager.ts    # Mic capture + audio playback
+├── utils/
+│   ├── audioEncoder.ts               # PCM encoding utilities
+│   └── audioPlayer.ts                # Audio playback queue
+└── types.ts                          # WS protocol + state bridge types
+
+convex/cartesia/              # Convex backend
+├── getAccessToken.ts         # Server-side token minting
+└── sessionState.ts           # State bridge (push/get/clear mutations)
+```
+
+For comprehensive documentation, see [`cartesia-agent/README.md`](cartesia-agent/README.md).
+
 ## Building for Production
 
 Create a production build:
@@ -233,6 +304,8 @@ Make sure to deploy the output of `npm run build`
 - `/dashboard/chat` - AI-powered chat interface
 - `/dashboard/settings` - User settings
 - `/success` - Subscription success page
+- `/address-finder` - Voice AI address finder (ElevenLabs)
+- `/address-finder-cartesia` - Voice AI address finder (Cartesia Line)
 - `/webhook/polar` - Polar.sh webhook handler
 
 ### Key Components
@@ -277,6 +350,8 @@ Make sure to deploy the output of `npm run build`
 - `VITE_ELEVENLABS_API_KEY` - ElevenLabs API key for voice AI
 - `ELEVENLABS_API_KEY` - ElevenLabs API key for sync scripts
 - `VITE_ELEVENLABS_ADDRESS_AGENT_ID` - Your ElevenLabs agent ID
+- `CARTESIA_API_KEY` - Cartesia API key (server-side, set in Convex env)
+- `VITE_CARTESIA_AGENT_ID` - Your Cartesia agent ID
 - `FRONTEND_URL` - Your production frontend URL
 
 ## Project Structure
@@ -286,16 +361,26 @@ Make sure to deploy the output of `npm run build`
 │   ├── master_prompt_base.txt  # Base agent prompt
 │   └── tools.config.ts    # Tool definitions with Zod schemas
 ├── app/
+│   ├── cartesia/          # Cartesia Line browser-side integration
+│   │   ├── hooks/         # WebSocket, event handler, audio manager
+│   │   ├── utils/         # Audio encoding/playback utilities
+│   │   └── types.ts       # WS protocol + state bridge types
 │   ├── components/         # Reusable UI components
 │   │   ├── ui/            # shadcn/ui components
-│   │   ├── address-finder/ # Voice AI address finder
+│   │   ├── address-finder/ # Voice AI address finder (ElevenLabs + Cartesia brains)
 │   │   ├── homepage/      # Homepage sections
 │   │   └── dashboard/     # Dashboard components
 │   ├── routes/            # React Router routes
 │   ├── hooks/             # Custom React hooks
 │   ├── stores/            # Zustand state management
 │   └── utils/             # Utility functions
+├── cartesia-agent/        # Cartesia Line Python agent (deployed to cloud)
+│   ├── main.py            # Agent entry point
+│   ├── tools.py           # 9 loopback tools
+│   ├── config.py          # System prompt + LLM config
+│   └── cartesia.toml      # Deployment config
 ├── convex/                # Convex backend functions
+│   └── cartesia/          # Token minting + state bridge
 ├── scripts/               # ElevenLabs sync scripts
 │   ├── env-loader.ts      # Custom environment loader
 │   ├── 1-download-config.ts # Download agent config
@@ -313,6 +398,7 @@ Make sure to deploy the output of `npm run build`
 - `@polar-sh/sdk` - Subscription management
 - `@ai-sdk/openai` & `ai` - AI chat capabilities
 - `@elevenlabs/react` - Voice AI conversations
+- `cartesia-line` - Cartesia Line Python SDK (in `cartesia-agent/`)
 - `@vercel/react-router` - Vercel deployment
 - `tailwindcss` v4 - Styling
 - `@radix-ui/*` - UI primitives
