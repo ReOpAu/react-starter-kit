@@ -1,7 +1,6 @@
 import { MapPin } from "lucide-react";
 import type React from "react";
 import { useParams } from "react-router";
-import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Card, CardContent } from "../../../components/ui/card";
 import {
@@ -10,6 +9,8 @@ import {
 	MatchTitleSection,
 	NavigationSection,
 } from "../components";
+import { ListingsErrorBoundary } from "../components/ListingsErrorBoundary";
+import { MatchDetailSkeleton } from "../components/skeletons";
 import { useMatchDetails } from "../data/listingsService";
 import type { ConvexListing } from "../types";
 import { calculateListingDistance, isBuyerListing } from "../utils";
@@ -42,26 +43,19 @@ const MatchDetailPage: React.FC = () => {
 	const isLoading = !matchDetails;
 
 	if (isLoading) {
-		return (
-			<div className="container mx-auto py-8">
-				<Alert>
-					<AlertDescription>Loading match details...</AlertDescription>
-				</Alert>
-			</div>
-		);
+		return <MatchDetailSkeleton />;
 	}
 
 	if (!originalListing || !matchedListing) {
 		return (
-			<div className="container mx-auto py-8">
-				<Alert>
-					<AlertDescription>
-						{!originalListing
-							? "Original listing not found"
-							: "Matched listing not found"}
-					</AlertDescription>
-				</Alert>
-			</div>
+			<ListingsErrorBoundary
+				title={
+					!originalListing
+						? "Original listing not found"
+						: "Matched listing not found"
+				}
+				description="One of the listings in this comparison doesn't exist or may have been removed."
+			/>
 		);
 	}
 

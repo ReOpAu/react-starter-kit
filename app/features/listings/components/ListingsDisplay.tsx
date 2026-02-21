@@ -12,6 +12,7 @@ import {
 import { useListings } from "../data/listingsService";
 import type { Listing, ListingType } from "../types";
 import { ListingsGrid } from "./ListingsGrid";
+import { ListingsGridSkeleton } from "./skeletons";
 
 export interface ListingsDisplayProps {
 	initialFilters?: {
@@ -84,7 +85,7 @@ export const ListingsDisplay: React.FC<ListingsDisplayProps> = ({
 			</Card>
 
 			{isLoading ? (
-				<div className="text-center py-8">Loading...</div>
+				<ListingsGridSkeleton />
 			) : listings.length === 0 ? (
 				<div className="text-center py-8 text-gray-500">No listings found.</div>
 			) : (

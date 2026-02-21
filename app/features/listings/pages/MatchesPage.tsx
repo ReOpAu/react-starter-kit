@@ -3,10 +3,6 @@ import type React from "react";
 import { useState } from "react";
 import { useParams } from "react-router";
 import { Link } from "react-router";
-// Remove unused import
-import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
-// import { Progress } from "../../../components/ui/progress";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -33,7 +29,9 @@ import {
 	TableHeader,
 	TableRow,
 } from "../../../components/ui/table";
+import { ListingsErrorBoundary } from "../components/ListingsErrorBoundary";
 import { MatchScore } from "../components/MatchScore";
+import { MatchesTableSkeleton } from "../components/skeletons";
 import { useListingById, useMatchesForListing } from "../data/listingsService";
 import { calculateDistance, formatDistance, isBuyerListing } from "../utils";
 import {
@@ -98,11 +96,10 @@ const MatchesPage: React.FC = () => {
 
 	if (!listing) {
 		return (
-			<div className="container mx-auto py-8">
-				<Alert>
-					<AlertDescription>Listing not found</AlertDescription>
-				</Alert>
-			</div>
+			<ListingsErrorBoundary
+				title="Listing not found"
+				description="The listing you're looking for doesn't exist or may have been removed."
+			/>
 		);
 	}
 
@@ -213,7 +210,7 @@ const MatchesPage: React.FC = () => {
 				</CardHeader>
 				<CardContent>
 					{matchesLoading ? (
-						<div className="text-center py-8">Loading matches...</div>
+						<MatchesTableSkeleton />
 					) : !matches || matches.length === 0 ? (
 						<Alert>
 							<AlertDescription>

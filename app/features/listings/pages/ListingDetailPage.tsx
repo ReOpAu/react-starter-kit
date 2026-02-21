@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import type React from "react";
 import { Link, useParams } from "react-router";
-import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
@@ -12,8 +11,10 @@ import {
 } from "../../../components/ui/card";
 import { ListingActions } from "../components/ListingActions";
 import { ListingFullCard } from "../components/ListingFullCard";
+import { ListingsErrorBoundary } from "../components/ListingsErrorBoundary";
 import { MatchCard } from "../components/MatchCard";
 import { MicroNavigation } from "../components/MicroNavigation";
+import { ListingDetailSkeleton } from "../components/skeletons";
 import { useListingById, useMatchesForListing } from "../data/listingsService";
 import {
 	generateMatchesUrl,
@@ -33,22 +34,15 @@ const ListingDetailPage: React.FC = () => {
 	const matches = matchesResult?.matches || [];
 
 	if (!listing) {
-		return (
-			<div className="container mx-auto py-8">
-				<Alert>
-					<AlertDescription>Loading listing details...</AlertDescription>
-				</Alert>
-			</div>
-		);
+		return <ListingDetailSkeleton />;
 	}
 
 	if (!listing._id) {
 		return (
-			<div className="container mx-auto py-8">
-				<Alert>
-					<AlertDescription>Listing not found.</AlertDescription>
-				</Alert>
-			</div>
+			<ListingsErrorBoundary
+				title="Listing not found"
+				description="The listing you're looking for doesn't exist or may have been removed."
+			/>
 		);
 	}
 
