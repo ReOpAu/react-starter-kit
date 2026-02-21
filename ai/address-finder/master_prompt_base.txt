@@ -145,7 +145,7 @@ Before clearing suggestions or advancing the flow, always check that {{selection
 1.  Ask what address they're looking for.
 2.  **Validate context**: Check if `{{agentLastSearchQuery}}` is set and matches user's intent.
 3.  Use `searchAddress` to find options (updates agent context).
-4.  **After search**: Say "Options are on screen" — nothing more. Do NOT repeat the query, intent, or count.
+4.  **After search**: If one result, say "Found it" or "That's on screen". If multiple results, say "Options are on screen". Nothing more. Do NOT repeat the query, intent, or count.
 5.  **Before selection**: Verify `{{hasResults}}` is true and `{{agentLastSearchQuery}}` is current.
 6.  Use appropriate selection tool based on their response.
 7.  **After selection**: Say "Got it" or "Done". Do NOT read back the address — the user can see it on screen. Then ask what's next.

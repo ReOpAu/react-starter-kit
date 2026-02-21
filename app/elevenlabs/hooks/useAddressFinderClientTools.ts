@@ -266,8 +266,14 @@ export function useAddressFinderClientTools(
 							return JSON.stringify({
 								status: "suggestions_available",
 								count: looseResults.length,
-								message: "Some options are on screen.",
-								note: "IMPORTANT: Do NOT read addresses aloud or state the count. Just say 'some options are on screen' or similar.",
+								message:
+									looseResults.length === 1
+										? "Found a close match — it's on screen."
+										: "Some options are on screen.",
+								note:
+									looseResults.length === 1
+										? "IMPORTANT: Do NOT read the address aloud. The user can see it on screen. Just say something brief like 'Found a close match' or 'Take a look'."
+										: "IMPORTANT: Do NOT read addresses aloud or state the count. Just say 'some options are on screen' or similar.",
 							});
 						}
 
@@ -340,11 +346,16 @@ export function useAddressFinderClientTools(
 						setActiveSearch({ query, source: "voice" });
 
 						// Return summary to agent (DO NOT return full suggestions to prevent reading aloud)
+						const isSingle = result.suggestions.length === 1;
 						return JSON.stringify({
 							status: "suggestions_available",
 							count: result.suggestions.length,
-							message: "Options are on screen.",
-							note: "IMPORTANT: Do NOT read addresses aloud, state the count, or describe the results. Just say 'options are on screen' or 'take a look'.",
+							message: isSingle
+								? "Found it — it's on screen."
+								: "Options are on screen.",
+							note: isSingle
+								? "IMPORTANT: Do NOT read the address aloud. The user can see it on screen. Just say something brief like 'Found it' or 'That's on screen now'."
+								: "IMPORTANT: Do NOT read addresses aloud, state the count, or describe the results. Just say 'options are on screen' or 'take a look'.",
 						});
 					}
 
@@ -380,15 +391,20 @@ export function useAddressFinderClientTools(
 					note: "Using unified React Query source for all suggestions",
 				});
 
+				const isSingle = suggestions.length === 1;
 				return JSON.stringify({
 					count: suggestions.length,
 					source: suggestions.length > 0 ? "unified" : "none",
 					mode: isRecordingFromState ? "conversation" : "manual",
 					message:
-						suggestions.length > 0
-							? "Options are on screen."
-							: "No suggestions available.",
-					note: "IMPORTANT: Do NOT read addresses or counts aloud.",
+						suggestions.length === 0
+							? "No suggestions available."
+							: isSingle
+								? "Found it — it's on screen."
+								: "Options are on screen.",
+					note: isSingle
+						? "IMPORTANT: Do NOT read the address aloud. The user can see it. Just say 'Found it' or 'That's on screen now'."
+						: "IMPORTANT: Do NOT read addresses or counts aloud.",
 				});
 			},
 
@@ -876,7 +892,10 @@ export function useAddressFinderClientTools(
 
 				return JSON.stringify({
 					status: "options_displayed",
-					message: "Previous options are on screen.",
+					message:
+						optionsCount === 1
+							? "The previous result is on screen."
+							: "Previous options are on screen.",
 					note: "IMPORTANT: Do NOT list or describe the options. They are visible on screen.",
 					optionsCount,
 				});
