@@ -98,7 +98,7 @@ The `testing/` directory contains comprehensive validation test cases:
 
 Required for address services:
 ```bash
-GOOGLE_PLACES_API_KEY=your_google_places_api_key_here
+GOOGLE_MAPS_API_KEY=your_GOOGLE_MAPS_API_KEY_here
 ```
 
 See `../CLAUDE.md` for complete environment setup.

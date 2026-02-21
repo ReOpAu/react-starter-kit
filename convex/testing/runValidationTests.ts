@@ -277,7 +277,7 @@ export const runValidationAccuracyTests = action({
 		error: v.optional(v.string()),
 	}),
 	handler: async (ctx, args) => {
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false,
@@ -325,7 +325,7 @@ export const quickValidationTest = action({
 		error: v.optional(v.string()),
 	}),
 	handler: async (ctx, args) => {
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false,
@@ -373,7 +373,7 @@ export const testSingleAddress = action({
 		error: v.optional(v.string()),
 	}),
 	handler: async (ctx, args) => {
-		const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+		const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 		if (!apiKey) {
 			return {
 				success: false,

@@ -4,7 +4,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { paymentWebhook } from "./subscriptions";
 
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const PLACES_API_URL = "https://places.googleapis.com/v1/places:searchNearby";
 
 // Helper to calculate distance using Haversine formula
@@ -42,7 +42,7 @@ function getDisplayType(types: string[]): string {
 }
 
 export const nearbyPlaces = httpAction(async (_, request) => {
-	if (!GOOGLE_PLACES_API_KEY) {
+	if (!GOOGLE_MAPS_API_KEY) {
 		return new Response(
 			JSON.stringify({ error: "Google Places API key is not configured." }),
 			{
@@ -83,7 +83,7 @@ export const nearbyPlaces = httpAction(async (_, request) => {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+				"X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
 				"X-Goog-FieldMask":
 					"places.displayName,places.formattedAddress,places.rating,places.types,places.location",
 			},
