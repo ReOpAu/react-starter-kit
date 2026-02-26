@@ -135,9 +135,6 @@ export const getPlacePhotos = action({
 					apiKey,
 				);
 
-				console.log(
-					`[getPlacePhotos] Fetched ${resolved.length} direct photos for ${args.placeId}`,
-				);
 				return { success: true as const, source: "place" as const, photos: resolved };
 			}
 
@@ -153,10 +150,6 @@ export const getPlacePhotos = action({
 					photos: [],
 				};
 			}
-
-			console.log(
-				`[getPlacePhotos] No direct photos for ${args.placeId}, searching nearby at ${lat},${lng}`,
-			);
 
 			const nearbyRes = await fetch(
 				"https://places.googleapis.com/v1/places:searchNearby",
@@ -212,10 +205,6 @@ export const getPlacePhotos = action({
 				);
 				allResolved.push(...resolved);
 			}
-
-			console.log(
-				`[getPlacePhotos] Fetched ${allResolved.length} nearby neighbourhood photos for ${args.placeId}`,
-			);
 
 			return {
 				success: true as const,

@@ -35,9 +35,7 @@ export const createListing = mutation({
 			updatedAt: now,
 		};
 
-		console.log("Creating listing:", listingWithTimestamps);
 		const id = await ctx.db.insert("listings", listingWithTimestamps);
-		console.log("Created listing with ID:", id);
 		return id;
 	},
 });
@@ -57,11 +55,8 @@ export const updateListing = mutation({
 	handler: async (ctx, { id, updates }) => {
 		// Temporarily disable auth check for development
 		// await checkAuth(ctx);
-		console.log("Updating listing with ID:", id);
-		console.log("Updates:", updates);
 		await ctx.db.patch(id, updates);
 		const result = await ctx.db.get(id);
-		console.log("Updated listing:", result);
 		return result;
 	},
 });
@@ -96,23 +91,11 @@ export const listListings = query({
 			results = await ctx.db.query("listings").collect();
 		}
 
-		// Debug: log filter inputs and total count
-		console.log("Filter inputs:", {
-			listingType,
-			state,
-			suburb,
-			page,
-			pageSize,
-			totalListings: results.length,
-		});
-
 		if (state) {
 			// Case insensitive state matching - direct field access
-			const beforeStateFilter = results.length;
 			results = results.filter(
 				(l) => l.state.toLowerCase() === state.toLowerCase(),
 			);
-			console.log(`State filter: ${beforeStateFilter} -> ${results.length}`);
 		}
 		if (suburb) {
 			// Normalize suburb for comparison: convert URL format (potts-point) to title case (Potts Point)
@@ -123,16 +106,10 @@ export const listListings = query({
 					(word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
 				)
 				.join(" ");
-			const beforeSuburbFilter = results.length;
-			console.log(`Suburb normalization: ${suburb} -> ${normalizedSuburb}`);
-			console.log("Available suburbs:", [
-				...new Set(results.map((l) => l.suburb)),
-			]);
 			// Case insensitive suburb matching - direct field access
 			results = results.filter(
 				(l) => l.suburb.toLowerCase() === normalizedSuburb.toLowerCase(),
 			);
-			console.log(`Suburb filter: ${beforeSuburbFilter} -> ${results.length}`);
 		}
 
 		// Calculate pagination
@@ -143,10 +120,6 @@ export const listListings = query({
 
 		// Apply pagination
 		const paginatedResults = results.slice(startIndex, endIndex);
-
-		console.log(
-			`Pagination: page ${page}/${totalPages}, showing ${paginatedResults.length}/${totalCount} results`,
-		);
 
 		return {
 			listings: paginatedResults,

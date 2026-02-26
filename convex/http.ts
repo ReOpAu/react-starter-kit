@@ -167,11 +167,6 @@ export const chat = httpAction(async (ctx, req) => {
 	const result = streamText({
 		model: openai("gpt-4o"),
 		messages,
-		async onFinish({ text }) {
-			// implement your own logic here, e.g. for storing messages
-			// or recording token usage
-			console.log(text);
-		},
 	});
 
 	// Respond with the stream
@@ -287,9 +282,6 @@ http.route({
 		return new Response();
 	}),
 });
-
-// Log that routes are configured
-console.log("HTTP routes configured");
 
 // Convex expects the router to be the default export of `convex/http.js`.
 export default http;

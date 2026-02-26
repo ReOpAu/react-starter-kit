@@ -126,17 +126,6 @@ export const getPlaceDetails = action({
 				state,
 			};
 
-			// Log successful enrichment for debugging
-			console.log(
-				`[getPlaceDetails] Successfully enriched place: ${data.id || args.placeId}`,
-				{
-					formattedAddress: data.formattedAddress,
-					postcode,
-					suburb,
-					state,
-				},
-			);
-
 			return { success: true as const, details };
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);

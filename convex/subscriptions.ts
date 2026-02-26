@@ -55,11 +55,6 @@ const createCheckout = async ({
 		},
 	};
 
-	console.log(
-		"Creating checkout with data:",
-		JSON.stringify(checkoutData, null, 2),
-	);
-
 	const result = await polar.checkouts.create(checkoutData);
 	return result;
 };
@@ -440,7 +435,7 @@ export const handleWebhookEvent = mutation({
 				break;
 
 			default:
-				console.log(`Unhandled event type: ${eventType}`);
+				console.warn(`Unhandled event type: ${eventType}`);
 				break;
 		}
 	},
