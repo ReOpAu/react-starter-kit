@@ -51,11 +51,7 @@ export function useCartesiaAudioManager({
 			audioContextRef.current = audioContext;
 
 			const source = audioContext.createMediaStreamSource(stream);
-			const processor = audioContext.createScriptProcessor(
-				BUFFER_SIZE,
-				1,
-				1,
-			);
+			const processor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
 			processorRef.current = processor;
 
 			processor.onaudioprocess = (event) => {

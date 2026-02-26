@@ -25,10 +25,7 @@ import type {
 import { getListingTypeLabel } from "../utils/matchUtils";
 import { PropertyFeatures } from "./PropertyFeatures";
 
-const ComparisonIcon: React.FC<{ val1: any; val2: any }> = ({
-	val1,
-	val2,
-}) => {
+const ComparisonIcon: React.FC<{ val1: any; val2: any }> = ({ val1, val2 }) => {
 	if (val1 === val2) {
 		return <Check className="w-4 h-4 text-green-500" />;
 	}
@@ -70,9 +67,7 @@ const PriceCell: React.FC<{
 				<div className="text-sm">
 					<div
 						className={
-							hasOverlap
-								? "font-medium text-green-700"
-								: "text-gray-700"
+							hasOverlap ? "font-medium text-green-700" : "text-gray-700"
 						}
 					>
 						${listing.priceMin.toLocaleString()} - $
@@ -139,10 +134,8 @@ const CommonFeaturesAnalysis: React.FC<{
 	const commonFeatures = originalFeatures.filter((feature) =>
 		matchedFeatures.includes(feature),
 	);
-	const totalUniqueFeatures = new Set([
-		...originalFeatures,
-		...matchedFeatures,
-	]).size;
+	const totalUniqueFeatures = new Set([...originalFeatures, ...matchedFeatures])
+		.size;
 	const matchPercentage =
 		totalUniqueFeatures > 0
 			? Math.round((commonFeatures.length / totalUniqueFeatures) * 100)
@@ -226,27 +219,19 @@ const ListingStatusRows: React.FC<{
 		<TableRow>
 			<TableCell className="font-medium">Status</TableCell>
 			<TableCell className="text-center">
-				<Badge
-					variant={originalListing.isActive ? "default" : "secondary"}
-				>
+				<Badge variant={originalListing.isActive ? "default" : "secondary"}>
 					{originalListing.isActive ? "Active" : "Inactive"}
 				</Badge>
 				{originalListing.isPremium && (
-					<Badge className="ml-2 bg-yellow-100 text-yellow-800">
-						Premium
-					</Badge>
+					<Badge className="ml-2 bg-yellow-100 text-yellow-800">Premium</Badge>
 				)}
 			</TableCell>
 			<TableCell className="text-center">
-				<Badge
-					variant={matchedListing.isActive ? "default" : "secondary"}
-				>
+				<Badge variant={matchedListing.isActive ? "default" : "secondary"}>
 					{matchedListing.isActive ? "Active" : "Inactive"}
 				</Badge>
 				{matchedListing.isPremium && (
-					<Badge className="ml-2 bg-yellow-100 text-yellow-800">
-						Premium
-					</Badge>
+					<Badge className="ml-2 bg-yellow-100 text-yellow-800">Premium</Badge>
 				)}
 			</TableCell>
 		</TableRow>

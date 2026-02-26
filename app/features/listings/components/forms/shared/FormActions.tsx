@@ -33,7 +33,7 @@ export const FormActions: React.FC<FormActionsProps> = ({
 					</Button>
 				)}
 				<Button type="submit" disabled={isLoading}>
-					{isLoading ? (loadingLabel || "Updating...") : submitLabel}
+					{isLoading ? loadingLabel || "Updating..." : submitLabel}
 				</Button>
 			</div>
 		</>

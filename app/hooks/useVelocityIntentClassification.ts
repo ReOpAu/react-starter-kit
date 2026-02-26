@@ -524,7 +524,7 @@ export function useVelocityIntentClassification(
 				timeSinceLastKeypress < baselineInterval.current! &&
 				timeSinceLastKeypress < 200; // Also consider absolute threshold
 
-				const newTypingState = {
+			const newTypingState = {
 				isTypingFast,
 				timeSinceLastKeypress,
 				averageInterval,
@@ -569,7 +569,7 @@ export function useVelocityIntentClassification(
 			typingState.hasVelocityBaseline
 		) {
 			// User paused after first word - optimistically classify as suburb
-				return "suburb";
+			return "suburb";
 		} else if (wordCount >= 2) {
 			// Check if second (or last) word is thoroughfare type
 			if (isThoroughfareWord(lastWord)) {

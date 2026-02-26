@@ -5,12 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useCartesiaAudioManager } from "~/cartesia/hooks/useCartesiaAudioManager";
 import { useCartesiaConversation } from "~/cartesia/hooks/useCartesiaConversation";
 import { useCartesiaEventHandler } from "~/cartesia/hooks/useCartesiaEventHandler";
+import type { RuralConfirmationState } from "~/hooks/actions/types";
 import { useActionHandler } from "~/hooks/useActionHandler";
 import {
-	useAddressAutoSelection,
 	type AutoCorrectionData,
+	useAddressAutoSelection,
 } from "~/hooks/useAddressAutoSelection";
-import type { RuralConfirmationState } from "~/hooks/actions/types";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressSession } from "~/hooks/useAddressSession";
 import { useVelocityIntentClassification } from "~/hooks/useVelocityIntentClassification";
@@ -197,8 +197,7 @@ export function CartesiaAddressFinderBrain({
 	);
 
 	// Local component state
-	const [debouncedSearchQuery, setDebouncedSearchQuery] =
-		useState(searchQuery);
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 
 	// Custom hooks for extracted logic
 	const { getSessionToken, clearSessionToken, getCurrentSessionToken } =
@@ -206,8 +205,9 @@ export function CartesiaAddressFinderBrain({
 
 	// --- Address Recall (inline, no ElevenLabs dependency) ---
 	const [isRecallMode, setIsRecallMode] = useState(false);
-	const [preserveIntent, setPreserveIntent] =
-		useState<LocationIntent | null>(null);
+	const [preserveIntent, setPreserveIntent] = useState<LocationIntent | null>(
+		null,
+	);
 
 	const getPlaceSuggestionsAction = useAction(
 		api.address.getPlaceSuggestions.getPlaceSuggestions,

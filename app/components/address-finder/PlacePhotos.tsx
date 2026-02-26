@@ -28,9 +28,7 @@ export const PlacePhotos: React.FC<PlacePhotosProps> = ({
 	const [error, setError] = useState<string | null>(null);
 	const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-	const getPlacePhotos = useAction(
-		api.address.getPlacePhotos.getPlacePhotos,
-	);
+	const getPlacePhotos = useAction(api.address.getPlacePhotos.getPlacePhotos);
 
 	useEffect(() => {
 		if (!placeId) return;
@@ -87,9 +85,7 @@ export const PlacePhotos: React.FC<PlacePhotosProps> = ({
 	}
 
 	if (error) {
-		return (
-			<p className="mt-4 text-sm text-red-600">{error}</p>
-		);
+		return <p className="mt-4 text-sm text-red-600">{error}</p>;
 	}
 
 	if (photos.length === 0) {
@@ -205,7 +201,11 @@ export const PlacePhotos: React.FC<PlacePhotosProps> = ({
 			{photos.some((p) => p.attribution) && (
 				<p className="text-xs text-muted-foreground">
 					Photos by{" "}
-					{[...new Set(photos.filter((p) => p.attribution).map((p) => p.attribution))].join(", ")}
+					{[
+						...new Set(
+							photos.filter((p) => p.attribution).map((p) => p.attribution),
+						),
+					].join(", ")}
 				</p>
 			)}
 		</div>

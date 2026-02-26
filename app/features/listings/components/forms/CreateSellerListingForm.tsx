@@ -1,9 +1,9 @@
-import ngeohash from "ngeohash";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/clerk-react";
 import { useMutation } from "convex/react";
 import { AlertCircle, Building2, Home } from "lucide-react";
+import ngeohash from "ngeohash";
 import type React from "react";
 import { useState } from "react";
 import {

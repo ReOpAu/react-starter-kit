@@ -21,7 +21,8 @@ export const meta: Route.MetaFunction = () => [
 	{ title: "Pricing - REOP Main" },
 	{
 		name: "description",
-		content: "Simple, transparent pricing for REOP Main. Choose the plan that fits your real estate needs.",
+		content:
+			"Simple, transparent pricing for REOP Main. Choose the plan that fits your real estate needs.",
 	},
 ];
 

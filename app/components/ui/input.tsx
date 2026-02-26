@@ -2,7 +2,12 @@ import type * as React from "react";
 
 import { cn } from "app/lib/utils";
 
-function Input({ className, type, autoCapitalize, ...props }: React.ComponentProps<"input">) {
+function Input({
+	className,
+	type,
+	autoCapitalize,
+	...props
+}: React.ComponentProps<"input">) {
 	return (
 		<input
 			type={type}

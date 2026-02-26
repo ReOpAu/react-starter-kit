@@ -135,7 +135,11 @@ export const getPlacePhotos = action({
 					apiKey,
 				);
 
-				return { success: true as const, source: "place" as const, photos: resolved };
+				return {
+					success: true as const,
+					source: "place" as const,
+					photos: resolved,
+				};
 			}
 
 			// Step 2: No direct photos — fall back to nearby neighbourhood search
@@ -158,8 +162,7 @@ export const getPlacePhotos = action({
 					headers: {
 						"Content-Type": "application/json",
 						"X-Goog-Api-Key": apiKey,
-						"X-Goog-FieldMask":
-							"places.id,places.displayName,places.photos",
+						"X-Goog-FieldMask": "places.id,places.displayName,places.photos",
 					},
 					body: JSON.stringify({
 						locationRestriction: {
@@ -197,7 +200,11 @@ export const getPlacePhotos = action({
 				if (allResolved.length >= maxPhotos) break;
 				if (!place.photos || place.photos.length === 0) continue;
 
-				const take = Math.min(2, maxPhotos - allResolved.length, place.photos.length);
+				const take = Math.min(
+					2,
+					maxPhotos - allResolved.length,
+					place.photos.length,
+				);
 				const resolved = await resolvePhotoUrls(
 					place.photos.slice(0, take),
 					apiKey,

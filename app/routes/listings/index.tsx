@@ -7,7 +7,8 @@ export const meta: Route.MetaFunction = () => [
 	{ title: "Property Listings - REOP Main" },
 	{
 		name: "description",
-		content: "Browse property listings across Australia. Filter by state, type, and suburb.",
+		content:
+			"Browse property listings across Australia. Filter by state, type, and suburb.",
 	},
 ];
 

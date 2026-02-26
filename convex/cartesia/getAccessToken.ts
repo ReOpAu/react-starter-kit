@@ -38,10 +38,7 @@ export const getAccessToken = action({
 
 			if (!resp.ok) {
 				const errorText = await resp.text();
-				console.error(
-					"[getAccessToken] Cartesia API error:",
-					errorText,
-				);
+				console.error("[getAccessToken] Cartesia API error:", errorText);
 				return {
 					success: false as const,
 					error: `HTTP ${resp.status}: ${errorText}`,

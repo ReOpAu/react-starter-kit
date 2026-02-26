@@ -643,8 +643,7 @@ export async function getPlacesApiSuggestions(
 				resultType,
 				confidence,
 			};
-			const extractedSuburb =
-				extractSuburbFromPlacesSuggestion(tempSuggestion);
+			const extractedSuburb = extractSuburbFromPlacesSuggestion(tempSuggestion);
 			suggestions.push({
 				...tempSuggestion,
 				suburb: extractedSuburb,

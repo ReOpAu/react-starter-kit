@@ -161,17 +161,13 @@ export function useCartesiaConversation({
 					lastAuthTokenRef.current
 				) {
 					const delay =
-						BASE_RECONNECT_DELAY_MS *
-						2 ** reconnectAttemptRef.current;
+						BASE_RECONNECT_DELAY_MS * 2 ** reconnectAttemptRef.current;
 					reconnectAttemptRef.current += 1;
 					console.log(
 						`[Cartesia] Reconnecting in ${delay}ms (attempt ${reconnectAttemptRef.current})`,
 					);
 					setStatus("connecting");
-					setTimeout(
-						() => connectWithToken(lastAuthTokenRef.current!),
-						delay,
-					);
+					setTimeout(() => connectWithToken(lastAuthTokenRef.current!), delay);
 				} else {
 					setStatus("disconnected");
 				}

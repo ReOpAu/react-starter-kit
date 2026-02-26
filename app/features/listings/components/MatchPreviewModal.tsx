@@ -45,9 +45,7 @@ const ListingSummaryCard: React.FC<{
 				<Home className="w-4 h-4" />
 				{label}
 				<Badge
-					variant={
-						listing.listingType === "buyer" ? "default" : "secondary"
-					}
+					variant={listing.listingType === "buyer" ? "default" : "secondary"}
 				>
 					{listing.listingType}
 				</Badge>
@@ -60,14 +58,13 @@ const ListingSummaryCard: React.FC<{
 				{listing.suburb}, {listing.state}
 			</div>
 			<div className="text-sm">
-				{listing.bedrooms} bed • {listing.bathrooms} bath •{" "}
-				{listing.parking} car
+				{listing.bedrooms} bed • {listing.bathrooms} bath • {listing.parking}{" "}
+				car
 			</div>
 			{(listing.priceMin || listing.priceMax) && (
 				<div className="flex items-center gap-1 text-sm">
-					<DollarSign className="w-4 h-4" />$
-					{listing.priceMin.toLocaleString()} - $
-					{listing.priceMax.toLocaleString()}
+					<DollarSign className="w-4 h-4" />${listing.priceMin.toLocaleString()}{" "}
+					- ${listing.priceMax.toLocaleString()}
 				</div>
 			)}
 		</CardContent>
@@ -261,9 +258,7 @@ export const MatchPreviewModal: React.FC<MatchPreviewModalProps> = ({
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<PropertyComparisonGrid
-								propertyComparison={propertyComparison}
-							/>
+							<PropertyComparisonGrid propertyComparison={propertyComparison} />
 						</CardContent>
 					</Card>
 

@@ -256,10 +256,7 @@ export function useAddressFinderClientTools(
 							log(
 								`⚠️ Strict validation failed but loose call returned ${looseResults.length} results — falling back`,
 							);
-							queryClient.setQueryData(
-								["addressSearch", query],
-								looseResults,
-							);
+							queryClient.setQueryData(["addressSearch", query], looseResults);
 							setAgentLastSearchQuery(query);
 							setActiveSearch({ query, source: "voice" });
 

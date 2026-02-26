@@ -17,7 +17,10 @@ export const meta: Route.MetaFunction = () => [
 		content:
 			"Find and list properties across Australia. AI-powered address search, buyer-seller matching, and real-time listings.",
 	},
-	{ property: "og:title", content: "REOP Main - Australian Real Estate Marketplace" },
+	{
+		property: "og:title",
+		content: "REOP Main - Australian Real Estate Marketplace",
+	},
 	{
 		property: "og:description",
 		content:

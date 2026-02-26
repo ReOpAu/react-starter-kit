@@ -110,10 +110,7 @@ export const getPlaceDetails = action({
 			// Extract structured data from the components array
 			const postcode = extractComponent(components, "postal_code");
 			const suburb = extractComponent(components, "locality");
-			const state = extractComponent(
-				components,
-				"administrative_area_level_1",
-			);
+			const state = extractComponent(components, "administrative_area_level_1");
 
 			const details = {
 				placeId: data.id || args.placeId,

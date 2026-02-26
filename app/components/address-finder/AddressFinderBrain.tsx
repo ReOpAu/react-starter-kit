@@ -3,12 +3,12 @@ import { api } from "convex/_generated/api";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgentSync } from "~/elevenlabs/hooks/useAgentSync";
+import type { RuralConfirmationState } from "~/hooks/actions/types";
 import { useActionHandler } from "~/hooks/useActionHandler";
 import {
-	useAddressAutoSelection,
 	type AutoCorrectionData,
+	useAddressAutoSelection,
 } from "~/hooks/useAddressAutoSelection";
-import type { RuralConfirmationState } from "~/hooks/actions/types";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useAddressRecall } from "~/hooks/useAddressRecall";
 import { useAddressSession } from "~/hooks/useAddressSession";

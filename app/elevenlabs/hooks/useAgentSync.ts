@@ -55,8 +55,7 @@ export function useAgentSync() {
 						lastUpdate: timestamp,
 						sessionActive: ui.isRecording,
 						agentRequestedManual: ui.agentRequestedManual,
-						dataFlow:
-							"API → React Query → Pillar Stores → ElevenLabs → Agent",
+						dataFlow: "API → React Query → Pillar Stores → ElevenLabs → Agent",
 					},
 				};
 
@@ -90,10 +89,7 @@ export function useAgentSync() {
 					"agentLastSearchQuery",
 					intent.agentLastSearchQuery,
 				);
-				windowWithElevenLabs.setVariable(
-					"currentIntent",
-					intent.currentIntent,
-				);
+				windowWithElevenLabs.setVariable("currentIntent", intent.currentIntent);
 				windowWithElevenLabs.setVariable(
 					"activeSearchSource",
 					intent.activeSearchSource,

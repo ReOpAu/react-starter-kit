@@ -10,7 +10,8 @@ export const meta: Route.MetaFunction = () => [
 	{ title: "About - REOP Main" },
 	{
 		name: "description",
-		content: "Learn about REOP Main - an AI-powered Australian real estate marketplace.",
+		content:
+			"Learn about REOP Main - an AI-powered Australian real estate marketplace.",
 	},
 ];
 

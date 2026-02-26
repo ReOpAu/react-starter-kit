@@ -1,9 +1,9 @@
-import ngeohash from "ngeohash";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/clerk-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "convex/react";
 import { ArrowLeft, Building2, Home, Plus } from "lucide-react";
+import ngeohash from "ngeohash";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
@@ -124,7 +124,11 @@ export function CreateListingFormComponent() {
 			const listingData = {
 				...values,
 				userId: user?.id ?? ("" as any),
-				geohash: ngeohash.encode(values.latitude ?? 0, values.longitude ?? 0, 7),
+				geohash: ngeohash.encode(
+					values.latitude ?? 0,
+					values.longitude ?? 0,
+					7,
+				),
 				createdAt: now,
 				updatedAt: now,
 				// Ensure proper price structure based on listing type

@@ -13,10 +13,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
-import type { CartesiaToolUpdate } from "../types";
 import { useAddressFinderActions } from "~/hooks/useAddressFinderActions";
 import { useIntentStore } from "~/stores/intentStore";
 import { useUIStore } from "~/stores/uiStore";
+import type { CartesiaToolUpdate } from "../types";
 
 interface UseCartesiaEventHandlerOptions {
 	sessionId: string;
@@ -50,13 +50,10 @@ export function useCartesiaEventHandler({
 			parsed = JSON.parse(latestUpdate.data);
 			// The updateType from Convex maps to the type field
 			if (!parsed.type) {
-				(parsed as Record<string, unknown>).type =
-					latestUpdate.updateType;
+				(parsed as Record<string, unknown>).type = latestUpdate.updateType;
 			}
 		} catch {
-			console.warn(
-				"[CartesiaEventHandler] Failed to parse update data",
-			);
+			console.warn("[CartesiaEventHandler] Failed to parse update data");
 			return;
 		}
 
@@ -66,9 +63,7 @@ export function useCartesiaEventHandler({
 					["addressSearch", parsed.query],
 					parsed.suggestions,
 				);
-				useIntentStore
-					.getState()
-					.setAgentLastSearchQuery(parsed.query);
+				useIntentStore.getState().setAgentLastSearchQuery(parsed.query);
 				useIntentStore.getState().setActiveSearch({
 					query: parsed.query,
 					source: "voice",
@@ -76,20 +71,14 @@ export function useCartesiaEventHandler({
 				useIntentStore.getState().setCurrentIntent(parsed.intent);
 				// Clear selection when new search happens
 				useIntentStore.getState().setSelectedResult(null);
-				useUIStore
-					.getState()
-					.setShowingOptionsAfterConfirmation(false);
+				useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 				useUIStore.getState().setSelectionAcknowledged(false);
 				break;
 			}
 
 			case "selection": {
-				useIntentStore
-					.getState()
-					.setSelectedResult(parsed.suggestion);
-				useUIStore
-					.getState()
-					.setShowingOptionsAfterConfirmation(false);
+				useIntentStore.getState().setSelectedResult(parsed.suggestion);
+				useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 				break;
 			}
 
@@ -100,18 +89,14 @@ export function useCartesiaEventHandler({
 						["addressSearch", parsed.query],
 						parsed.suggestions,
 					);
-					useIntentStore
-						.getState()
-						.setAgentLastSearchQuery(parsed.query);
+					useIntentStore.getState().setAgentLastSearchQuery(parsed.query);
 					useIntentStore.getState().setActiveSearch({
 						query: parsed.query,
 						source: "voice",
 					});
 				}
 				useIntentStore.getState().setSelectedResult(null);
-				useUIStore
-					.getState()
-					.setShowingOptionsAfterConfirmation(true);
+				useUIStore.getState().setShowingOptionsAfterConfirmation(true);
 				useUIStore.getState().setSelectionAcknowledged(false);
 				break;
 			}
@@ -125,9 +110,7 @@ export function useCartesiaEventHandler({
 
 			case "clear": {
 				clearSelectionAndSearch();
-				useUIStore
-					.getState()
-					.setShowingOptionsAfterConfirmation(false);
+				useUIStore.getState().setShowingOptionsAfterConfirmation(false);
 				useUIStore.getState().setSelectionAcknowledged(false);
 				break;
 			}

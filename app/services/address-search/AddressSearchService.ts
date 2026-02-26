@@ -24,7 +24,9 @@ import type {
 type IntentStore = typeof import("~/stores/intentStore").useIntentStore;
 type UIStore = typeof import("~/stores/uiStore").useUIStore;
 type ApiStore = typeof import("~/stores/apiStore").useApiStore;
+// biome-ignore format: typeof import must stay on single line for valid TS syntax
 type SearchHistoryStore = typeof import("~/stores/searchHistoryStore").useSearchHistoryStore;
+// biome-ignore format: typeof import must stay on single line for valid TS syntax
 type AddressSelectionStore = typeof import("~/stores/addressSelectionStore").useAddressSelectionStore;
 
 interface StoreRefs {

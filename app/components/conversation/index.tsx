@@ -142,7 +142,7 @@ export function Conversation() {
 					await setupAudioAnalysis();
 				}
 
-					await conversation.startSession({
+				await conversation.startSession({
 					overrides: {
 						agent: {
 							language: selectedLanguage,
