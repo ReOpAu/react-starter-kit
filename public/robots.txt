@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Disallow internal/auth pages
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /sign-in/
+Disallow: /sign-up/
+Disallow: /success
+Disallow: /subscription-required
+
+Sitemap: https://www.reopmain.com.au/sitemap.xml
