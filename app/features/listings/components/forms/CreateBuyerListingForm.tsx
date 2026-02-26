@@ -1,3 +1,4 @@
+import ngeohash from "ngeohash";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useUser } from "@clerk/clerk-react";
@@ -125,7 +126,7 @@ export const CreateBuyerListingForm: React.FC<CreateBuyerListingFormProps> = ({
 				address: formData.address,
 				latitude: formData.latitude,
 				longitude: formData.longitude,
-				geohash: "temp", // TODO: Generate proper geohash
+				geohash: ngeohash.encode(formData.latitude, formData.longitude, 7),
 				buildingType: formData.buildingType as BuildingType,
 				bedrooms: formData.bedrooms,
 				bathrooms: formData.bathrooms,

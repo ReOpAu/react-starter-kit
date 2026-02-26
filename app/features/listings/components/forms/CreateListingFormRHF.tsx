@@ -1,3 +1,4 @@
+import ngeohash from "ngeohash";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/clerk-react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -178,7 +179,7 @@ export function CreateListingFormComponent() {
 			const listingData = {
 				...values,
 				userId: user.id as any,
-				geohash: "temp", // Would calculate based on lat/lng
+				geohash: ngeohash.encode(values.latitude ?? 0, values.longitude ?? 0, 7),
 				createdAt: now,
 				updatedAt: now,
 				// Ensure proper price structure based on listing type
