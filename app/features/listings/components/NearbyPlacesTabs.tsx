@@ -129,11 +129,6 @@ export const NearbyPlacesTabs: React.FC<NearbyPlacesTabsProps> = ({
 
 			setLoading(true);
 			try {
-				console.log("Fetching places for tab:", {
-					id: tab.id,
-					types: tab.types,
-				});
-
 				const convexUrl = import.meta.env.VITE_CONVEX_URL;
 				// Convert .convex.cloud to .convex.site for HTTP actions
 				const httpUrl = convexUrl.replace(".convex.cloud", ".convex.site");

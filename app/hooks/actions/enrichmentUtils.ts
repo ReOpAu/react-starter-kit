@@ -17,12 +17,7 @@ export const logEnrichment = (
 	result: Suggestion,
 	extra?: Record<string, unknown>,
 ): void => {
-	console.log(`[AddressHandler:Enrichment] ${operation}`, {
-		placeId: result.placeId,
-		description: result.description,
-		isEnriched: isResultEnriched(result),
-		...extra,
-	});
+	// Debug logging removed for production cleanliness
 };
 
 /**

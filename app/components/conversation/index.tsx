@@ -29,10 +29,9 @@ export function Conversation() {
 		agentKey: "CONVERSATION_ASSISTANT",
 		getSessionToken: () => "",
 		clearSessionToken: () => {},
-		onConnect: () => console.log("Connected"),
-		onDisconnect: () => console.log("Disconnected"),
+		onConnect: () => {},
+		onDisconnect: () => {},
 		onMessage: (message) => {
-			console.log("[onMessage] Message:", message);
 			setIsAgentTyping(false);
 			setMessages((prev) => {
 				// Ignore if this message matches the last user message (typed or transcribed)
@@ -41,10 +40,6 @@ export function Conversation() {
 					prev[prev.length - 1].sender === "user" &&
 					prev[prev.length - 1].text === message.message
 				) {
-					console.log(
-						"[onMessage] Ignored echo of user message:",
-						message.message,
-					);
 					return prev;
 				}
 				// Add message based on source
@@ -65,7 +60,6 @@ export function Conversation() {
 	// Handle user messages and transcriptions through conversation object
 	const handleUserMessage = useCallback(
 		(message: string) => {
-			console.log("[onUserMessage] User message:", message);
 			if (
 				message.trim() &&
 				!messages.some((m) => m.text === message && m.sender === "user")
@@ -81,7 +75,6 @@ export function Conversation() {
 
 	const handleTranscription = useCallback(
 		(text: string) => {
-			console.log("[onTranscription] User transcription:", text);
 			if (
 				text.trim() &&
 				!messages.some(
@@ -128,12 +121,6 @@ export function Conversation() {
 						now - lastUpdateRef.current >
 							CONVERSATION_CONFIG.INACTIVE_THRESHOLD)
 				) {
-					console.log(
-						"Voice activity changed:",
-						isActive,
-						"Average level:",
-						average,
-					);
 					setIsVoiceActive(isActive);
 					lastUpdateRef.current = now;
 				}
@@ -155,10 +142,7 @@ export function Conversation() {
 					await setupAudioAnalysis();
 				}
 
-				// Debug log to confirm language being sent
-				console.log("Starting session with language:", selectedLanguage);
-
-				await conversation.startSession({
+					await conversation.startSession({
 					overrides: {
 						agent: {
 							language: selectedLanguage,

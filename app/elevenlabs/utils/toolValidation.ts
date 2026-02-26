@@ -227,10 +227,5 @@ export function logValidation(
 	isValid: boolean,
 	error?: string,
 ): void {
-	console.log(`🔧 [ToolValidation] ${toolName}:`, {
-		params,
-		isValid,
-		error,
-		timestamp: new Date().toISOString(),
-	});
+	// Debug logging removed for production cleanliness
 }

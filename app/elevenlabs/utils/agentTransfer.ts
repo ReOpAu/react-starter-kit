@@ -156,14 +156,7 @@ export function logTransferAttempt(params: {
 }): void {
 	const { agent_number, reason, targetAgent, success, error } = params;
 
-	console.log("🔄 [AgentTransfer]", {
-		targetIndex: agent_number,
-		targetName: targetAgent?.name || "Unknown",
-		reason: reason || "No reason provided",
-		success,
-		error,
-		timestamp: new Date().toISOString(),
-	});
+	// Debug logging removed for production cleanliness
 }
 
 /**

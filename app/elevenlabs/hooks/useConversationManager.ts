@@ -44,12 +44,6 @@ export function useConversationManager(clientTools: Record<string, any>) {
 			useUIStore.getState().setIsVoiceActive(false);
 		},
 		onTranscription: (text: string) => {
-			// ENHANCED TRANSCRIPTION LOGGING
-			console.log("🎤 RAW TRANSCRIPTION EVENT:", {
-				text,
-				length: text?.length,
-				type: typeof text,
-			});
 			if (text?.trim()) {
 				log("📝 Transcription received:", text);
 				addHistory({ type: "user", text: `Transcribed: "${text}"` });

@@ -524,28 +524,7 @@ export function useVelocityIntentClassification(
 				timeSinceLastKeypress < baselineInterval.current! &&
 				timeSinceLastKeypress < 200; // Also consider absolute threshold
 
-			// Only log when there's meaningful activity (not every 200ms)
-			if (
-				process.env.NODE_ENV === "development" &&
-				(velocityChangeDetected ||
-					wordCountChanged ||
-					timeSinceLastKeypress < 1000)
-			) {
-				console.log("🔍 Velocity Check:", {
-					query,
-					wordCount,
-					hasBaseline,
-					baselineInterval: baselineInterval.current,
-					timeSinceLastKeypress,
-					velocityChangeDetected,
-					wordCountChanged,
-					threshold: baselineInterval.current
-						? baselineInterval.current * options.velocityChangeThreshold
-						: "no baseline",
-				});
-			}
-
-			const newTypingState = {
+				const newTypingState = {
 				isTypingFast,
 				timeSinceLastKeypress,
 				averageInterval,
@@ -590,10 +569,7 @@ export function useVelocityIntentClassification(
 			typingState.hasVelocityBaseline
 		) {
 			// User paused after first word - optimistically classify as suburb
-			if (process.env.NODE_ENV === "development") {
-				console.log("🏘️ Suburb classification triggered for:", query);
-			}
-			return "suburb";
+				return "suburb";
 		} else if (wordCount >= 2) {
 			// Check if second (or last) word is thoroughfare type
 			if (isThoroughfareWord(lastWord)) {
