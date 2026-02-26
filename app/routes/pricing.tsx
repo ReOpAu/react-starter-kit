@@ -15,6 +15,15 @@ import {
 	CardTitle,
 } from "~/components/ui/card";
 import { api } from "../../convex/_generated/api";
+import type { Route } from "./+types/pricing";
+
+export const meta: Route.MetaFunction = () => [
+	{ title: "Pricing - REOP Main" },
+	{
+		name: "description",
+		content: "Simple, transparent pricing for REOP Main. Choose the plan that fits your real estate needs.",
+	},
+];
 
 export default function IntegratedPricing() {
 	const { isSignedIn, userId } = useAuth();
